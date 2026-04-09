@@ -312,6 +312,124 @@
 
           <!-- ── GAMES VIEW ── -->
           <div class="view" id="view-games">
+            <section class="games-workspace">
+              <div class="games-workspace-copy">
+                <div class="section-kicker">Study Queue</div>
+                <h2 class="games-workspace-title">Find the right game to review next.</h2>
+                <p class="games-workspace-summary">
+                  Filter by result, opening, mistakes, and analysis status so the
+                  game list behaves like a study tool instead of a raw archive.
+                </p>
+              </div>
+
+              <div class="games-preset-row" id="games-preset-row">
+                <button class="preset-btn" data-preset="recent-losses" type="button">
+                  Recent Losses
+                </button>
+                <button class="preset-btn" data-preset="high-mistakes" type="button">
+                  High Mistakes
+                </button>
+                <button class="preset-btn" data-preset="needs-coach" type="button">
+                  Needs Coach Note
+                </button>
+                <button class="preset-btn" data-preset="strong-opponents" type="button">
+                  Strong Opponents
+                </button>
+              </div>
+
+              <div class="games-filter-panel">
+                <div class="games-filter-grid">
+                  <label class="field">
+                    <span class="field-label">Search</span>
+                    <input
+                      id="games-search"
+                      class="field-input"
+                      type="search"
+                      placeholder="Opening, ECO, rating, date"
+                    />
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Opening / ECO</span>
+                    <input
+                      id="games-opening"
+                      class="field-input"
+                      type="search"
+                      placeholder="Sicilian, B20, London"
+                    />
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Color</span>
+                    <select id="games-color" class="field-input">
+                      <option value="">All colors</option>
+                      <option value="white">White</option>
+                      <option value="black">Black</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Result</span>
+                    <select id="games-result" class="field-input">
+                      <option value="">All results</option>
+                      <option value="win">Win</option>
+                      <option value="loss">Loss</option>
+                      <option value="draw">Draw</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Status</span>
+                    <select id="games-analyzed" class="field-input">
+                      <option value="">All statuses</option>
+                      <option value="1">Analyzed</option>
+                      <option value="0">Pending</option>
+                      <option value="2">Error</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Coach Note</span>
+                    <select id="games-journal" class="field-input">
+                      <option value="">All games</option>
+                      <option value="0">Missing note</option>
+                      <option value="1">Has note</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Mistakes</span>
+                    <select id="games-min-mistakes" class="field-input">
+                      <option value="0">All games</option>
+                      <option value="1">1+ mistakes</option>
+                      <option value="5">5+ mistakes</option>
+                      <option value="10">10+ mistakes</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Sort</span>
+                    <select id="games-sort" class="field-input">
+                      <option value="date_desc">Newest first</option>
+                      <option value="date_asc">Oldest first</option>
+                      <option value="mistakes_desc">Most mistakes</option>
+                      <option value="opponent_desc">Highest opponent rating</option>
+                      <option value="opponent_asc">Lowest opponent rating</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="games-filter-actions">
+                  <div class="meta-label" id="games-filter-summary">All games</div>
+                  <div class="games-filter-buttons">
+                    <button class="btn btn-ghost" id="btn-clear-games-filters" type="button">
+                      Clear Filters
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <div class="card">
               <div class="card-header">
                 <div class="card-title">All Games</div>

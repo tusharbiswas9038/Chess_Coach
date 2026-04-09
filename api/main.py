@@ -314,27 +314,143 @@ def get_stats():
 # ── GAMES ─────────────────────────────────────────────────────────
 
 @app.get("/api/games")
-def list_games(limit: int = 20, offset: int = 0):
+def list_games(
+    limit: int = 20,
+    offset: int = 0,
+    search: str | None = None,
+    opening: str | None = None,
+    color: str | None = None,
+    result: str | None = None,
+    analyzed: int | None = None,
+    min_mistakes: int = 0,
+    has_journal: bool | None = None,
+    sort: str = "date_desc",
+    return_total: bool = False,
+):
     limit = max(1, min(limit, 100))
     offset = max(0, offset)
+    min_mistakes = max(0, min_mistakes)
+
+    valid_colors = {"white", "black"}
+    valid_results = {"win", "loss", "draw"}
+    valid_sorts = {
+        "date_desc": "date DESC",
+        "date_asc": "date ASC",
+        "mistakes_desc": "mistake_count DESC, date DESC",
+        "opponent_desc": "opponent_rating DESC, date DESC",
+        "opponent_asc": "opponent_rating ASC, date DESC",
+    }
+
+    if color and color not in valid_colors:
+        raise HTTPException(400, "Invalid color filter")
+    if result and result not in valid_results:
+        raise HTTPException(400, "Invalid result filter")
+    if analyzed is not None and analyzed not in {0, 1, 2}:
+        raise HTTPException(400, "Invalid analyzed filter")
+    if sort not in valid_sorts:
+        raise HTTPException(400, "Invalid sort option")
+
+    inner_where: list[str] = []
+    inner_params: list[Any] = []
+    outer_where: list[str] = []
+    outer_params: list[Any] = []
+
+    if search and (term := search.strip().lower()):
+        like = f"%{term}%"
+        inner_where.append("""
+            (
+                LOWER(COALESCE(g.opening_name, '')) LIKE ?
+                OR LOWER(COALESCE(g.opening_eco, '')) LIKE ?
+                OR CAST(COALESCE(g.opponent_rating, '') AS TEXT) LIKE ?
+                OR LOWER(COALESCE(g.date, '')) LIKE ?
+            )
+        """)
+        inner_params.extend([like, like, like, like])
+
+    if opening and (term := opening.strip().lower()):
+        like = f"%{term}%"
+        inner_where.append("""
+            (
+                LOWER(COALESCE(g.opening_name, '')) LIKE ?
+                OR LOWER(COALESCE(g.opening_eco, '')) LIKE ?
+            )
+        """)
+        inner_params.extend([like, like])
+
+    if color:
+        inner_where.append("g.color = ?")
+        inner_params.append(color)
+
+    if result:
+        inner_where.append("g.result = ?")
+        inner_params.append(result)
+
+    if analyzed is not None:
+        inner_where.append("g.analyzed = ?")
+        inner_params.append(analyzed)
+
+    if min_mistakes > 0:
+        outer_where.append("mistake_count >= ?")
+        outer_params.append(min_mistakes)
+
+    if has_journal is not None:
+        outer_where.append("has_journal = ?")
+        outer_params.append(1 if has_journal else 0)
+
+    inner_clause = f"WHERE {' AND '.join(inner_where)}" if inner_where else ""
+    outer_clause = f"WHERE {' AND '.join(outer_where)}" if outer_where else ""
+
+    cte = f"""
+        WITH game_rows AS (
+            SELECT
+                g.id, g.date, g.color, g.result,
+                g.time_control, g.opponent_rating, g.analyzed,
+                g.opening_eco, g.opening_name,
+                COALESCE(COUNT(DISTINCT m.id), 0) AS mistake_count,
+                j.coach_note,
+                CASE WHEN j.id IS NULL THEN 0 ELSE 1 END AS has_journal
+            FROM games g
+            LEFT JOIN mistakes m ON m.game_id = g.id
+            LEFT JOIN journal_entries j ON j.game_id = g.id
+            {inner_clause}
+            GROUP BY g.id
+        )
+    """
 
     conn = get_db()
-    result = conn.execute("""
-        SELECT
-            g.id, g.date, g.color, g.result,
-            g.time_control, g.opponent_rating, g.analyzed,
-            g.opening_eco, g.opening_name,
-            COALESCE(COUNT(DISTINCT m.id), 0) AS mistake_count,
-            j.coach_note
-        FROM games g
-        LEFT JOIN mistakes m ON m.game_id = g.id
-        LEFT JOIN journal_entries j ON j.game_id = g.id
-        GROUP BY g.id
-        ORDER BY g.date DESC
+    result = conn.execute(
+        cte
+        + f"""
+        SELECT *
+        FROM game_rows
+        {outer_clause}
+        ORDER BY {valid_sorts[sort]}
         LIMIT ? OFFSET ?
-    """, (limit, offset)).fetchall()
+        """,
+        (*inner_params, *outer_params, limit, offset),
+    ).fetchall()
+
+    items = rows(result)
+    if not return_total:
+        conn.close()
+        return items
+
+    total = conn.execute(
+        cte
+        + f"""
+        SELECT COUNT(*) AS total
+        FROM game_rows
+        {outer_clause}
+        """,
+        (*inner_params, *outer_params),
+    ).fetchone()["total"]
     conn.close()
-    return rows(result)
+    return {
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @app.get("/api/games/{game_id}")

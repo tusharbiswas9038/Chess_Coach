@@ -25,6 +25,19 @@ let gamesLoaded = false;
 let drillsLoaded = false;
 let mistakesRendered = false;
 let reviewState = null;
+const DEFAULT_GAMES_FILTERS = {
+  search: '',
+  opening: '',
+  color: '',
+  result: '',
+  analyzed: '',
+  hasJournal: '',
+  minMistakes: '0',
+  sort: 'date_desc',
+};
+let gamesFilters = { ...DEFAULT_GAMES_FILTERS };
+let activeGamesPreset = '';
+let gamesSearchTimer = null;
 
 // __ BUTTONS __
 
@@ -57,6 +70,9 @@ document
 document.getElementById('btn-view-all-games').addEventListener('click', () => showView('games'));
 document.getElementById('btn-start-drills').addEventListener('click', () => showView('drills'));
 document.getElementById('btn-review-latest').addEventListener('click', reviewLatestGame);
+document
+  .getElementById('btn-clear-games-filters')
+  .addEventListener('click', clearGamesFilters);
 
 document
   .querySelector('.back-btn')
@@ -69,6 +85,25 @@ document.querySelectorAll('.quality-btn').forEach((btn) => {
 });
 
 document.getElementById('btn-show-hint').addEventListener('click', showHint);
+document.querySelectorAll('[data-preset]').forEach((btn) => {
+  btn.addEventListener('click', () => applyGamesPreset(btn.dataset.preset));
+});
+
+[
+  'games-opening',
+  'games-color',
+  'games-result',
+  'games-analyzed',
+  'games-journal',
+  'games-min-mistakes',
+  'games-sort',
+].forEach((id) => {
+  document.getElementById(id).addEventListener('change', handleGamesFilterChange);
+});
+
+['games-search', 'games-opening'].forEach((id) => {
+  document.getElementById(id).addEventListener('input', handleGamesFilterInput);
+});
 
 // ── NAVIGATION ──
 function showView(name) {
@@ -266,6 +301,133 @@ function reviewLatestGame() {
     return;
   }
   showView('games');
+}
+
+function writeGamesFiltersToControls() {
+  document.getElementById('games-search').value = gamesFilters.search;
+  document.getElementById('games-opening').value = gamesFilters.opening;
+  document.getElementById('games-color').value = gamesFilters.color;
+  document.getElementById('games-result').value = gamesFilters.result;
+  document.getElementById('games-analyzed').value = gamesFilters.analyzed;
+  document.getElementById('games-journal').value = gamesFilters.hasJournal;
+  document.getElementById('games-min-mistakes').value = gamesFilters.minMistakes;
+  document.getElementById('games-sort').value = gamesFilters.sort;
+}
+
+function syncGamesFiltersFromControls() {
+  gamesFilters = {
+    search: document.getElementById('games-search').value.trim(),
+    opening: document.getElementById('games-opening').value.trim(),
+    color: document.getElementById('games-color').value,
+    result: document.getElementById('games-result').value,
+    analyzed: document.getElementById('games-analyzed').value,
+    hasJournal: document.getElementById('games-journal').value,
+    minMistakes: document.getElementById('games-min-mistakes').value,
+    sort: document.getElementById('games-sort').value,
+  };
+}
+
+function updateGamesPresetUI() {
+  document.querySelectorAll('[data-preset]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.preset === activeGamesPreset);
+  });
+}
+
+function currentGamesFilterSummary() {
+  const parts = [];
+  if (gamesFilters.search) parts.push(`search "${gamesFilters.search}"`);
+  if (gamesFilters.opening) parts.push(`opening "${gamesFilters.opening}"`);
+  if (gamesFilters.color) parts.push(gamesFilters.color);
+  if (gamesFilters.result) parts.push(gamesFilters.result);
+  if (gamesFilters.analyzed === '1') parts.push('analyzed');
+  if (gamesFilters.analyzed === '0') parts.push('pending');
+  if (gamesFilters.analyzed === '2') parts.push('errors');
+  if (gamesFilters.hasJournal === '0') parts.push('missing coach note');
+  if (gamesFilters.hasJournal === '1') parts.push('has coach note');
+  if (gamesFilters.minMistakes !== '0') parts.push(`${gamesFilters.minMistakes}+ mistakes`);
+  return parts.length ? parts.join(' · ') : 'All games';
+}
+
+function applyGamesFilters() {
+  syncGamesFiltersFromControls();
+  gamesPage = 0;
+  loadGames();
+}
+
+function handleGamesFilterChange() {
+  activeGamesPreset = '';
+  updateGamesPresetUI();
+  applyGamesFilters();
+}
+
+function handleGamesFilterInput() {
+  activeGamesPreset = '';
+  updateGamesPresetUI();
+  clearTimeout(gamesSearchTimer);
+  gamesSearchTimer = setTimeout(() => {
+    applyGamesFilters();
+  }, 220);
+}
+
+function clearGamesFilters() {
+  activeGamesPreset = '';
+  gamesFilters = { ...DEFAULT_GAMES_FILTERS };
+  writeGamesFiltersToControls();
+  updateGamesPresetUI();
+  gamesPage = 0;
+  loadGames();
+}
+
+function applyGamesPreset(name) {
+  const presets = {
+    'recent-losses': {
+      result: 'loss',
+      sort: 'date_desc',
+    },
+    'high-mistakes': {
+      analyzed: '1',
+      minMistakes: '5',
+      sort: 'mistakes_desc',
+    },
+    'needs-coach': {
+      analyzed: '1',
+      hasJournal: '0',
+      sort: 'date_desc',
+    },
+    'strong-opponents': {
+      analyzed: '1',
+      sort: 'opponent_desc',
+    },
+  };
+  activeGamesPreset = activeGamesPreset === name ? '' : name;
+  gamesFilters = activeGamesPreset
+    ? { ...DEFAULT_GAMES_FILTERS, ...(presets[activeGamesPreset] || {}) }
+    : { ...DEFAULT_GAMES_FILTERS };
+  writeGamesFiltersToControls();
+  updateGamesPresetUI();
+  gamesPage = 0;
+  loadGames();
+}
+
+function buildGamesQuery() {
+  const params = new URLSearchParams({
+    limit: String(PAGE_SIZE),
+    offset: String(gamesPage * PAGE_SIZE),
+    return_total: 'true',
+    sort: gamesFilters.sort || DEFAULT_GAMES_FILTERS.sort,
+  });
+
+  if (gamesFilters.search) params.set('search', gamesFilters.search);
+  if (gamesFilters.opening) params.set('opening', gamesFilters.opening);
+  if (gamesFilters.color) params.set('color', gamesFilters.color);
+  if (gamesFilters.result) params.set('result', gamesFilters.result);
+  if (gamesFilters.analyzed) params.set('analyzed', gamesFilters.analyzed);
+  if (gamesFilters.hasJournal) params.set('has_journal', gamesFilters.hasJournal === '1' ? 'true' : 'false');
+  if (gamesFilters.minMistakes && gamesFilters.minMistakes !== '0') {
+    params.set('min_mistakes', gamesFilters.minMistakes);
+  }
+
+  return params.toString();
 }
 
 // ── LOAD STATS ──
@@ -467,26 +629,34 @@ function renderMistakeBreakdownChart() {
 // ── GAMES LIST ──
 async function loadGames() {
   const offset = gamesPage * PAGE_SIZE;
-  let data;
+  let response;
   try {
-    data = await api(`/api/games?limit=${PAGE_SIZE}&offset=${offset}`);
+    response = await api(`/api/games?${buildGamesQuery()}`);
   } catch (e) {
     toast('Failed to load games');
     return;
   }
 
+  const data = response.items || [];
+  totalGames = response.total || 0;
+  const start = totalGames === 0 ? 0 : offset + 1;
+  const end = offset + data.length;
+  const totalPages = Math.max(1, Math.ceil(totalGames / PAGE_SIZE));
+
   document.getElementById('btn-prev').disabled = gamesPage === 0;
-  document.getElementById('btn-next').disabled = data.length < PAGE_SIZE;
-  document.getElementById('page-label').textContent = `Page ${gamesPage + 1}`;
+  document.getElementById('btn-next').disabled = end >= totalGames;
+  document.getElementById('page-label').textContent = `Page ${gamesPage + 1} / ${totalPages}`;
   document.getElementById('games-count-label').textContent =
-    data.length > 0
-      ? `Showing ${gamesPage * PAGE_SIZE + 1}–${gamesPage * PAGE_SIZE + data.length}`
-      : 'No games loaded';
+    totalGames > 0
+      ? `Showing ${start}–${end} of ${totalGames}`
+      : 'No games found';
+  document.getElementById('games-filter-summary').textContent =
+    currentGamesFilterSummary();
 
   const tbody = document.getElementById('all-games-body');
   if (data.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="7"><div class="empty"><div class="empty-icon">♟</div>No games found</div></td></tr>';
+      '<tr><td colspan="7"><div class="empty"><div class="empty-icon">♟</div>No games match the current filters</div></td></tr>';
     return;
   }
 
