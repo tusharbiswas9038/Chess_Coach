@@ -24,6 +24,7 @@ let charts = {};
 let gamesLoaded = false;
 let drillsLoaded = false;
 let mistakesRendered = false;
+let reviewState = null;
 
 // __ BUTTONS __
 
@@ -519,6 +520,248 @@ function changePage(dir) {
   loadGames();
 }
 
+function movePrefix(move) {
+  if (!move) return '—';
+  return move.color === 'black' ? `${move.move_number}...` : `${move.move_number}.`;
+}
+
+function enrichMistakesWithReviewIndex(playerMoves, mistakes) {
+  return mistakes.map((mistake) => ({
+    ...mistake,
+    reviewIndex: playerMoves.findIndex((move) => move.uci === mistake.played_move),
+  }));
+}
+
+function createReviewState(game, moves, mistakes) {
+  const playerMoves = moves
+    .filter((move) => move.color === game.color)
+    .map((move, reviewIndex) => ({ ...move, reviewIndex }));
+  const enrichedMistakes = enrichMistakesWithReviewIndex(playerMoves, mistakes);
+  const criticalIndex = enrichedMistakes.find((mistake) => mistake.is_critical)?.reviewIndex ?? -1;
+  const fallbackIndex = playerMoves.length > 0 ? playerMoves.length - 1 : 0;
+
+  return {
+    game,
+    moves,
+    playerMoves,
+    mistakes: enrichedMistakes,
+    selectedIndex: criticalIndex >= 0 ? criticalIndex : fallbackIndex,
+    criticalIndex,
+    flipped: game.color === 'black',
+    mode: 'before',
+  };
+}
+
+function currentReviewMove() {
+  if (!reviewState || !reviewState.playerMoves.length) return null;
+  return reviewState.playerMoves[reviewState.selectedIndex] || null;
+}
+
+function reviewModeConfig(move) {
+  if (!move) {
+    return {
+      position: {},
+      caption: 'No move selected',
+      from: null,
+      to: null,
+    };
+  }
+
+  if (reviewState.mode === 'played') {
+    const played = parseUCI(move.uci);
+    return {
+      position: parseFen(move.fen_after),
+      caption: `After your move ${move.san}`,
+      from: played.from,
+      to: played.to,
+    };
+  }
+
+  if (reviewState.mode === 'best' && move.best_move_uci && move.best_move_uci !== move.uci) {
+    const best = parseUCI(move.best_move_uci);
+    return {
+      position: applyMove(parseFen(move.fen_before), move.best_move_uci, fenTurn(move.fen_before)),
+      caption: `Best-move preview: ${move.best_move_san || move.best_move_uci}`,
+      from: best.from,
+      to: best.to,
+    };
+  }
+
+  const played = parseUCI(move.uci);
+  return {
+    position: parseFen(move.fen_before),
+    caption: 'Position before your move',
+    from: played.from,
+    to: played.to,
+  };
+}
+
+function renderReviewBoard() {
+  const move = currentReviewMove();
+  if (!move) return;
+  const config = reviewModeConfig(move);
+  renderPositionBoard('review-board', config.position, {
+    flipped: reviewState.flipped,
+    lastFrom: config.from,
+    lastTo: config.to,
+  });
+  document.getElementById('review-caption').textContent = config.caption;
+}
+
+function updateReviewSelectionStyles(move) {
+  document
+    .querySelectorAll('[data-review-index]')
+    .forEach((el) => {
+      el.classList.toggle(
+        'active',
+        Number(el.dataset.reviewIndex) === reviewState.selectedIndex
+      );
+      if (el.tagName === 'TR') {
+        el.classList.toggle(
+          'review-row-active',
+          Number(el.dataset.reviewIndex) === reviewState.selectedIndex
+        );
+      }
+    });
+
+  document.querySelectorAll('[data-review-mode]').forEach((el) => {
+    el.classList.toggle('active', el.dataset.reviewMode === reviewState.mode);
+  });
+
+  const criticalBtn = document.getElementById('review-critical');
+  if (criticalBtn) criticalBtn.disabled = reviewState.criticalIndex < 0;
+
+  const prevBtn = document.getElementById('review-prev');
+  const nextBtn = document.getElementById('review-next');
+  if (prevBtn) prevBtn.disabled = reviewState.selectedIndex <= 0;
+  if (nextBtn) nextBtn.disabled = reviewState.selectedIndex >= reviewState.playerMoves.length - 1;
+
+  const scrubber = document.getElementById('review-scrubber');
+  if (scrubber) {
+    scrubber.max = String(Math.max(reviewState.playerMoves.length - 1, 0));
+    scrubber.value = String(reviewState.selectedIndex);
+  }
+
+  const bestToggle = document.querySelector('[data-review-mode="best"]');
+  const bestAvailable = move?.best_move_san && move.best_move_san !== move.san;
+  if (bestToggle) {
+    bestToggle.disabled = !bestAvailable;
+    if (!bestAvailable && reviewState.mode === 'best') {
+      reviewState.mode = 'before';
+      document
+        .querySelector('[data-review-mode="before"]')
+        ?.classList.add('active');
+    }
+  }
+}
+
+function renderReviewWorkspace() {
+  const move = currentReviewMove();
+  if (!move) return;
+
+  const title = `${movePrefix(move)} ${move.san}`;
+  const counter = `${reviewState.selectedIndex + 1} / ${reviewState.playerMoves.length} of your moves`;
+  const evalText =
+    move.eval_delta != null
+      ? `${move.eval_delta > 0 ? '+' : ''}${move.eval_delta}cp`
+      : '—';
+  const evalClass = evalDeltaClass(move.eval_delta);
+  const bestText =
+    move.best_move_san && move.best_move_san !== move.san
+      ? move.best_move_san
+      : 'Already best';
+  const currentMistake = reviewState.mistakes.find(
+    (mistake) => mistake.reviewIndex === move.reviewIndex
+  );
+
+  document.getElementById('review-title').textContent = title;
+  document.getElementById('review-counter').textContent = counter;
+  document.getElementById('review-played-label').textContent = move.san;
+  document.getElementById('review-played-meta').textContent =
+    move.eval_delta != null ? `${Math.abs(move.eval_delta)}cp swing` : 'No eval swing available';
+  document.getElementById('review-best-label').textContent = bestText;
+  document.getElementById('review-best-meta').textContent =
+    move.best_move_san && move.best_move_san !== move.san
+      ? 'Preview the engine recommendation'
+      : 'No better alternative stored';
+  document.getElementById('review-position-label').textContent =
+    currentMistake?.is_critical ? 'Critical position' : 'Current position';
+  document.getElementById('review-position-meta').textContent =
+    currentMistake?.type
+      ? `Mistake type: ${currentMistake.type.replace('_', ' ')}`
+      : 'Review the position before your move';
+
+  document.getElementById('review-summary-phase').textContent = move.phase || '—';
+  document.getElementById('review-summary-quality').textContent =
+    move.classification || '—';
+  document.getElementById('review-summary-played').textContent = move.san;
+  document.getElementById('review-summary-best').textContent = bestText;
+  const evalEl = document.getElementById('review-summary-eval');
+  evalEl.textContent = evalText;
+  evalEl.className = `review-summary-value ${evalClass}`;
+
+  document.getElementById('review-badges').innerHTML = `
+    <span class="review-pill">${move.phase || 'phase unknown'}</span>
+    <span class="review-pill">${move.classification || 'unclassified'}</span>
+    <span class="review-pill">${move.is_hanging_piece ? 'hanging piece' : 'piece safe'}</span>
+  `;
+
+  updateReviewSelectionStyles(move);
+  renderReviewBoard();
+}
+
+function setReviewMove(index) {
+  if (!reviewState || !reviewState.playerMoves.length) return;
+  reviewState.selectedIndex = Math.max(
+    0,
+    Math.min(index, reviewState.playerMoves.length - 1)
+  );
+  if (reviewState.mode === 'best') {
+    const move = currentReviewMove();
+    if (!move?.best_move_san || move.best_move_san === move.san) {
+      reviewState.mode = 'before';
+    }
+  }
+  renderReviewWorkspace();
+}
+
+function setReviewMode(mode) {
+  if (!reviewState) return;
+  reviewState.mode = mode;
+  renderReviewWorkspace();
+}
+
+function attachGameDetailEvents(container, gameId) {
+  container.querySelector('.btn-generate-report')?.addEventListener('click', () => generateReport(gameId));
+  container.querySelector('#review-prev')?.addEventListener('click', () => {
+    setReviewMove(reviewState.selectedIndex - 1);
+  });
+  container.querySelector('#review-next')?.addEventListener('click', () => {
+    setReviewMove(reviewState.selectedIndex + 1);
+  });
+  container.querySelector('#review-critical')?.addEventListener('click', () => {
+    if (reviewState.criticalIndex >= 0) setReviewMove(reviewState.criticalIndex);
+  });
+  container.querySelector('#review-flip')?.addEventListener('click', () => {
+    reviewState.flipped = !reviewState.flipped;
+    renderReviewBoard();
+  });
+  container.querySelector('#review-scrubber')?.addEventListener('input', (event) => {
+    setReviewMove(Number(event.target.value));
+  });
+  container.querySelectorAll('[data-review-mode]').forEach((el) => {
+    el.addEventListener('click', () => {
+      if (!el.disabled) setReviewMode(el.dataset.reviewMode);
+    });
+  });
+  container.querySelectorAll('tr[data-review-index]').forEach((row) => {
+    row.addEventListener('click', () => setReviewMove(Number(row.dataset.reviewIndex)));
+  });
+  container.querySelectorAll('.mistake-item[data-review-index]').forEach((item) => {
+    item.addEventListener('click', () => setReviewMove(Number(item.dataset.reviewIndex)));
+  });
+}
+
 // ── GAME DETAIL ──
 async function loadGameDetail(gameId) {
   showView('game-detail');
@@ -536,7 +779,12 @@ async function loadGameDetail(gameId) {
   const g = data.game;
   const mistakes = data.mistakes || [];
   const moves = data.moves || [];
-  const playerMoves = moves.filter((m) => m.color === g.color);
+  reviewState = createReviewState(g, moves, mistakes);
+
+  if (!reviewState.playerMoves.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">♟</div>No player moves available for review.</div>';
+    return;
+  }
 
   container.innerHTML = `
     <div class="game-meta-row">
@@ -552,14 +800,138 @@ async function loadGameDetail(gameId) {
 } rated</span>
     </div>
 
+    <div class="review-workspace">
+      <section class="review-stage">
+        <div class="review-header">
+          <div>
+            <div class="section-kicker">Review Workspace</div>
+            <div class="review-title" id="review-title">Move</div>
+            <div class="review-caption" id="review-caption">Position before your move</div>
+          </div>
+          <div class="review-badges" id="review-badges"></div>
+        </div>
+
+        <div class="review-board-shell">
+          <div id="review-board"></div>
+        </div>
+
+        <div class="review-toolbar">
+          <div class="review-nav">
+            <button class="btn btn-ghost" id="review-prev">← Prev</button>
+            <button class="btn btn-ghost" id="review-next">Next →</button>
+            <button class="btn btn-ghost" id="review-critical">Critical</button>
+            <button class="btn btn-ghost" id="review-flip">Flip Board</button>
+          </div>
+          <div class="meta-label" id="review-counter"></div>
+        </div>
+
+        <div class="review-scrubber-row">
+          <span class="meta-label">Move</span>
+          <input
+            type="range"
+            id="review-scrubber"
+            class="review-scrubber"
+            min="0"
+            max="${Math.max(reviewState.playerMoves.length - 1, 0)}"
+            value="${reviewState.selectedIndex}"
+          />
+        </div>
+
+        <div class="review-choice-grid">
+          <button class="review-choice active" data-review-mode="before" type="button">
+            <div class="review-choice-label">Position</div>
+            <div class="review-choice-value" id="review-position-label">Current position</div>
+            <div class="review-choice-meta" id="review-position-meta">Review the position before your move</div>
+          </button>
+          <button class="review-choice" data-review-mode="played" type="button">
+            <div class="review-choice-label">Played</div>
+            <div class="review-choice-value" id="review-played-label">—</div>
+            <div class="review-choice-meta" id="review-played-meta">Your move</div>
+          </button>
+          <button class="review-choice" data-review-mode="best" type="button">
+            <div class="review-choice-label">Best</div>
+            <div class="review-choice-value" id="review-best-label">—</div>
+            <div class="review-choice-meta" id="review-best-meta">Engine line</div>
+          </button>
+        </div>
+      </section>
+
+      <aside class="mistake-panel">
+        <div class="review-side-card">
+          <div class="review-side-title">Move Summary</div>
+          <div class="review-summary-list">
+            <div class="review-summary-row">
+              <span class="review-summary-label">Phase</span>
+              <span class="review-summary-value" id="review-summary-phase">—</span>
+            </div>
+            <div class="review-summary-row">
+              <span class="review-summary-label">Quality</span>
+              <span class="review-summary-value" id="review-summary-quality">—</span>
+            </div>
+            <div class="review-summary-row">
+              <span class="review-summary-label">Eval Δ</span>
+              <span class="review-summary-value" id="review-summary-eval">—</span>
+            </div>
+            <div class="review-summary-row">
+              <span class="review-summary-label">Played</span>
+              <span class="review-summary-value cell-code" id="review-summary-played">—</span>
+            </div>
+            <div class="review-summary-row">
+              <span class="review-summary-label">Best</span>
+              <span class="review-summary-value cell-code" id="review-summary-best">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mistake-panel-title">
+          Critical Mistakes (${reviewState.mistakes.length})
+        </div>
+        ${
+  reviewState.mistakes.length === 0
+    ? '<div class="empty empty-compact"><div class="empty-icon">✓</div>No significant mistakes found</div>'
+    : reviewState.mistakes
+      .slice(0, 8)
+      .map(
+        (mk) => `
+            <div
+              class="mistake-item${mk.is_critical ? ' is-critical' : ''}"
+              data-review-index="${mk.reviewIndex}"
+            >
+              <div class="mistake-item-header">
+                ${mistakeTag(mk.type)}
+                <div class="eval-loss">-${mk.eval_loss}cp</div>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Phase:</span>
+                <span>${esc(mk.phase) || '—'}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Played:</span>
+                <span class="cell-code text-error">${esc(mk.played_move)}</span>
+                <span class="detail-label">→ Better:</span>
+                <span class="cell-code text-success">${esc(mk.best_move)}</span>
+              </div>
+              ${
+  mk.is_critical
+    ? '<div class="critical-note">⚡ Critical moment — game turned here</div>'
+    : ''
+}
+            </div>
+          `
+      )
+      .join('')
+}
+      </aside>
+    </div>
+
     <div class="game-detail-grid">
       <div>
         <div class="card">
           <div class="card-header">
             <div class="card-title">Your Moves Analysis</div>
             <div class="table-meta">${
-  playerMoves.length
-} moves · ${mistakes.length} mistakes</div>
+  reviewState.playerMoves.length
+} moves · ${reviewState.mistakes.length} mistakes</div>
           </div>
           <table>
             <thead>
@@ -573,15 +945,14 @@ async function loadGameDetail(gameId) {
               </tr>
             </thead>
             <tbody>
-              ${playerMoves
+              ${reviewState.playerMoves
     .map((m) => {
-      const hanging = m.is_hanging_piece === 1;
-      const isCritical = mistakes.find(
-        (mk) => mk.is_critical && mk.played_move === m.uci
+      const isCritical = reviewState.mistakes.find(
+        (mk) => mk.is_critical && mk.reviewIndex === m.reviewIndex
       );
       const rowClass = isCritical
         ? 'critical-row'
-        : hanging
+        : m.is_hanging_piece === 1
           ? 'hanging-row'
           : '';
       const qClass = `move-${m.classification || 'good'}`;
@@ -590,7 +961,7 @@ async function loadGameDetail(gameId) {
                       ? (m.eval_delta > 0 ? '+' : '') + m.eval_delta
                       : '—';
       return `
-                  <tr class="${rowClass}">
+                  <tr class="${rowClass}" data-review-index="${m.reviewIndex}">
                     <td class="cell-muted">${m.move_number}.</td>
                     <td class="${qClass} cell-code-strong">${esc(
   m.san)
@@ -688,10 +1059,8 @@ async function loadGameDetail(gameId) {
 `
 }
   `;
-const reportBtn = container.querySelector('.btn-generate-report');
-if (reportBtn) {
-  reportBtn.addEventListener('click', () => generateReport(gameId));
-}
+  attachGameDetailEvents(container, gameId);
+  renderReviewWorkspace();
 }
 
 
@@ -1107,8 +1476,19 @@ function applyMove(pos, uci, turn) {
   return p;
 }
 
-function renderBoard() {
-  const board = document.getElementById('drill-board');
+function renderPositionBoard(
+  boardId,
+  position,
+  {
+    flipped = false,
+    selectedSquare = null,
+    lastFrom: fromSquare = null,
+    lastTo: toSquare = null,
+    hintSquare = null,
+    onSquareClick = null,
+  } = {}
+) {
+  const board = document.getElementById(boardId);
   if (!board) return;
   board.innerHTML = '';
   const grid = document.createElement('div');
@@ -1117,8 +1497,8 @@ function renderBoard() {
   const files = 'abcdefgh';
   for (let r = 8; r >= 1; r--) {
     for (let fi = 0; fi < 8; fi++) {
-      const f = drillFlipped ? files[7 - fi] : files[fi];
-      const rank = drillFlipped ? 9 - r : r;
+      const f = flipped ? files[7 - fi] : files[fi];
+      const rank = flipped ? 9 - r : r;
       const sq = f + rank;
       const isLight = (fi + r) % 2 === 0;
 
@@ -1126,12 +1506,13 @@ function renderBoard() {
       cell.className = 'sq ' + (isLight ? 'light' : 'dark');
       cell.dataset.sq = sq;
 
-      if (selectedSq === sq) cell.classList.add('selected');
-      if (lastFrom === sq) cell.classList.add('last-from');
-      if (lastTo === sq) cell.classList.add('last-to');
+      if (selectedSquare === sq) cell.classList.add('selected');
+      if (fromSquare === sq) cell.classList.add('last-from');
+      if (toSquare === sq) cell.classList.add('last-to');
+      if (hintSquare === sq) cell.classList.add('hint');
 
       // File label on rank 1
-      if (drillFlipped ? rank === 8 : rank === 1) {
+      if (flipped ? rank === 8 : rank === 1) {
         const lbl = document.createElement('div');
         lbl.className = 'sq-label-file';
         lbl.textContent = f;
@@ -1140,7 +1521,7 @@ function renderBoard() {
       }
 
       // Rank label on file a
-      if (drillFlipped ? f === 'h' : f === 'a') {
+      if (flipped ? f === 'h' : f === 'a') {
         const lbl = document.createElement('div');
         lbl.className = 'sq-label-rank';
         lbl.textContent = rank;
@@ -1148,7 +1529,7 @@ function renderBoard() {
         cell.appendChild(lbl);
       }
 
-      const piece = boardPosition[sq];
+      const piece = position[sq];
       if (piece && PIECES[piece]) {
         const pieceEl = document.createElement('div');
         pieceEl.className = 'piece';
@@ -1161,11 +1542,24 @@ function renderBoard() {
         cell.appendChild(pieceEl);
       }
 
-      cell.addEventListener('click', () => handleSquareClick(sq));
+      if (onSquareClick) {
+        cell.addEventListener('click', () => onSquareClick(sq));
+      }
       grid.appendChild(cell);
     }
   }
   board.appendChild(grid);
+}
+
+function renderBoard() {
+  renderPositionBoard('drill-board', boardPosition, {
+    flipped: drillFlipped,
+    selectedSquare: selectedSq,
+    lastFrom,
+    lastTo,
+    hintSquare: hintShown ? parseUCI(correctUCI).from : null,
+    onSquareClick: handleSquareClick,
+  });
 }
 
 function handleSquareClick(sq) {
