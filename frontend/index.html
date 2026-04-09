@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Personal chess coaching dashboard for Tushar9038"
+    />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src 'self' https://cdn.jsdelivr.net;
+               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+               font-src https://fonts.gstatic.com;
+               img-src 'self' data:;
+               connect-src 'self';
+               frame-ancestors 'none';"
+    />
+    <title>Chess Coach — Tushar9038</title>
+    <script
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"
+      integrity="sha256-vOFUCAlZxXS+C7axqST/MvCOvG/0YMFZFx9RxTgCyEQ="
+      crossorigin="anonymous"
+      defer
+    ></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    />
+    <link rel="preload" href="/static/css/app.css" as="style" />
+    <link rel="stylesheet" href="/static/css/app.css" />
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
+  </head>
+  <body>
+    <noscript>
+      <div class="noscript-panel">
+        <h2>Chess Coach requires JavaScript</h2>
+        <p>Please enable JavaScript to use this dashboard.</p>
+      </div>
+    </noscript>
+
+    <div class="app">
+      <!-- ── SIDEBAR ── -->
+      <aside class="sidebar" aria-label="Navigation">
+        <div class="sidebar-logo">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M8 16c0-1 .5-2 1.5-2.5L12 12l2.5 1.5C15.5 14 16 15 16 16v2H8v-2z"
+            />
+            <path d="M12 3v4M9 6h6M9 7c0 1.66 1.34 3 3 3s3-1.34 3-3" />
+            <rect x="6" y="18" width="12" height="3" rx="1" />
+          </svg>
+          <div>
+            <div class="sidebar-logo-text">Chess Coach</div>
+            <div class="sidebar-logo-sub">Tushar9038</div>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Main navigation">
+          <button class="nav-item active" data-view="dashboard">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+            </svg>
+            <span>Dashboard</span>
+          </button>
+          <button class="nav-item" data-view="games">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+              />
+            </svg>
+            <span>Games</span>
+          </button>
+          <button class="nav-item" data-view="mistakes">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>Mistakes</span>
+          </button>
+          <button class="nav-item" data-view="openings">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path
+                d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
+              />
+            </svg>
+            <span>Openings</span>
+          </button>
+          <button class="nav-item" data-view="drills">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+            <span>Drills</span><span id="drill-badge" class="nav-badge" hidden></span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="rating-badge">
+            <div>
+              <div class="rating-badge-label">Current Rating</div>
+              <div class="rating-badge-value" id="sidebar-rating">—</div>
+            </div>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--primary)"
+              stroke-width="2"
+            >
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+              <polyline points="17 6 23 6 23 12" />
+            </svg>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ── MAIN ── -->
+      <main class="main">
+        <header class="topbar">
+          <div class="topbar-title" id="topbar-title">Dashboard</div>
+          <div class="topbar-actions">
+            <button class="btn btn-ghost" id="btn-sync">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+              Sync
+            </button>
+            <button
+              class="btn btn-ghost"
+              id="btn-analyze"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              Analyze
+            </button>
+          </div>
+        </header>
+
+        <div class="content">
+          <!-- ── DASHBOARD VIEW ── -->
+          <div class="view active" id="view-dashboard">
+            <section class="dashboard-focus">
+              <div class="dashboard-focus-main">
+                <p class="section-kicker">Today</p>
+                <h1 class="dashboard-title">Train before you queue.</h1>
+                <p class="dashboard-summary">
+                  Use your own mistakes as the main workspace. Clear the drill queue,
+                  review the latest critical swing, then decide whether to sync or
+                  analyze more games.
+                </p>
+                <div class="dashboard-actions">
+                  <button class="btn btn-primary" id="btn-start-drills">
+                    Start Drills
+                  </button>
+                  <button class="btn btn-ghost" id="btn-review-latest">
+                    Review Latest Game
+                  </button>
+                </div>
+              </div>
+
+              <div class="dashboard-focus-panel">
+                <div class="focus-panel-label">Current priority</div>
+                <div class="focus-panel-value" id="focus-primary-value">—</div>
+                <p class="focus-panel-text" id="focus-primary-text">
+                  Loading your current training target…
+                </p>
+                <div class="focus-metrics">
+                  <div class="focus-metric">
+                    <span class="focus-metric-label">Drills due</span>
+                    <strong class="focus-metric-value" id="focus-drills-due">—</strong>
+                  </div>
+                  <div class="focus-metric">
+                    <span class="focus-metric-label">Games pending</span>
+                    <strong class="focus-metric-value" id="focus-games-pending">—</strong>
+                  </div>
+                  <div class="focus-metric">
+                    <span class="focus-metric-label">Weekly win rate</span>
+                    <strong class="focus-metric-value" id="focus-weekly-form">—</strong>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div class="kpi-grid" id="kpi-grid">
+              <!-- filled by JS -->
+            </div>
+
+            <div class="charts-row">
+              <div class="chart-card">
+                <div class="chart-title">Weekly Win Rate %</div>
+                <div class="chart-container">
+                  <canvas id="chart-winrate"
+                    >Weekly win rate chart — data unavailable without
+                    JavaScript</canvas
+                  >
+                </div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-title">Mistake Breakdown</div>
+                <div class="chart-container">
+                  <canvas id="chart-mistakes"
+                    >Mistake breakdown chart — data unavailable without
+                    JavaScript</canvas
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Recent Games</div>
+                <button class="btn btn-ghost" id="btn-view-all-games">
+                  View all →
+                </button>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Color</th>
+                    <th>Result</th>
+                    <th>Opponent</th>
+                    <th>Opening</th>
+                    <th>Mistakes</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-games-body"></tbody>
+              </table>
+            </div>
+
+            <!-- Hanging piece rate bar -->
+            <div class="card card-pad">
+              <div class="hanging-header">
+                <div class="hanging-copy">
+                  <div class="hanging-title">Hanging Piece Rate</div>
+                  <div class="hanging-subtitle">
+                    Your biggest recurring leak right now. Target: below 40%
+                  </div>
+                </div>
+                <div class="kpi-value kpi-bad" id="hanging-pct-big">—</div>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill bad" id="hanging-bar"></div>
+              </div>
+              <div class="hanging-scale">
+                <span>0% — Perfect</span>
+                <span>100% — Every game</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── GAMES VIEW ── -->
+          <div class="view" id="view-games">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">All Games</div>
+                <div class="meta-label" id="games-count-label"></div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Color</th>
+                    <th>Result</th>
+                    <th>Opp. Rating</th>
+                    <th>Opening</th>
+                    <th>Mistakes</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="all-games-body"></tbody>
+              </table>
+            </div>
+            <div class="pagination">
+              <button class="btn btn-ghost" id="btn-prev">
+                ← Prev
+              </button>
+              <span class="meta-label" id="page-label">Page 1</span>
+              <button class="btn btn-ghost" id="btn-next">
+                Next →
+              </button>
+            </div>
+          </div>
+
+          <!-- ── GAME DETAIL VIEW ── -->
+          <div class="view" id="view-game-detail">
+            <button class="back-btn">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Back to Games
+            </button>
+            <div id="game-detail-content"></div>
+          </div>
+
+          <!-- ── MISTAKES VIEW ── -->
+          <div class="view" id="view-mistakes">
+            <div class="kpi-grid kpi-grid-triple">
+              <div class="kpi-card">
+                <div class="kpi-label">Total Blunders</div>
+                <div class="kpi-value kpi-bad" id="m-blunders">—</div>
+                <div class="kpi-sub">eval swing &gt; 300cp</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Hanging Pieces</div>
+                <div class="kpi-value kpi-warn" id="m-hanging">—</div>
+                <div class="kpi-sub">left piece en prise</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Mistakes</div>
+                <div class="kpi-value kpi-blue" id="m-mistakes">—</div>
+                <div class="kpi-sub">eval swing 100–200cp</div>
+              </div>
+            </div>
+
+            <div class="charts-row charts-row-triple">
+              <div class="chart-card">
+                <div class="chart-title">By Phase</div>
+                <div class="chart-container chart-container-short">
+                  <canvas id="chart-phase"></canvas>
+                </div>
+              </div>
+              <div class="chart-card chart-card-span-2">
+                <div class="chart-title">Blunders per Game — Last 20 Games</div>
+                <div class="chart-container chart-container-short">
+                  <canvas id="chart-blunder-trend"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  Recent Critical Mistakes (1 per game)
+                </div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Game Date</th>
+                    <th>Type</th>
+                    <th>Phase</th>
+                    <th>Move Played</th>
+                    <th>Should Have Played</th>
+                    <th>Eval Lost (cp)</th>
+                  </tr>
+                </thead>
+                <tbody id="critical-mistakes-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── OPENINGS VIEW ── -->
+          <div class="view" id="view-openings">
+            <div class="charts-row charts-row-openings">
+              <div class="chart-card">
+                <div class="chart-title">Top Openings as White</div>
+                <div class="chart-container chart-container-tall">
+                  <canvas id="chart-openings-white"></canvas>
+                </div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-title">Top Openings as Black</div>
+                <div class="chart-container chart-container-tall">
+                  <canvas id="chart-openings-black"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Opening Win Rates</div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>ECO</th>
+                    <th>Opening</th>
+                    <th>Color</th>
+                    <th>Games</th>
+                    <th>Wins</th>
+                    <th>Win %</th>
+                  </tr>
+                </thead>
+                <tbody id="openings-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── DRILLS VIEW ── -->
+          <div class="view" id="view-drills">
+            <div class="drill-toolbar">
+              <div class="drill-toolbar-copy">
+                <div class="drill-toolbar-title">Daily Drills</div>
+                <div class="drill-toolbar-subtitle">
+                  Positions from your own mistakes — spaced repetition
+                </div>
+              </div>
+              <div class="drill-toolbar-actions">
+                <button class="flip-btn">⟳ Flip Board</button>
+                <button class="btn btn-ghost" id="btn-reload-drills">
+                  Reload Queue
+                </button>
+              </div>
+            </div>
+
+            <div class="drill-layout">
+              <!-- BOARD -->
+              <div class="board-wrap">
+                <div class="board-header">
+                  <div class="board-title" id="drill-turn-label">
+                    Find the best move
+                  </div>
+                  <div id="drill-counter" class="meta-label"></div>
+                </div>
+                <div id="drill-board"></div>
+                <div id="drill-feedback" class="drill-feedback"></div>
+
+                <!-- Quality buttons — shown after answer -->
+                <div id="quality-section" class="quality-section" hidden>
+                  <div class="quality-caption">
+                    How hard was this? (affects next review date)
+                  </div>
+                  <div class="quality-btns">
+                    <button class="quality-btn" data-q="0">
+                      Again<br /><span class="quality-sub">Blackout</span>
+                    </button>
+                    <button class="quality-btn" data-q="1">
+                      Hard<br /><span class="quality-sub">Wrong</span>
+                    </button>
+                    <button class="quality-btn" data-q="2">
+                      Good<br /><span class="quality-sub">Correct</span>
+                    </button>
+                    <button class="quality-btn" data-q="3">
+                      Easy<br /><span class="quality-sub">Instant</span>
+                    </button>
+                  </div>
+                  <div class="drill-progress-text" id="drill-progress-text"></div>
+                </div>
+
+                <!-- Empty state -->
+                <div id="drill-empty" class="drill-empty" hidden>
+                  <div class="drill-empty-emoji">🎉</div>
+                  <div class="drill-empty-title">
+                    All drills done for today!
+                  </div>
+                  <div class="drill-empty-subtitle">
+                    Come back tomorrow for your next batch.
+                  </div>
+                </div>
+              </div>
+
+              <!-- SIDEBAR -->
+              <div class="drill-sidebar">
+                <div class="drill-info-card">
+                  <div class="drill-card-title">Session Stats</div>
+                  <div class="drill-stat-row">
+                    <span class="drill-stat-label">Due today</span>
+                    <span id="ds-due" class="drill-stat-value">—</span>
+                  </div>
+                  <div class="drill-stat-row">
+                    <span class="drill-stat-label">Completed</span>
+                    <span id="ds-done" class="drill-stat-value drill-stat-value-success">0</span>
+                  </div>
+                  <div class="drill-stat-row">
+                    <span class="drill-stat-label">Correct</span>
+                    <span id="ds-correct" class="drill-stat-value drill-stat-value-success">0</span>
+                  </div>
+                  <div class="drill-stat-row">
+                    <span class="drill-stat-label">Wrong</span>
+                    <span id="ds-wrong" class="drill-stat-value drill-stat-value-error">0</span>
+                  </div>
+                  <div class="space-top-sm">
+                    <div class="progress-bar progress-bar-tall">
+                      <div class="progress-fill" id="session-progress-bar"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="drill-info-card">
+                  <div class="drill-card-title">Queue</div>
+                  <div class="drill-queue-list" id="drill-queue-list"></div>
+                </div>
+
+                <div class="drill-info-card" id="drill-hint-card" hidden>
+                  <div class="drill-card-title drill-card-title-tight">Position Info</div>
+                  <div id="drill-theme-label" class="meta-label">—</div>
+                  <button class="btn btn-ghost btn-block space-top-sm" id="btn-show-hint">
+                    Show Best Move
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- /content -->
+      </main>
+      <!-- /main -->
+    </div>
+    <!-- /app -->
+    <script src="/static/js/app.js" defer></script>
+  </body>
+</html>

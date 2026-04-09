@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+httpx
+python-chess
+pydantic
+jinja2
+python-dotenv
+aiofiles
+apscheduler
