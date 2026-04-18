@@ -135,6 +135,18 @@
             </svg>
             <span>Drills</span><span id="drill-badge" class="nav-badge" hidden></span>
           </button>
+          <button class="nav-item" data-view="coach">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+              <path d="M8 9h8M8 13h5" />
+            </svg>
+            <span>Coach</span>
+          </button>
         </nav>
 
         <div class="sidebar-footer">
@@ -678,12 +690,110 @@
               </div>
             </div>
           </div>
+
+          <!-- ── COACH VIEW ── -->
+          <div class="view" id="view-coach">
+            <section class="coach-workspace">
+              <div class="coach-main">
+                <div class="coach-hero">
+                  <div>
+                    <div class="section-kicker">Ask Coach</div>
+                    <h2 class="coach-title">Turn your data into a training decision.</h2>
+                    <p class="coach-summary">
+                      Ask about your recent games, recurring mistakes, openings, or
+                      what to study before the next rapid session.
+                    </p>
+                  </div>
+                  <button class="btn btn-ghost" id="btn-coach-clear" type="button">
+                    Clear Chat
+                  </button>
+                </div>
+
+                <div class="coach-messages" id="coach-messages" aria-live="polite">
+                  <div class="coach-empty">
+                    <div class="coach-empty-icon">♟</div>
+                    <div class="coach-empty-title">No coach conversation yet</div>
+                    <div class="coach-empty-copy">
+                      Pick a prompt or ask a direct question. The coach will use your
+                      current chess data as context.
+                    </div>
+                  </div>
+                </div>
+
+                <form class="coach-form" id="coach-form">
+                  <label class="field coach-input-field">
+                    <span class="field-label">Question</span>
+                    <textarea
+                      id="coach-input"
+                      class="coach-input"
+                      rows="4"
+                      placeholder="Example: What should I fix before my next 10+0 game?"
+                    ></textarea>
+                  </label>
+                  <div class="coach-form-actions">
+                    <div class="meta-label" id="coach-status">
+                      Ready
+                    </div>
+                    <button class="btn btn-primary" id="btn-coach-send" type="submit">
+                      Ask Coach
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <aside class="coach-sidebar">
+                <div class="coach-panel">
+                  <div class="coach-panel-title">Quick Questions</div>
+                  <div class="coach-prompt-list">
+                    <button class="coach-prompt" data-coach-prompt="What should I study today based on my recent games?" type="button">
+                      What should I study today?
+                    </button>
+                    <button class="coach-prompt" data-coach-prompt="What is my biggest recurring weakness and how do I fix it in one week?" type="button">
+                      Biggest recurring weakness
+                    </button>
+                    <button class="coach-prompt" data-coach-prompt="Give me a 20 minute warm-up routine before I play rapid chess." type="button">
+                      20 minute warm-up
+                    </button>
+                    <button class="coach-prompt" data-coach-prompt="Which openings are currently hurting my results most?" type="button">
+                      Opening weaknesses
+                    </button>
+                  </div>
+                </div>
+
+                <div class="coach-panel">
+                  <div class="coach-panel-title">Current Context</div>
+                  <div class="coach-context-list">
+                    <div class="coach-context-row">
+                      <span>Rating</span>
+                      <strong id="coach-context-rating">—</strong>
+                    </div>
+                    <div class="coach-context-row">
+                      <span>Games analyzed</span>
+                      <strong id="coach-context-games">—</strong>
+                    </div>
+                    <div class="coach-context-row">
+                      <span>Hanging rate</span>
+                      <strong id="coach-context-hanging">—</strong>
+                    </div>
+                    <div class="coach-context-row">
+                      <span>Blunders/game</span>
+                      <strong id="coach-context-blunders">—</strong>
+                    </div>
+                    <div class="coach-context-row">
+                      <span>Drills due</span>
+                      <strong id="coach-context-drills">—</strong>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </section>
+          </div>
         </div>
         <!-- /content -->
       </main>
       <!-- /main -->
     </div>
     <!-- /app -->
-    <script src="/static/js/app.js" defer></script>
+    <script type="module" src="/static/js/app.js"></script>
   </body>
 </html>
