@@ -1,7 +1,7 @@
 # api/main.py
 from __future__ import annotations
 
-import sqlite3
+import logging
 from typing import Any
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
@@ -9,6 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from api.db import get_db
+from api.jobs_service import (
+    enqueue_coach_batch_job,
+    enqueue_coach_game_job,
+    enqueue_journals_job,
+)
 from sync.fetch_games import sync_all
 from engine.stockfish_worker import run_analysis_worker
 
@@ -46,6 +51,8 @@ app.add_middleware(
 # Mount static files
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
+log = logging.getLogger("chess_coach.api")
+
 
 def rows(cursor_result) -> list[dict[str, Any]]:
     return [dict(r) for r in cursor_result]
@@ -53,6 +60,33 @@ def rows(cursor_result) -> list[dict[str, Any]]:
 
 def row(r) -> dict[str, Any] | None:
     return dict(r) if r else None
+
+
+def _enqueue_sync(background_tasks: BackgroundTasks, full: bool = False) -> None:
+    log.info("[job:sync] queued full=%s", full)
+    background_tasks.add_task(sync_all, full)
+
+
+def _enqueue_analysis(background_tasks: BackgroundTasks) -> None:
+    log.info("[job:analyze] queued")
+    background_tasks.add_task(run_analysis_worker)
+
+
+def _enqueue_sessions_compute(background_tasks: BackgroundTasks) -> None:
+    from classifier.session_tracker import compute_sessions
+
+    log.info("[job:sessions] queued")
+    background_tasks.add_task(compute_sessions)
+
+
+def _enqueue_weekly_report(background_tasks: BackgroundTasks) -> None:
+    if not _COACH_OK:
+        raise HTTPException(501, "Coach not available")
+    from reports.weekly_report import generate_weekly_report
+
+    log.info("[job:weekly-report] queued")
+    background_tasks.add_task(generate_weekly_report)
+
 
 @app.get("/")
 def serve_dashboard():
@@ -79,6 +113,7 @@ def health():
 
 @app.get("/api/sessions")
 def get_sessions(limit: int = 30):
+    limit = max(1, min(limit, 365))
     conn = get_db()
     rows = conn.execute("""
         SELECT * FROM sessions
@@ -99,8 +134,7 @@ def get_today_session():
 
 @app.post("/api/sessions/compute")
 def recompute_sessions(background_tasks: BackgroundTasks):
-    from classifier.session_tracker import compute_sessions
-    background_tasks.add_task(compute_sessions)
+    _enqueue_sessions_compute(background_tasks)
     return {"status": "computing"}
 
 
@@ -112,49 +146,52 @@ def opening_genome(eco: str, color: str):
     For a given ECO code, show win rate at each move depth.
     Tells you exactly where in the opening you start losing ground.
     """
+    color = color.lower().strip()
+    if color not in {"white", "black"}:
+        raise HTTPException(400, "Invalid color; expected 'white' or 'black'")
+
     conn = get_db()
+    try:
+        total_games = conn.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM games g
+            WHERE g.opening_eco=? AND g.color=? AND g.analyzed=1
+            """,
+            (eco, color),
+        ).fetchone()["total"]
 
-    games = conn.execute("""
-        SELECT g.id, g.result
-        FROM games g
-        WHERE g.opening_eco=? AND g.color=? AND g.analyzed=1
-    """, (eco, color)).fetchall()
+        if not total_games:
+            raise HTTPException(404, "No games found for this opening")
 
-    if not games:
+        ply_rows = conn.execute(
+            """
+            SELECT
+                m.ply AS ply,
+                COUNT(*) AS total,
+                SUM(CASE WHEN g.result='win' THEN 1 ELSE 0 END) AS wins
+            FROM games g
+            JOIN moves m ON m.game_id = g.id
+            WHERE g.opening_eco=? AND g.color=? AND g.analyzed=1 AND m.ply <= 20
+            GROUP BY m.ply
+            ORDER BY m.ply
+            """,
+            (eco, color),
+        ).fetchall()
+    finally:
         conn.close()
-        raise HTTPException(404, "No games found for this opening")
-
-    # For each game, get moves up to ply 20
-    move_winrates = {}
-    for g in games:
-        moves = conn.execute("""
-            SELECT ply, san, eval_delta
-            FROM moves
-            WHERE game_id=? AND ply <= 20
-            ORDER BY ply
-        """, (g["id"],)).fetchall()
-
-        for m in moves:
-            ply = m["ply"]
-            if ply not in move_winrates:
-                move_winrates[ply] = {"total": 0, "wins": 0}
-            move_winrates[ply]["total"] += 1
-            if g["result"] == "win":
-                move_winrates[ply]["wins"] += 1
-
-    conn.close()
 
     return {
         "eco": eco,
         "color": color,
-        "total_games": len(games),
+        "total_games": total_games,
         "winrate_by_ply": {
-            str(ply): {
-                "total": v["total"],
-                "wins": v["wins"],
-                "win_pct": round(v["wins"] / v["total"] * 100, 1) if v["total"] else 0
+            str(r["ply"]): {
+                "total": r["total"],
+                "wins": r["wins"] or 0,
+                "win_pct": round((r["wins"] or 0) / r["total"] * 100, 1) if r["total"] else 0,
             }
-            for ply, v in sorted(move_winrates.items())
+            for r in ply_rows
         }
     }
 
@@ -163,10 +200,7 @@ def opening_genome(eco: str, color: str):
 
 @app.post("/api/reports/weekly")
 def generate_weekly(background_tasks: BackgroundTasks):
-    if not _COACH_OK:
-        raise HTTPException(501, "Coach not available")
-    from reports.weekly_report import generate_weekly_report
-    background_tasks.add_task(generate_weekly_report)
+    _enqueue_weekly_report(background_tasks)
     return {"status": "generating"}
 
 
@@ -174,51 +208,30 @@ def generate_weekly(background_tasks: BackgroundTasks):
 
 @app.post("/api/jobs/sync")
 def job_sync(background_tasks: BackgroundTasks):
-    background_tasks.add_task(sync_all, False)
+    _enqueue_sync(background_tasks, full=False)
     return {"status": "sync started"}
 
 @app.post("/api/jobs/analyze")
 def job_analyze(background_tasks: BackgroundTasks):
-    background_tasks.add_task(run_analysis_worker)
+    _enqueue_analysis(background_tasks)
     return {"status": "analysis started"}
 
 @app.post("/api/jobs/journals")
 def job_journals(background_tasks: BackgroundTasks, limit: int = 15):
     if not _COACH_OK:
         raise HTTPException(501, "Coach not available")
-    def _run():
-        import sqlite3
-        from config import DB_PATH
-        from coach.game_report import generate_and_store_report
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        games = conn.execute("""
-            SELECT g.id FROM games g
-            LEFT JOIN journal_entries j ON j.game_id = g.id
-            WHERE g.analyzed=1 AND j.id IS NULL
-            ORDER BY g.date DESC LIMIT ?
-        """, (limit,)).fetchall()
-        conn.close()
-        for row in games:
-            try:
-                generate_and_store_report(row["id"])
-            except Exception as e:
-                print(f"Journal failed {row['id'][:16]}: {e}")
-    background_tasks.add_task(_run)
+    limit = max(1, min(limit, 50))
+    enqueue_journals_job(background_tasks, limit=limit, logger=log)
     return {"status": f"generating up to {limit} journals"}
 
 @app.post("/api/jobs/sessions")
 def job_sessions(background_tasks: BackgroundTasks):
-    from classifier.session_tracker import compute_sessions
-    background_tasks.add_task(compute_sessions)
+    _enqueue_sessions_compute(background_tasks)
     return {"status": "computing sessions"}
 
 @app.post("/api/jobs/weekly-report")
 def job_weekly_report(background_tasks: BackgroundTasks):
-    if not _COACH_OK:
-        raise HTTPException(501, "Coach not available")
-    from reports.weekly_report import generate_weekly_report
-    background_tasks.add_task(generate_weekly_report)
+    _enqueue_weekly_report(background_tasks)
     return {"status": "generating weekly report"}
 
 
@@ -518,13 +531,13 @@ def analysis_progress():
 
 @app.post("/api/sync")
 def trigger_sync(background_tasks: BackgroundTasks, full: bool = False):
-    background_tasks.add_task(sync_all, full)
+    _enqueue_sync(background_tasks, full=full)
     return {"status": "sync started", "full": full}
 
 
 @app.post("/api/analyze")
 def trigger_analysis(background_tasks: BackgroundTasks):
-    background_tasks.add_task(run_analysis_worker)
+    _enqueue_analysis(background_tasks)
     return {"status": "analysis started"}
 
 
@@ -576,25 +589,13 @@ def mistakes_by_phase():
 def generate_game_coaching(game_id: str, background_tasks: BackgroundTasks):
     if not _COACH_OK:
         raise HTTPException(501, "Coach module not available yet")
-
-    def _run():
-        try:
-            from coach.game_report import generate_and_store_report
-            report = generate_and_store_report(game_id)
-            if report:
-                print(f"[coach/game] ✓ {game_id[:16]}...")
-            else:
-                print(f"[coach/game] empty report for {game_id[:16]}...")
-        except Exception as e:
-            print(f"[coach/game] ✗ {game_id[:16]}...: {e}")
-
-    background_tasks.add_task(_run)
+    enqueue_coach_game_job(background_tasks, game_id=game_id, logger=log)
     return {"status": "generating"}
 
 
 class ChatMessage(BaseModel):
     message: str = Field(..., min_length=1)
-    history: list[dict[str, Any]] = []
+    history: list[dict[str, Any]] = Field(default_factory=list)
 
 
 @app.post("/api/coach/chat")
@@ -610,47 +611,8 @@ def generate_batch_reports(background_tasks: BackgroundTasks, limit: int = 10):
     """Generate coaching reports for the most recent `limit` analyzed games without reports."""
     if not _COACH_OK:
         raise HTTPException(501, "Coach module not available")
-
-    def _run():
-        import time
-        conn = get_db()
-        games = conn.execute("""
-            SELECT g.id FROM games g
-            LEFT JOIN journal_entries j ON j.game_id = g.id
-            WHERE g.analyzed=1 AND j.id IS NULL
-            ORDER BY g.date DESC
-            LIMIT ?
-        """, (limit,)).fetchall()
-        conn.close()
-
-        from coach.game_report import generate_and_store_report
-        success = 0
-        failed = 0
-        batch_start = time.time()
-
-        for row in games:
-            for attempt in range(2):
-                try:
-                    t0 = time.time()
-                    generate_and_store_report(row["id"])
-                    elapsed = time.time() - t0
-                    success += 1
-                    print(f"  ✓ Report: {row['id'][:16]}...")
-                    time.sleep(3)
-                    break
-                except Exception as e:
-                    if attempt == 0:
-                        print(f"  ↻ Retry: {row['id'][:16]}... ({e})")
-                        time.sleep(10)
-                    else:
-                        print(f"  ✗ Failed: {row['id'][:16]}... ({e})")
-                        failed += 1
-
-
-
-        total = time.time() - batch_start
-        print(f"\nBatch done: {success} ok, {failed} failed — total {total:.0f}s ({total/60:.1f}min)")
-    background_tasks.add_task(_run)
+    limit = max(1, min(limit, 50))
+    enqueue_coach_batch_job(background_tasks, limit=limit, logger=log)
     return {"status": "started", "queued": "up to " + str(limit) + " games"}
 
 # ── DEBUG ─────────────────────────────────────────────────────────

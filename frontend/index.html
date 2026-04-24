@@ -313,7 +313,12 @@
                 <div class="kpi-value kpi-bad" id="hanging-pct-big">—</div>
               </div>
               <div class="progress-bar">
-                <div class="progress-fill bad" id="hanging-bar"></div>
+                <progress
+                  class="progress-meter progress-meter-bad"
+                  id="hanging-bar"
+                  max="100"
+                  value="0"
+                ></progress>
               </div>
               <div class="hanging-scale">
                 <span>0% — Perfect</span>
@@ -670,7 +675,12 @@
                   </div>
                   <div class="space-top-sm">
                     <div class="progress-bar progress-bar-tall">
-                      <div class="progress-fill" id="session-progress-bar"></div>
+                      <progress
+                        class="progress-meter"
+                        id="session-progress-bar"
+                        max="100"
+                        value="0"
+                      ></progress>
                     </div>
                   </div>
                 </div>

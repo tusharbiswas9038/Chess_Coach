@@ -54,6 +54,7 @@ CREATE TABLE moves (
 );
 
 CREATE INDEX idx_moves_game_id ON moves(game_id);
+CREATE UNIQUE INDEX idx_moves_game_ply_unique ON moves(game_id, ply);
 CREATE INDEX idx_moves_classification ON moves(classification);
 CREATE INDEX idx_moves_hanging ON moves(is_hanging_piece) WHERE is_hanging_piece = 1;
 
@@ -71,6 +72,7 @@ CREATE TABLE mistakes (
     eval_loss       INTEGER,           -- centipawns lost
     is_critical     INTEGER DEFAULT 0  -- biggest eval swing in game?
 );
+CREATE INDEX idx_mistakes_game_critical_loss ON mistakes(game_id, is_critical, eval_loss DESC);
 
 -- ── SRS DRILL QUEUE ───────────────────────────────────────────────
 CREATE TABLE srs_items (

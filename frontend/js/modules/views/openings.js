@@ -104,10 +104,11 @@ export function createOpeningsView({ api, charts, destroyChart }) {
           <div class="bar-row">
             <span class="bar-label ${openingToneTextClass(Number(winPct))}">${winPct}%</span>
             <div class="progress-bar progress-bar-flex">
-              <div
-                class="progress-fill ${openingToneClass(Number(winPct))}"
-                data-opening-width="${winPct}"
-              ></div>
+              <progress
+                class="progress-meter ${openingToneClass(Number(winPct))}"
+                max="100"
+                value="${winPct}"
+              ></progress>
             </div>
           </div>
         </td>
@@ -115,12 +116,6 @@ export function createOpeningsView({ api, charts, destroyChart }) {
     `;
       })
       .join('');
-
-    tbody
-      .querySelectorAll('[data-opening-width]')
-      .forEach((el) => {
-        el.style.width = `${el.dataset.openingWidth}%`;
-      });
   }
 
   return {

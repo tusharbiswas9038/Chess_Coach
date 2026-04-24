@@ -40,6 +40,13 @@ def generate_weekly_report() -> str:
     """, (week_ago,)).fetchone()[0]
 
     conn.close()
+    rating = profile["current_rating"] if profile and profile["current_rating"] is not None else 751
+    hanging_rate = (
+        f"{profile['hanging_piece_rate']:.1%}"
+        if profile and profile["hanging_piece_rate"] is not None
+        else "unknown"
+    )
+    mistake_breakdown = ", ".join(f"{m['type']}: {m['cnt']}" for m in mistakes) or "none"
 
     summary_prompt = f"""
 Write a weekly chess improvement report for {CHESS_USERNAME}.
@@ -47,10 +54,10 @@ Write a weekly chess improvement report for {CHESS_USERNAME}.
 THIS WEEK:
 - Games: {games['total']} ({games['wins']}W / {games['losses']}L / {games['draws']}D)
 - Win rate: {round(games['wins']/games['total']*100, 1) if games['total'] else 0}%
-- Mistake breakdown: {', '.join(f"{m['type']}: {m['cnt']}" for m in mistakes)}
+- Mistake breakdown: {mistake_breakdown}
 - Drills completed: {drills_reviewed}
-- Current rating: {profile['current_rating'] if profile else 751}
-- Hanging piece rate: {profile['hanging_piece_rate']:.1%} if profile else 'unknown'
+- Current rating: {rating}
+- Hanging piece rate: {hanging_rate}
 
 Write in this exact format (keep it under 200 words):
 ## Week Summary

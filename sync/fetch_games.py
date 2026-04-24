@@ -1,7 +1,7 @@
 # sync/fetch_games.py
 import re
 import sqlite3
-import io
+import time
 from datetime import datetime, timezone
 
 import chess.pgn
@@ -11,9 +11,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from api.db import get_db
 
-from config import DB_PATH, CHESS_USERNAME, CHESS_BASE_URL
+from config import CHESS_USERNAME, CHESS_BASE_URL
 
 HEADERS = {"User-Agent": "chess-coach-personal/1.0 (tusharbiswas9038@gmail.com)"}
+HTTP_TIMEOUT = httpx.Timeout(timeout=60.0, connect=15.0)
+HTTP_LIMITS = httpx.Limits(max_keepalive_connections=10, max_connections=20)
 
 RESULT_MAP = {
     "win": "win",
@@ -36,17 +38,32 @@ RESULT_MAP = {
 RAPID_TCS = {"600", "900", "1800", "600+0", "900+0", "1800+0", "600+5", "900+10"}
 
 
-def get_monthly_archive_urls(username: str) -> list[str]:
+def _get_json_with_retry(
+    client: httpx.Client, url: str, *, attempts: int = 3
+) -> dict:
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            r = client.get(url)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            last_error = e
+            if attempt < attempts:
+                time.sleep(attempt)
+    assert last_error is not None
+    raise last_error
+
+
+def get_monthly_archive_urls(client: httpx.Client, username: str) -> list[str]:
     url = f"{CHESS_BASE_URL}/player/{username.lower()}/games/archives"
-    r = httpx.get(url, headers=HEADERS, follow_redirects=True, timeout=30)
-    r.raise_for_status()
-    return r.json().get("archives", [])
+    payload = _get_json_with_retry(client, url)
+    return payload.get("archives", [])
 
 
-def fetch_month(url: str) -> list[dict]:
-    r = httpx.get(url, headers=HEADERS, timeout=60, follow_redirects=True)
-    r.raise_for_status()
-    return r.json().get("games", [])
+def fetch_month(client: httpx.Client, url: str) -> list[dict]:
+    payload = _get_json_with_retry(client, url)
+    return payload.get("games", [])
 
 
 def extract_opening_from_pgn(pgn_text: str) -> tuple[str | None, str | None]:
@@ -136,44 +153,50 @@ def sync_all(full: bool = False) -> dict:
     """
     conn = get_db()
 
-    print(f"Fetching archive list for {CHESS_USERNAME}...")
-    urls = get_monthly_archive_urls(CHESS_USERNAME)
+    with httpx.Client(
+        headers=HEADERS,
+        follow_redirects=True,
+        timeout=HTTP_TIMEOUT,
+        limits=HTTP_LIMITS,
+    ) as client:
+        print(f"Fetching archive list for {CHESS_USERNAME}...")
+        urls = get_monthly_archive_urls(client, CHESS_USERNAME)
 
-    if not urls:
-        print("No archives found.")
-        conn.close()
-        return {"inserted": 0, "skipped": 0, "months": 0}
+        if not urls:
+            print("No archives found.")
+            conn.close()
+            return {"inserted": 0, "skipped": 0, "months": 0}
 
-    target_urls = urls if full else urls[-2:]
-    print(f"Syncing {len(target_urls)} month(s)...")
+        target_urls = urls if full else urls[-2:]
+        print(f"Syncing {len(target_urls)} month(s)...")
 
-    inserted = 0
-    skipped = 0
+        inserted = 0
+        skipped = 0
 
-    for url in target_urls:
-        try:
-            games = fetch_month(url)
-        except Exception as e:
-            print(f"  Failed to fetch {url}: {e}")
-            continue
-
-        month_inserted = 0
-        for g in games:
-            tc = str(g.get("time_control", ""))
-            if tc not in RAPID_TCS:
-                continue
+        for url in target_urls:
             try:
-                was_new = upsert_game(conn, g)
-                if was_new:
-                    inserted += 1
-                    month_inserted += 1
-                else:
-                    skipped += 1
+                games = fetch_month(client, url)
             except Exception as e:
-                print(f"  Error inserting game: {e}")
+                print(f"  Failed to fetch {url}: {e}")
+                continue
 
-        conn.commit()
-        print(f"  {url.split('/')[-2]}/{url.split('/')[-1]} → {month_inserted} new games")
+            month_inserted = 0
+            for g in games:
+                tc = str(g.get("time_control", ""))
+                if tc not in RAPID_TCS:
+                    continue
+                try:
+                    was_new = upsert_game(conn, g)
+                    if was_new:
+                        inserted += 1
+                        month_inserted += 1
+                    else:
+                        skipped += 1
+                except Exception as e:
+                    print(f"  Error inserting game: {e}")
+
+            conn.commit()
+            print(f"  {url.split('/')[-2]}/{url.split('/')[-1]} → {month_inserted} new games")
 
     conn.close()
     print(f"\nSync complete: {inserted} new, {skipped} already existed")

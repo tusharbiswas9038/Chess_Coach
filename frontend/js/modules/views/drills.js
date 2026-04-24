@@ -215,7 +215,7 @@ export function createDrillsView({ api, apiPost, toast }) {
 
     const total = drillQueue.length;
     const pct = total > 0 ? (sessionDone / total) * 100 : 0;
-    document.getElementById('session-progress-bar').style.width = pct + '%';
+    document.getElementById('session-progress-bar').value = pct;
     document.getElementById('drill-progress-text').textContent =
       sessionDone > 0
         ? `${sessionDone} done · ${sessionCorrect} correct · accuracy: ${Math.round(

@@ -115,30 +115,23 @@ export function renderPositionBoard(
 
       if (flipped ? rank === 8 : rank === 1) {
         const lbl = document.createElement('div');
-        lbl.className = 'sq-label-file';
+        lbl.className = `sq-label-file ${isLight ? 'sq-label-on-light' : 'sq-label-on-dark'}`;
         lbl.textContent = f;
-        lbl.style.color = isLight ? '#b58863' : '#f0d9b5';
         cell.appendChild(lbl);
       }
 
       if (flipped ? f === 'h' : f === 'a') {
         const lbl = document.createElement('div');
-        lbl.className = 'sq-label-rank';
+        lbl.className = `sq-label-rank ${isLight ? 'sq-label-on-light' : 'sq-label-on-dark'}`;
         lbl.textContent = rank;
-        lbl.style.color = isLight ? '#b58863' : '#f0d9b5';
         cell.appendChild(lbl);
       }
 
       const piece = position[sq];
       if (piece && PIECES[piece]) {
         const pieceEl = document.createElement('div');
-        pieceEl.className = 'piece';
+        pieceEl.className = `piece ${piece[0] === 'w' ? 'piece-white' : 'piece-black'}`;
         pieceEl.textContent = PIECES[piece];
-        pieceEl.style.color = piece[0] === 'w' ? '#fff' : '#1a1a1a';
-        pieceEl.style.textShadow =
-          piece[0] === 'w'
-            ? '0 1px 3px rgba(0,0,0,0.8)'
-            : '0 1px 2px rgba(255,255,255,0.2)';
         cell.appendChild(pieceEl);
       }
 

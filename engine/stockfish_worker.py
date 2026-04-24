@@ -112,12 +112,10 @@ def analyze_game(
         game = chess.pgn.read_game(io.StringIO(pgn_text))
     except Exception as e:
         print(f"  [parse error] {game_id}: {e}")
-        conn.execute("UPDATE games SET analyzed=2 WHERE id=?", (game_id,))
         return False
 
     if game is None:
         print(f"  [empty pgn] {game_id}")
-        conn.execute("UPDATE games SET analyzed=2 WHERE id=?", (game_id,))
         return False
 
     board = game.board()
@@ -213,8 +211,11 @@ def analyze_game(
         })
 
     if not moves_data:
-        conn.execute("UPDATE games SET analyzed=2 WHERE id=?", (game_id,))
         return False
+
+    # Idempotency: if this game is re-analyzed, replace old analysis rows.
+    conn.execute("DELETE FROM mistakes WHERE game_id=?", (game_id,))
+    conn.execute("DELETE FROM moves WHERE game_id=?", (game_id,))
 
     # Bulk insert moves
     conn.executemany("""
@@ -360,18 +361,27 @@ def run_analysis_worker():
     try:
         for i, row in enumerate(pending, 1):
             t0 = time.time()
-            ok = analyze_game(row["id"], row["pgn"], row["color"], engine, conn)
-            elapsed = time.time() - t0
+            try:
+                conn.execute("BEGIN")
+                ok = analyze_game(row["id"], row["pgn"], row["color"], engine, conn)
+                elapsed = time.time() - t0
 
-            if ok:
-                success += 1
-                status = f"✓ {elapsed:.1f}s"
-            else:
+                if ok:
+                    success += 1
+                    status = f"✓ {elapsed:.1f}s"
+                else:
+                    errors += 1
+                    status = "✗ error"
+                    conn.execute("UPDATE games SET analyzed=2 WHERE id=?", (row["id"],))
+
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
                 errors += 1
-                status = "✗ error"
+                status = "✗ exception"
                 conn.execute("UPDATE games SET analyzed=2 WHERE id=?", (row["id"],))
-
-            conn.commit()
+                conn.commit()
+                print(f"  [unexpected error] {row['id'][:16]}... {e}")
 
             print(f"  [{i}/{total}] {row['id'][:16]}... {status}")
 
