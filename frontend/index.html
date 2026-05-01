@@ -68,7 +68,7 @@
         </div>
 
         <nav class="sidebar-nav" aria-label="Main navigation">
-          <button class="nav-item active" data-view="dashboard">
+          <button class="nav-item active" data-view="dashboard" type="button" aria-current="page">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -82,7 +82,7 @@
             </svg>
             <span>Dashboard</span>
           </button>
-          <button class="nav-item" data-view="games">
+          <button class="nav-item" data-view="games" type="button">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -95,7 +95,7 @@
             </svg>
             <span>Games</span>
           </button>
-          <button class="nav-item" data-view="mistakes">
+          <button class="nav-item" data-view="mistakes" type="button">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -108,7 +108,7 @@
             </svg>
             <span>Mistakes</span>
           </button>
-          <button class="nav-item" data-view="openings">
+          <button class="nav-item" data-view="openings" type="button">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -122,7 +122,7 @@
             </svg>
             <span>Openings</span>
           </button>
-          <button class="nav-item" data-view="drills">
+          <button class="nav-item" data-view="drills" type="button">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -135,7 +135,7 @@
             </svg>
             <span>Drills</span><span id="drill-badge" class="nav-badge" hidden></span>
           </button>
-          <button class="nav-item" data-view="coach">
+          <button class="nav-item" data-view="coach" type="button">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -175,7 +175,7 @@
         <header class="topbar">
           <div class="topbar-title" id="topbar-title">Dashboard</div>
           <div class="topbar-actions">
-            <button class="btn btn-ghost" id="btn-sync">
+            <button class="btn btn-ghost" id="btn-sync" type="button">
               <svg
                 width="14"
                 height="14"
@@ -192,6 +192,7 @@
             <button
               class="btn btn-ghost"
               id="btn-analyze"
+              type="button"
             >
               <svg
                 width="14"
@@ -222,10 +223,10 @@
                   analyze more games.
                 </p>
                 <div class="dashboard-actions">
-                  <button class="btn btn-primary" id="btn-start-drills">
+                  <button class="btn btn-primary" id="btn-start-drills" type="button">
                     Start Drills
                   </button>
-                  <button class="btn btn-ghost" id="btn-review-latest">
+                  <button class="btn btn-ghost" id="btn-review-latest" type="button">
                     Review Latest Game
                   </button>
                 </div>
@@ -282,7 +283,7 @@
             <div class="card">
               <div class="card-header">
                 <div class="card-title">Recent Games</div>
-                <button class="btn btn-ghost" id="btn-view-all-games">
+                <button class="btn btn-ghost" id="btn-view-all-games" type="button">
                   View all →
                 </button>
               </div>
@@ -468,11 +469,11 @@
               </table>
             </div>
             <div class="pagination">
-              <button class="btn btn-ghost" id="btn-prev">
+              <button class="btn btn-ghost" id="btn-prev" type="button">
                 ← Prev
               </button>
               <span class="meta-label" id="page-label">Page 1</span>
-              <button class="btn btn-ghost" id="btn-next">
+              <button class="btn btn-ghost" id="btn-next" type="button">
                 Next →
               </button>
             </div>
@@ -480,7 +481,7 @@
 
           <!-- ── GAME DETAIL VIEW ── -->
           <div class="view" id="view-game-detail">
-            <button class="back-btn">
+            <button class="back-btn" type="button">
               <svg
                 width="14"
                 height="14"
@@ -600,8 +601,8 @@
                 </div>
               </div>
               <div class="drill-toolbar-actions">
-                <button class="flip-btn">⟳ Flip Board</button>
-                <button class="btn btn-ghost" id="btn-reload-drills">
+                <button class="flip-btn" type="button" aria-label="Flip drill board orientation">⟳ Flip Board</button>
+                <button class="btn btn-ghost" id="btn-reload-drills" type="button">
                   Reload Queue
                 </button>
               </div>
@@ -617,7 +618,7 @@
                   <div id="drill-counter" class="meta-label"></div>
                 </div>
                 <div id="drill-board"></div>
-                <div id="drill-feedback" class="drill-feedback"></div>
+                <div id="drill-feedback" class="drill-feedback" role="status" aria-live="polite"></div>
 
                 <!-- Quality buttons — shown after answer -->
                 <div id="quality-section" class="quality-section" hidden>
@@ -625,16 +626,16 @@
                     How hard was this? (affects next review date)
                   </div>
                   <div class="quality-btns">
-                    <button class="quality-btn" data-q="0">
+                    <button class="quality-btn" data-q="0" type="button">
                       Again<br /><span class="quality-sub">Blackout</span>
                     </button>
-                    <button class="quality-btn" data-q="1">
+                    <button class="quality-btn" data-q="1" type="button">
                       Hard<br /><span class="quality-sub">Wrong</span>
                     </button>
-                    <button class="quality-btn" data-q="2">
+                    <button class="quality-btn" data-q="2" type="button">
                       Good<br /><span class="quality-sub">Correct</span>
                     </button>
-                    <button class="quality-btn" data-q="3">
+                    <button class="quality-btn" data-q="3" type="button">
                       Easy<br /><span class="quality-sub">Instant</span>
                     </button>
                   </div>
@@ -693,7 +694,7 @@
                 <div class="drill-info-card" id="drill-hint-card" hidden>
                   <div class="drill-card-title drill-card-title-tight">Position Info</div>
                   <div id="drill-theme-label" class="meta-label">—</div>
-                  <button class="btn btn-ghost btn-block space-top-sm" id="btn-show-hint">
+                  <button class="btn btn-ghost btn-block space-top-sm" id="btn-show-hint" type="button">
                     Show Best Move
                   </button>
                 </div>
@@ -741,7 +742,7 @@
                     ></textarea>
                   </label>
                   <div class="coach-form-actions">
-                    <div class="meta-label" id="coach-status">
+                    <div class="meta-label" id="coach-status" role="status" aria-live="polite">
                       Ready
                     </div>
                     <button class="btn btn-primary" id="btn-coach-send" type="submit">

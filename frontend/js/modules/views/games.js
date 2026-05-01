@@ -7,6 +7,7 @@ import {
   resultBadge,
   truncate,
 } from '../ui.js';
+import { createDomCache } from '../dom.js';
 
 const PAGE_SIZE = 30;
 
@@ -22,6 +23,7 @@ const DEFAULT_GAMES_FILTERS = {
 };
 
 export function createGamesView({ api, toast, loadGameDetail }) {
+  const dom = createDomCache();
   let gamesPage = 0;
   let totalGames = 0;
   let gamesLoaded = false;
@@ -30,31 +32,31 @@ export function createGamesView({ api, toast, loadGameDetail }) {
   let gamesSearchTimer = null;
 
   function writeFiltersToControls() {
-    document.getElementById('games-search').value = gamesFilters.search;
-    document.getElementById('games-opening').value = gamesFilters.opening;
-    document.getElementById('games-color').value = gamesFilters.color;
-    document.getElementById('games-result').value = gamesFilters.result;
-    document.getElementById('games-analyzed').value = gamesFilters.analyzed;
-    document.getElementById('games-journal').value = gamesFilters.hasJournal;
-    document.getElementById('games-min-mistakes').value = gamesFilters.minMistakes;
-    document.getElementById('games-sort').value = gamesFilters.sort;
+    dom.byId('games-search').value = gamesFilters.search;
+    dom.byId('games-opening').value = gamesFilters.opening;
+    dom.byId('games-color').value = gamesFilters.color;
+    dom.byId('games-result').value = gamesFilters.result;
+    dom.byId('games-analyzed').value = gamesFilters.analyzed;
+    dom.byId('games-journal').value = gamesFilters.hasJournal;
+    dom.byId('games-min-mistakes').value = gamesFilters.minMistakes;
+    dom.byId('games-sort').value = gamesFilters.sort;
   }
 
   function syncFiltersFromControls() {
     gamesFilters = {
-      search: document.getElementById('games-search').value.trim(),
-      opening: document.getElementById('games-opening').value.trim(),
-      color: document.getElementById('games-color').value,
-      result: document.getElementById('games-result').value,
-      analyzed: document.getElementById('games-analyzed').value,
-      hasJournal: document.getElementById('games-journal').value,
-      minMistakes: document.getElementById('games-min-mistakes').value,
-      sort: document.getElementById('games-sort').value,
+      search: dom.byId('games-search').value.trim(),
+      opening: dom.byId('games-opening').value.trim(),
+      color: dom.byId('games-color').value,
+      result: dom.byId('games-result').value,
+      analyzed: dom.byId('games-analyzed').value,
+      hasJournal: dom.byId('games-journal').value,
+      minMistakes: dom.byId('games-min-mistakes').value,
+      sort: dom.byId('games-sort').value,
     };
   }
 
   function updatePresetUI() {
-    document.querySelectorAll('[data-preset]').forEach((btn) => {
+    dom.queryAll('[data-preset]').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.preset === activeGamesPreset);
     });
   }
@@ -113,17 +115,17 @@ export function createGamesView({ api, toast, loadGameDetail }) {
     const end = offset + data.length;
     const totalPages = Math.max(1, Math.ceil(totalGames / PAGE_SIZE));
 
-    document.getElementById('btn-prev').disabled = gamesPage === 0;
-    document.getElementById('btn-next').disabled = end >= totalGames;
-    document.getElementById('page-label').textContent = `Page ${gamesPage + 1} / ${totalPages}`;
-    document.getElementById('games-count-label').textContent =
+    dom.byId('btn-prev').disabled = gamesPage === 0;
+    dom.byId('btn-next').disabled = end >= totalGames;
+    dom.byId('page-label').textContent = `Page ${gamesPage + 1} / ${totalPages}`;
+    dom.byId('games-count-label').textContent =
       totalGames > 0
         ? `Showing ${start}–${end} of ${totalGames}`
         : 'No games found';
-    document.getElementById('games-filter-summary').textContent =
+    dom.byId('games-filter-summary').textContent =
       currentFilterSummary();
 
-    const tbody = document.getElementById('all-games-body');
+    const tbody = dom.byId('all-games-body');
     if (data.length === 0) {
       tbody.innerHTML =
         '<tr><td colspan="7"><div class="empty"><div class="empty-icon">♟</div>No games match the current filters</div></td></tr>';
@@ -133,7 +135,7 @@ export function createGamesView({ api, toast, loadGameDetail }) {
     tbody.innerHTML = data
       .map(
         (g) => `
-    <tr data-game-id="${g.id}">
+    <tr data-game-id="${g.id}" tabindex="0" role="button" aria-label="Open game from ${fmt(g.date)}">
       <td>${fmt(g.date)}</td>
       <td>${colorBadge(g.color)}</td>
       <td>${resultBadge(g.result)}</td>
@@ -228,17 +230,24 @@ export function createGamesView({ api, toast, loadGameDetail }) {
   }
 
   function bindEvents() {
-    document.getElementById('all-games-body').addEventListener('click', (e) => {
+    dom.byId('all-games-body').addEventListener('click', (e) => {
       const row = e.target.closest('tr[data-game-id]');
       if (row) loadGameDetail(row.dataset.gameId);
     });
-    document.getElementById('btn-prev').addEventListener('click', () => changePage(-1));
-    document.getElementById('btn-next').addEventListener('click', () => changePage(1));
-    document
-      .getElementById('btn-clear-games-filters')
-      .addEventListener('click', clearFilters);
-    document.querySelectorAll('[data-preset]').forEach((btn) => {
-      btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+    dom.byId('all-games-body').addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const row = e.target.closest('tr[data-game-id]');
+      if (!row) return;
+      e.preventDefault();
+      loadGameDetail(row.dataset.gameId);
+    });
+    dom.byId('btn-prev').addEventListener('click', () => changePage(-1));
+    dom.byId('btn-next').addEventListener('click', () => changePage(1));
+    dom.byId('btn-clear-games-filters').addEventListener('click', clearFilters);
+    dom.byId('games-preset-row')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-preset]');
+      if (!btn) return;
+      applyPreset(btn.dataset.preset);
     });
 
     [
@@ -250,11 +259,11 @@ export function createGamesView({ api, toast, loadGameDetail }) {
       'games-min-mistakes',
       'games-sort',
     ].forEach((id) => {
-      document.getElementById(id).addEventListener('change', handleFilterChange);
+      dom.byId(id).addEventListener('change', handleFilterChange);
     });
 
     ['games-search', 'games-opening'].forEach((id) => {
-      document.getElementById(id).addEventListener('input', handleFilterInput);
+      dom.byId(id).addEventListener('input', handleFilterInput);
     });
   }
 

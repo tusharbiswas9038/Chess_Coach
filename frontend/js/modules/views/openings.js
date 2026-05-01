@@ -5,13 +5,15 @@ import {
   openingToneTextClass,
   truncate,
 } from '../ui.js';
+import { createDomCache } from '../dom.js';
 
 export function createOpeningsView({ api, charts, destroyChart }) {
+  const dom = createDomCache();
   let loaded = false;
 
   function renderOpeningChart(canvasId, data) {
     destroyChart(canvasId);
-    const ctx = document.getElementById(canvasId).getContext('2d');
+    const ctx = dom.byId(canvasId).getContext('2d');
     charts[canvasId] = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -88,7 +90,7 @@ export function createOpeningsView({ api, charts, destroyChart }) {
     renderOpeningChart('chart-openings-white', whiteTop);
     renderOpeningChart('chart-openings-black', blackTop);
 
-    const tbody = document.getElementById('openings-body');
+    const tbody = dom.byId('openings-body');
     tbody.innerHTML = allOpenings
       .slice(0, 30)
       .map((o) => {

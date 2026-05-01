@@ -7,15 +7,20 @@ import {
 } from '../board.js';
 import {
   colorBadge,
+  emptyStateMarkup,
+  errorStateMarkup,
   esc,
   evalDeltaClass,
   fmt,
   mistakeTag,
   resultBadge,
 } from '../ui.js';
+import { createDomCache } from '../dom.js';
 
 export function createReviewView({ api, generateReport, onAskCoach, showView }) {
+  const dom = createDomCache();
   let reviewState = null;
+  let reviewDelegatedEventsBound = false;
 
   function movePrefix(move) {
     if (!move) return '—';
@@ -129,11 +134,11 @@ export function createReviewView({ api, generateReport, onAskCoach, showView }) 
       lastFrom: config.from,
       lastTo: config.to,
     });
-    document.getElementById('review-caption').textContent = config.caption;
+    dom.byId('review-caption').textContent = config.caption;
   }
 
   function updateReviewSelectionStyles(move) {
-    document.querySelectorAll('[data-review-index]').forEach((el) => {
+    dom.queryAll('[data-review-index]').forEach((el) => {
       el.classList.toggle(
         'active',
         Number(el.dataset.reviewIndex) === reviewState.selectedIndex
@@ -146,33 +151,31 @@ export function createReviewView({ api, generateReport, onAskCoach, showView }) 
       }
     });
 
-    document.querySelectorAll('[data-review-mode]').forEach((el) => {
+    dom.queryAll('[data-review-mode]').forEach((el) => {
       el.classList.toggle('active', el.dataset.reviewMode === reviewState.mode);
     });
 
-    const criticalBtn = document.getElementById('review-critical');
+    const criticalBtn = dom.byId('review-critical');
     if (criticalBtn) criticalBtn.disabled = reviewState.criticalIndex < 0;
 
-    const prevBtn = document.getElementById('review-prev');
-    const nextBtn = document.getElementById('review-next');
+    const prevBtn = dom.byId('review-prev');
+    const nextBtn = dom.byId('review-next');
     if (prevBtn) prevBtn.disabled = reviewState.selectedIndex <= 0;
     if (nextBtn) nextBtn.disabled = reviewState.selectedIndex >= reviewState.playerMoves.length - 1;
 
-    const scrubber = document.getElementById('review-scrubber');
+    const scrubber = dom.byId('review-scrubber');
     if (scrubber) {
       scrubber.max = String(Math.max(reviewState.playerMoves.length - 1, 0));
       scrubber.value = String(reviewState.selectedIndex);
     }
 
-    const bestToggle = document.querySelector('[data-review-mode="best"]');
+    const bestToggle = dom.query('[data-review-mode="best"]');
     const bestAvailable = move?.best_move_san && move.best_move_san !== move.san;
     if (bestToggle) {
       bestToggle.disabled = !bestAvailable;
       if (!bestAvailable && reviewState.mode === 'best') {
         reviewState.mode = 'before';
-        document
-          .querySelector('[data-review-mode="before"]')
-          ?.classList.add('active');
+        dom.query('[data-review-mode="before"]')?.classList.add('active');
       }
     }
   }
@@ -196,33 +199,33 @@ export function createReviewView({ api, generateReport, onAskCoach, showView }) 
       (mistake) => mistake.reviewIndex === move.reviewIndex
     );
 
-    document.getElementById('review-title').textContent = title;
-    document.getElementById('review-counter').textContent = counter;
-    document.getElementById('review-played-label').textContent = move.san;
-    document.getElementById('review-played-meta').textContent =
+    dom.byId('review-title').textContent = title;
+    dom.byId('review-counter').textContent = counter;
+    dom.byId('review-played-label').textContent = move.san;
+    dom.byId('review-played-meta').textContent =
       move.eval_delta != null ? `${Math.abs(move.eval_delta)}cp swing` : 'No eval swing available';
-    document.getElementById('review-best-label').textContent = bestText;
-    document.getElementById('review-best-meta').textContent =
+    dom.byId('review-best-label').textContent = bestText;
+    dom.byId('review-best-meta').textContent =
       move.best_move_san && move.best_move_san !== move.san
         ? 'Preview the engine recommendation'
         : 'No better alternative stored';
-    document.getElementById('review-position-label').textContent =
+    dom.byId('review-position-label').textContent =
       currentMistake?.is_critical ? 'Critical position' : 'Current position';
-    document.getElementById('review-position-meta').textContent =
+    dom.byId('review-position-meta').textContent =
       currentMistake?.type
         ? `Mistake type: ${currentMistake.type.replace('_', ' ')}`
         : 'Review the position before your move';
 
-    document.getElementById('review-summary-phase').textContent = move.phase || '—';
-    document.getElementById('review-summary-quality').textContent =
+    dom.byId('review-summary-phase').textContent = move.phase || '—';
+    dom.byId('review-summary-quality').textContent =
       move.classification || '—';
-    document.getElementById('review-summary-played').textContent = move.san;
-    document.getElementById('review-summary-best').textContent = bestText;
-    const evalEl = document.getElementById('review-summary-eval');
+    dom.byId('review-summary-played').textContent = move.san;
+    dom.byId('review-summary-best').textContent = bestText;
+    const evalEl = dom.byId('review-summary-eval');
     evalEl.textContent = evalText;
     evalEl.className = `review-summary-value ${evalClass}`;
 
-    document.getElementById('review-badges').innerHTML = `
+    dom.byId('review-badges').innerHTML = `
     <span class="review-pill">${move.phase || 'phase unknown'}</span>
     <span class="review-pill">${move.classification || 'unclassified'}</span>
     <span class="review-pill">${move.is_hanging_piece ? 'hanging piece' : 'piece safe'}</span>
@@ -253,6 +256,108 @@ export function createReviewView({ api, generateReport, onAskCoach, showView }) 
     renderReviewWorkspace();
   }
 
+  function isActivationKey(event) {
+    return event.key === 'Enter' || event.key === ' ';
+  }
+
+  function renderCriticalMistakesMarkup(mistakes, { interactive = false } = {}) {
+    if (!mistakes.length) {
+      return emptyStateMarkup('No significant mistakes found', '✓', true);
+    }
+
+    return mistakes
+      .slice(0, 8)
+      .map((mk) => `
+            <div class="mistake-item${mk.is_critical ? (interactive ? ' is-critical' : ' active') : ''}"${
+  interactive
+    ? ` data-review-index="${mk.reviewIndex}" tabindex="0" role="button" aria-label="Review mistake at move ${esc(mk.played_move)}"`
+    : ''
+}>
+              <div class="mistake-item-header">
+                ${mistakeTag(mk.type)}
+                <div class="eval-loss">-${mk.eval_loss}cp</div>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Phase:</span>
+                <span>${esc(mk.phase) || '—'}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Played:</span>
+                <span class="cell-code text-error">${esc(mk.played_move)}</span>
+                <span class="detail-label">→ Better:</span>
+                <span class="cell-code text-success">${esc(mk.best_move)}</span>
+              </div>
+              ${mk.is_critical ? '<div class="critical-note">⚡ Critical moment — game turned here</div>' : ''}
+            </div>
+          `)
+      .join('');
+  }
+
+  function renderPlayerMovesTableMarkup() {
+    return reviewState.playerMoves
+      .map((m) => {
+        const isCritical = reviewState.mistakes.find(
+          (mk) => mk.is_critical && mk.reviewIndex === m.reviewIndex
+        );
+        const rowClass = isCritical
+          ? 'critical-row'
+          : m.is_hanging_piece === 1
+            ? 'hanging-row'
+            : '';
+        const qClass = `move-${m.classification || 'good'}`;
+        const delta =
+          m.eval_delta != null
+            ? (m.eval_delta > 0 ? '+' : '') + m.eval_delta
+            : '—';
+        return `
+                  <tr class="${rowClass}" data-review-index="${m.reviewIndex}" tabindex="0" role="button" aria-label="Review move ${esc(m.san)}">
+                    <td class="cell-muted">${m.move_number}.</td>
+                    <td class="${qClass} cell-code-strong">${esc(m.san)}</td>
+                    <td class="cell-code cell-muted">
+                      ${
+  m.best_move_san && m.best_move_san !== m.san
+    ? `<span class="text-success">${esc(m.best_move_san)}</span>`
+    : '—'
+}
+                    </td>
+                    <td class="${evalDeltaClass(m.eval_delta)}">${delta}</td>
+                    <td><span class="mtag mtag-${esc(m.classification) || 'good'}">${
+  m.classification || '—'
+}</span></td>
+                    <td class="cell-phase">${esc(m.phase) || '—'}</td>
+                  </tr>
+                `;
+      })
+      .join('');
+  }
+
+  function renderJournalMarkup(journal) {
+    if (journal) {
+      return `
+  <div class="card card-top-gap">
+    <div class="card-header">
+      <div class="card-title">🧠 Coach Note</div>
+      <div class="journal-meta">Generated by chess-coach AI</div>
+    </div>
+    <div class="journal-content">${esc(journal.coach_note)}</div>
+  </div>
+`;
+    }
+    return `
+  <div class="card card-top-gap card-body">
+    <div class="journal-empty-row">
+      <div>
+        <div class="journal-empty-title">No coach note yet</div>
+        <div class="journal-empty-subtitle">Generate a coaching analysis for this game</div>
+      </div>
+      <button class="btn btn-primary btn-generate-report">
+        Generate Report
+      </button>
+    </div>
+  </div>
+`;
+  }
+
   function attachGameDetailEvents(container, gameId) {
     container.querySelector('.btn-generate-report')?.addEventListener('click', () => generateReport(gameId));
     container.querySelector('#review-prev')?.addEventListener('click', () => {
@@ -274,29 +379,63 @@ export function createReviewView({ api, generateReport, onAskCoach, showView }) 
     container.querySelector('#review-scrubber')?.addEventListener('input', (event) => {
       setReviewMove(Number(event.target.value));
     });
-    container.querySelectorAll('[data-review-mode]').forEach((el) => {
-      el.addEventListener('click', () => {
-        if (!el.disabled) setReviewMode(el.dataset.reviewMode);
-      });
+    if (reviewDelegatedEventsBound) return;
+    reviewDelegatedEventsBound = true;
+
+    container.addEventListener('click', (event) => {
+      const modeBtn = event.target.closest('[data-review-mode]');
+      if (modeBtn && !modeBtn.disabled) {
+        setReviewMode(modeBtn.dataset.reviewMode);
+        return;
+      }
+
+      const row = event.target.closest('tr[data-review-index]');
+      if (row) {
+        setReviewMove(Number(row.dataset.reviewIndex));
+        return;
+      }
+
+      const item = event.target.closest('.mistake-item[data-review-index]');
+      if (item) {
+        setReviewMove(Number(item.dataset.reviewIndex));
+      }
     });
-    container.querySelectorAll('tr[data-review-index]').forEach((row) => {
-      row.addEventListener('click', () => setReviewMove(Number(row.dataset.reviewIndex)));
-    });
-    container.querySelectorAll('.mistake-item[data-review-index]').forEach((item) => {
-      item.addEventListener('click', () => setReviewMove(Number(item.dataset.reviewIndex)));
+
+    container.addEventListener('keydown', (event) => {
+      if (!isActivationKey(event)) return;
+
+      const row = event.target.closest('tr[data-review-index]');
+      if (row) {
+        event.preventDefault();
+        setReviewMove(Number(row.dataset.reviewIndex));
+        return;
+      }
+
+      const item = event.target.closest('.mistake-item[data-review-index]');
+      if (item) {
+        event.preventDefault();
+        setReviewMove(Number(item.dataset.reviewIndex));
+        return;
+      }
+
+      const modeBtn = event.target.closest('[data-review-mode]');
+      if (modeBtn && !modeBtn.disabled) {
+        event.preventDefault();
+        setReviewMode(modeBtn.dataset.reviewMode);
+      }
     });
   }
 
   async function loadGameDetail(gameId) {
     showView('game-detail');
-    const container = document.getElementById('game-detail-content');
+    const container = dom.byId('game-detail-content');
     container.innerHTML = '<div class="skeleton skeleton-tall"></div>';
 
     let data;
     try {
       data = await api(`/api/games/${gameId}`);
     } catch (e) {
-      container.innerHTML = `<div class="empty">Failed to load game: ${esc(e.message)}</div>`;
+      container.innerHTML = errorStateMarkup(`Failed to load game: ${e.message}`);
       return;
     }
 
@@ -306,21 +445,28 @@ export function createReviewView({ api, generateReport, onAskCoach, showView }) 
     reviewState = createReviewState(g, moves, mistakes);
 
     if (!reviewState.playerMoves.length) {
-      container.innerHTML = '<div class="empty"><div class="empty-icon">♟</div>No player moves available for review.</div>';
+      container.innerHTML = emptyStateMarkup('No player moves available for review.');
       return;
     }
+
+    const reviewMistakesMarkup = renderCriticalMistakesMarkup(reviewState.mistakes, {
+      interactive: true,
+    });
+    const summaryMistakesMarkup = renderCriticalMistakesMarkup(mistakes);
+    const playerMovesTableMarkup = renderPlayerMovesTableMarkup();
+    const journalMarkup = renderJournalMarkup(data.journal);
 
     container.innerHTML = `
     <div class="game-meta-row">
       ${colorBadge(g.color)}
       ${resultBadge(g.result)}
-      <span class="opening-pill">${g.opening_eco || '?'}</span>
+      <span class="opening-pill">${esc(g.opening_eco || '?')}</span>
       <span class="game-meta-detail">${
-  esc(g.opening_name) || 'Unknown opening'
+  esc(g.opening_name || 'Unknown opening')
 }</span>
       <span class="meta-label">${fmt(g.date)}</span>
       <span class="meta-label">vs. ${
-  esc(g.opponent_rating) || '?'
+  esc(g.opponent_rating || '?')
 } rated</span>
     </div>
 
@@ -411,41 +557,7 @@ export function createReviewView({ api, generateReport, onAskCoach, showView }) 
         <div class="mistake-panel-title">
           Critical Mistakes (${reviewState.mistakes.length})
         </div>
-        ${
-  reviewState.mistakes.length === 0
-    ? '<div class="empty empty-compact"><div class="empty-icon">✓</div>No significant mistakes found</div>'
-    : reviewState.mistakes
-      .slice(0, 8)
-      .map(
-        (mk) => `
-            <div
-              class="mistake-item${mk.is_critical ? ' is-critical' : ''}"
-              data-review-index="${mk.reviewIndex}"
-            >
-              <div class="mistake-item-header">
-                ${mistakeTag(mk.type)}
-                <div class="eval-loss">-${mk.eval_loss}cp</div>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">Phase:</span>
-                <span>${esc(mk.phase) || '—'}</span>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">Played:</span>
-                <span class="cell-code text-error">${esc(mk.played_move)}</span>
-                <span class="detail-label">→ Better:</span>
-                <span class="cell-code text-success">${esc(mk.best_move)}</span>
-              </div>
-              ${
-  mk.is_critical
-    ? '<div class="critical-note">⚡ Critical moment — game turned here</div>'
-    : ''
-}
-            </div>
-          `
-      )
-      .join('')
-}
+        ${reviewMistakesMarkup}
       </aside>
     </div>
 
@@ -470,41 +582,7 @@ export function createReviewView({ api, generateReport, onAskCoach, showView }) 
               </tr>
             </thead>
             <tbody>
-              ${reviewState.playerMoves
-    .map((m) => {
-      const isCritical = reviewState.mistakes.find(
-        (mk) => mk.is_critical && mk.reviewIndex === m.reviewIndex
-      );
-      const rowClass = isCritical
-        ? 'critical-row'
-        : m.is_hanging_piece === 1
-          ? 'hanging-row'
-          : '';
-      const qClass = `move-${m.classification || 'good'}`;
-      const delta =
-                    m.eval_delta != null
-                      ? (m.eval_delta > 0 ? '+' : '') + m.eval_delta
-                      : '—';
-      return `
-                  <tr class="${rowClass}" data-review-index="${m.reviewIndex}">
-                    <td class="cell-muted">${m.move_number}.</td>
-                    <td class="${qClass} cell-code-strong">${esc(m.san)}</td>
-                    <td class="cell-code cell-muted">
-                      ${
-  m.best_move_san && m.best_move_san !== m.san
-    ? `<span class="text-success">${esc(m.best_move_san)}</span>`
-    : '—'
-}
-                    </td>
-                    <td class="${evalDeltaClass(m.eval_delta)}">${delta}</td>
-                    <td><span class="mtag mtag-${esc(m.classification) || 'good'}">${
-  m.classification || '—'
-}</span></td>
-                    <td class="cell-phase">${esc(m.phase) || '—'}</td>
-                  </tr>
-                `;
-    })
-    .join('')}
+              ${playerMovesTableMarkup}
             </tbody>
           </table>
         </div>
@@ -514,65 +592,10 @@ export function createReviewView({ api, generateReport, onAskCoach, showView }) 
         <div class="mistake-panel-title">
           Critical Mistakes (${mistakes.length})
         </div>
-        ${
-  mistakes.length === 0
-    ? '<div class="empty empty-compact"><div class="empty-icon">✓</div>No significant mistakes found</div>'
-    : mistakes
-      .slice(0, 8)
-      .map(
-        (mk) => `
-            <div class="mistake-item${mk.is_critical ? ' active' : ''}">
-              <div class="mistake-item-header">
-                ${mistakeTag(mk.type)}
-                <div class="eval-loss">-${mk.eval_loss}cp</div>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">Phase:</span>
-                <span>${esc(mk.phase) || '—'}</span>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">Played:</span>
-                <span class="cell-code text-error">${esc(mk.played_move)}</span>
-                <span class="detail-label">→ Better:</span>
-                <span class="cell-code text-success">${esc(mk.best_move)}</span>
-              </div>
-              ${
-  mk.is_critical
-    ? '<div class="critical-note">⚡ Critical moment — game turned here</div>'
-    : ''
-}
-            </div>
-          `
-      )
-      .join('')
-}
+        ${summaryMistakesMarkup}
       </div>
     </div>
-    ${
-  data.journal
-    ? `
-  <div class="card card-top-gap">
-    <div class="card-header">
-      <div class="card-title">🧠 Coach Note</div>
-      <div class="journal-meta">Generated by chess-coach AI</div>
-    </div>
-    <div class="journal-content">${esc(data.journal.coach_note)}</div>
-  </div>
-`
-    : `
-  <div class="card card-top-gap card-body">
-    <div class="journal-empty-row">
-      <div>
-        <div class="journal-empty-title">No coach note yet</div>
-        <div class="journal-empty-subtitle">Generate a coaching analysis for this game</div>
-      </div>
-      <button class="btn btn-primary btn-generate-report">
-        Generate Report
-      </button>
-    </div>
-  </div>
-`
-}
+    ${journalMarkup}
   `;
     attachGameDetailEvents(container, gameId);
     renderReviewWorkspace();

@@ -1,3 +1,5 @@
+import { createDomCache } from '../dom.js';
+
 export function createNavigationView({
   onEnterCoach,
   onEnterDrills,
@@ -5,19 +7,22 @@ export function createNavigationView({
   onEnterMistakes,
   onEnterOpenings,
 }) {
+  const dom = createDomCache();
   function showView(name) {
-    document
-      .querySelectorAll('.view')
-      .forEach((v) => v.classList.remove('active'));
-    document
-      .querySelectorAll('.nav-item')
-      .forEach((n) => n.classList.remove('active'));
+    dom.queryAll('.view').forEach((v) => v.classList.remove('active'));
+    dom.queryAll('.nav-item').forEach((n) => {
+      n.classList.remove('active');
+      n.removeAttribute('aria-current');
+    });
 
-    const viewEl = document.getElementById(`view-${name}`);
+    const viewEl = dom.byId(`view-${name}`);
     if (viewEl) viewEl.classList.add('active');
 
-    const navEl = document.querySelector(`[data-view="${name}"]`);
-    if (navEl) navEl.classList.add('active');
+    const navEl = dom.query(`[data-view="${name}"]`);
+    if (navEl) {
+      navEl.classList.add('active');
+      navEl.setAttribute('aria-current', 'page');
+    }
 
     const titles = {
       dashboard: 'Dashboard',
@@ -28,7 +33,7 @@ export function createNavigationView({
       drills: 'Daily Drills',
       coach: 'Ask Coach',
     };
-    document.getElementById('topbar-title').textContent = titles[name] || name;
+    dom.byId('topbar-title').textContent = titles[name] || name;
 
     if (name === 'games') onEnterGames();
     if (name === 'mistakes') onEnterMistakes();
@@ -38,8 +43,10 @@ export function createNavigationView({
   }
 
   function bindEvents() {
-    document.querySelectorAll('.nav-item[data-view]').forEach((btn) => {
-      btn.addEventListener('click', () => showView(btn.dataset.view));
+    dom.query('.sidebar-nav')?.addEventListener('click', (event) => {
+      const btn = event.target.closest('.nav-item[data-view]');
+      if (!btn) return;
+      showView(btn.dataset.view);
     });
   }
 

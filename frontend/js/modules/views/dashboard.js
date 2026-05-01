@@ -7,6 +7,7 @@ import {
   setBadgeCount,
   truncate,
 } from '../ui.js';
+import { createDomCache } from '../dom.js';
 
 export function createDashboardView({
   api,
@@ -19,6 +20,7 @@ export function createDashboardView({
   setStatsData,
   toast,
 }) {
+  const dom = createDomCache();
   function updateDashboardFocus(statsData) {
     const dueCount = statsData?.drills_due || 0;
     const pending = statsData?.games?.pending || 0;
@@ -47,18 +49,18 @@ export function createDashboardView({
       text = 'Your next improvement signal is waiting in the backlog. Run analysis and then review the newest report.';
     }
 
-    document.getElementById('focus-primary-value').textContent = title;
-    document.getElementById('focus-primary-text').textContent = text;
-    document.getElementById('focus-drills-due').textContent = dueCount;
-    document.getElementById('focus-games-pending').textContent = pending;
-    document.getElementById('focus-weekly-form').textContent =
+    dom.byId('focus-primary-value').textContent = title;
+    dom.byId('focus-primary-text').textContent = text;
+    dom.byId('focus-drills-due').textContent = dueCount;
+    dom.byId('focus-games-pending').textContent = pending;
+    dom.byId('focus-weekly-form').textContent =
       weeklyWinRate != null ? `${weeklyWinRate}%` : '—';
   }
 
   function renderWinRateChart(statsData) {
     destroyChart('winrate');
     const weeks = (statsData.weekly_stats || []).slice().reverse();
-    const ctx = document.getElementById('chart-winrate').getContext('2d');
+    const ctx = dom.byId('chart-winrate').getContext('2d');
     charts.winrate = new Chart(ctx, {
       type: 'line',
       data: {
@@ -99,7 +101,7 @@ export function createDashboardView({
   function renderMistakeBreakdownChart(statsData) {
     destroyChart('mistakes');
     const data = statsData.mistake_breakdown || [];
-    const ctx = document.getElementById('chart-mistakes').getContext('2d');
+    const ctx = dom.byId('chart-mistakes').getContext('2d');
     charts.mistakes = new Chart(ctx, {
       type: 'doughnut',
       data: {
@@ -146,12 +148,12 @@ export function createDashboardView({
 
     const p = statsData.profile;
     const dueCount = statsData.drills_due;
-    setBadgeCount(document.getElementById('drill-badge'), dueCount);
+    setBadgeCount(dom.byId('drill-badge'), dueCount);
 
-    document.getElementById('sidebar-rating').textContent =
+    dom.byId('sidebar-rating').textContent =
       p.current_rating || '—';
     updateDashboardFocus(statsData);
-    document.getElementById('btn-review-latest').disabled =
+    dom.byId('btn-review-latest').disabled =
       !statsData.recent_games.length;
 
     onStatsLoaded();
@@ -161,7 +163,7 @@ export function createDashboardView({
     const analyzed = statsData.games.analyzed;
     const total = statsData.games.total;
 
-    document.getElementById('kpi-grid').innerHTML = `
+    dom.byId('kpi-grid').innerHTML = `
     <div class="kpi-card">
       <div class="kpi-label">Games Analyzed</div>
       <div class="kpi-value kpi-blue">${analyzed.toLocaleString()}</div>
@@ -212,23 +214,23 @@ export function createDashboardView({
         </div>
       </div>
     `;
-        if (!document.getElementById('tilt-warning')) {
+        if (!dom.byId('tilt-warning')) {
           tiltEl.id = 'tilt-warning';
-          document
-            .getElementById('view-dashboard')
-            .insertBefore(tiltEl, document.getElementById('kpi-grid'));
+          dom.byId('view-dashboard').insertBefore(tiltEl, dom.byId('kpi-grid'));
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load latest session for tilt warning:', e);
+    }
 
-    document.getElementById('hanging-pct-big').textContent = hRate + '%';
-    document.getElementById('hanging-bar').value = Math.min(Number(hRate), 100);
+    dom.byId('hanging-pct-big').textContent = hRate + '%';
+    dom.byId('hanging-bar').value = Math.min(Number(hRate), 100);
 
-    const tbody = document.getElementById('recent-games-body');
+    const tbody = dom.byId('recent-games-body');
     tbody.innerHTML = statsData.recent_games
       .map(
         (g) => `
-    <tr data-game-id="${g.id}">
+    <tr data-game-id="${g.id}" tabindex="0" role="button" aria-label="Review game from ${fmt(g.date)}">
       <td>${fmt(g.date)}</td>
       <td>${colorBadge(g.color)}</td>
       <td>${resultBadge(g.result)}</td>
@@ -248,12 +250,17 @@ export function createDashboardView({
   }
 
   function bindEvents() {
-    document
-      .getElementById('btn-review-latest')
-      .addEventListener('click', reviewLatestGame);
-    document.getElementById('recent-games-body').addEventListener('click', (e) => {
+    dom.byId('btn-review-latest').addEventListener('click', reviewLatestGame);
+    dom.byId('recent-games-body').addEventListener('click', (e) => {
       const row = e.target.closest('tr[data-game-id]');
       if (row) onOpenGame(row.dataset.gameId);
+    });
+    dom.byId('recent-games-body').addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const row = e.target.closest('tr[data-game-id]');
+      if (!row) return;
+      e.preventDefault();
+      onOpenGame(row.dataset.gameId);
     });
   }
 

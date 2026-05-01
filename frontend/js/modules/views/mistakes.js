@@ -1,6 +1,8 @@
 import { esc, fmt, mistakeTag } from '../ui.js';
+import { createDomCache } from '../dom.js';
 
 export function createMistakesView({ api, destroyChart, getStatsData, toast, charts }) {
+  const dom = createDomCache();
   let rendered = false;
 
   async function load() {
@@ -18,20 +20,20 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
       byType[m.type] = m.count;
     });
 
-    document.getElementById('m-blunders').textContent = (
+    dom.byId('m-blunders').textContent = (
       byType.blunder || 0
     ).toLocaleString();
-    document.getElementById('m-hanging').textContent = (
+    dom.byId('m-hanging').textContent = (
       byType.hanging_piece || 0
     ).toLocaleString();
-    document.getElementById('m-mistakes').textContent = (
+    dom.byId('m-mistakes').textContent = (
       byType.mistake || 0
     ).toLocaleString();
 
     try {
       const phaseData = await api('/api/mistakes/by-phase');
       destroyChart('phase');
-      const ctxPhase = document.getElementById('chart-phase').getContext('2d');
+      const ctxPhase = dom.byId('chart-phase').getContext('2d');
       charts.phase = new Chart(ctxPhase, {
         type: 'doughnut',
         data: {
@@ -61,9 +63,7 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
 
     const recent = statsData.recent_games.slice().reverse();
     destroyChart('blunder-trend');
-    const ctxTrend = document
-      .getElementById('chart-blunder-trend')
-      .getContext('2d');
+    const ctxTrend = dom.byId('chart-blunder-trend').getContext('2d');
     charts['blunder-trend'] = new Chart(ctxTrend, {
       type: 'bar',
       data: {
@@ -109,7 +109,7 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
         : null)
       .filter(Boolean);
 
-    const tbody = document.getElementById('critical-mistakes-body');
+    const tbody = dom.byId('critical-mistakes-body');
     tbody.innerHTML =
       rows
         .map(

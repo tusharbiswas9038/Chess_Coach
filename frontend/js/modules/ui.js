@@ -97,3 +97,11 @@ export function openingToneTextClass(winPct) {
   if (winPct >= 35) return 'text-warning';
   return 'text-error';
 }
+
+export function emptyStateMarkup(message, icon = '♟', compact = false) {
+  return `<div class="empty${compact ? ' empty-compact' : ''}"><div class="empty-icon">${icon}</div>${esc(message)}</div>`;
+}
+
+export function errorStateMarkup(message) {
+  return `<div class="empty">${esc(message)}</div>`;
+}

@@ -1,6 +1,9 @@
+import { createDomCache } from '../dom.js';
+
 export function createActionsView({ api, apiPost, onReportReady, toast }) {
+  const dom = createDomCache();
   async function triggerSync() {
-    const btn = document.getElementById('btn-sync');
+    const btn = dom.byId('btn-sync');
     btn.disabled = true;
     btn.textContent = 'Syncing…';
     try {
@@ -16,7 +19,7 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
   }
 
   async function triggerAnalyze() {
-    const btn = document.getElementById('btn-analyze');
+    const btn = dom.byId('btn-analyze');
     btn.disabled = true;
     btn.textContent = 'Analyzing…';
     try {
@@ -55,10 +58,8 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
   }
 
   function bindEvents() {
-    document.getElementById('btn-sync').addEventListener('click', triggerSync);
-    document
-      .getElementById('btn-analyze')
-      .addEventListener('click', triggerAnalyze);
+    dom.byId('btn-sync').addEventListener('click', triggerSync);
+    dom.byId('btn-analyze').addEventListener('click', triggerAnalyze);
   }
 
   return {

@@ -1,4 +1,5 @@
 import { esc } from '../ui.js';
+import { createDomCache } from '../dom.js';
 
 export function createCoachView({
   apiPost,
@@ -7,6 +8,7 @@ export function createCoachView({
   showView,
   toast,
 }) {
+  const dom = createDomCache();
   let coachHistory = [];
   let coachBusy = false;
 
@@ -14,19 +16,19 @@ export function createCoachView({
     const statsData = getStatsData();
     const profile = statsData?.profile || {};
     const hRate = statsData ? (statsData.hanging_piece_rate * 100).toFixed(1) + '%' : '—';
-    document.getElementById('coach-context-rating').textContent =
+    dom.byId('coach-context-rating').textContent =
       profile.current_rating || '—';
-    document.getElementById('coach-context-games').textContent =
+    dom.byId('coach-context-games').textContent =
       statsData?.games?.analyzed?.toLocaleString?.() || '—';
-    document.getElementById('coach-context-hanging').textContent = hRate;
-    document.getElementById('coach-context-blunders').textContent =
+    dom.byId('coach-context-hanging').textContent = hRate;
+    dom.byId('coach-context-blunders').textContent =
       statsData?.blunders_per_game ?? '—';
-    document.getElementById('coach-context-drills').textContent =
+    dom.byId('coach-context-drills').textContent =
       statsData?.drills_due ?? '—';
   }
 
   function renderMessages(pending = false) {
-    const container = document.getElementById('coach-messages');
+    const container = dom.byId('coach-messages');
     if (!coachHistory.length && !pending) {
       container.innerHTML = `
       <div class="coach-empty">
@@ -62,9 +64,9 @@ export function createCoachView({
 
   function setBusy(isBusy) {
     coachBusy = isBusy;
-    document.getElementById('btn-coach-send').disabled = isBusy;
-    document.getElementById('coach-input').disabled = isBusy;
-    document.getElementById('coach-status').textContent =
+    dom.byId('btn-coach-send').disabled = isBusy;
+    dom.byId('coach-input').disabled = isBusy;
+    dom.byId('coach-status').textContent =
       isBusy ? 'Waiting for coach…' : 'Ready';
   }
 
@@ -75,21 +77,21 @@ export function createCoachView({
 
   function draftQuestion(text) {
     showView('coach');
-    const input = document.getElementById('coach-input');
+    const input = dom.byId('coach-input');
     input.value = text;
     input.focus();
-    document.getElementById('coach-status').textContent = 'Draft ready';
+    dom.byId('coach-status').textContent = 'Draft ready';
   }
 
   function clearChat() {
     coachHistory = [];
     renderMessages();
-    document.getElementById('coach-status').textContent = 'Ready';
+    dom.byId('coach-status').textContent = 'Ready';
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const input = document.getElementById('coach-input');
+    const input = dom.byId('coach-input');
     const message = input.value.trim();
     if (!message || coachBusy) return;
 
@@ -124,12 +126,12 @@ export function createCoachView({
   }
 
   function bindEvents() {
-    document.getElementById('coach-form').addEventListener('submit', handleSubmit);
-    document.getElementById('btn-coach-clear').addEventListener('click', clearChat);
-    document.querySelectorAll('[data-coach-prompt]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        draftQuestion(btn.dataset.coachPrompt);
-      });
+    dom.byId('coach-form').addEventListener('submit', handleSubmit);
+    dom.byId('btn-coach-clear').addEventListener('click', clearChat);
+    dom.query('.coach-prompt-list')?.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-coach-prompt]');
+      if (!btn) return;
+      draftQuestion(btn.dataset.coachPrompt);
     });
   }
 

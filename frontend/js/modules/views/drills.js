@@ -6,8 +6,10 @@ import {
   renderPositionBoard,
 } from '../board.js';
 import { esc, setBadgeCount } from '../ui.js';
+import { createDomCache } from '../dom.js';
 
 export function createDrillsView({ api, apiPost, toast }) {
+  const dom = createDomCache();
   let drillQueue = [];
   let drillIdx = 0;
   let drillFlipped = false;
@@ -73,7 +75,7 @@ export function createDrillsView({ api, apiPost, toast }) {
     lastFrom = from;
     lastTo = to;
 
-    const fb = document.getElementById('drill-feedback');
+    const fb = dom.byId('drill-feedback');
 
     if (isCorrect) {
       boardPosition = applyMove(boardPosition, correctUCI, currentTurn);
@@ -99,8 +101,8 @@ export function createDrillsView({ api, apiPost, toast }) {
 
     sessionDone++;
     updateSessionStats();
-    document.getElementById('quality-section').hidden = false;
-    document.getElementById('drill-hint-card').hidden = true;
+    dom.byId('quality-section').hidden = false;
+    dom.byId('drill-hint-card').hidden = true;
     updateQueueList();
   }
 
@@ -108,9 +110,9 @@ export function createDrillsView({ api, apiPost, toast }) {
     if (answered) return;
     hintShown = true;
     const { from } = parseUCI(correctUCI);
-    const cell = document.querySelector(`[data-sq="${from}"]`);
+    const cell = dom.query(`[data-sq="${from}"]`);
     if (cell) cell.classList.add('hint');
-    const fb = document.getElementById('drill-feedback');
+    const fb = dom.byId('drill-feedback');
     fb.className = 'drill-feedback info';
     fb.textContent = `Hint: move the piece on ${from.toUpperCase()}`;
   }
@@ -131,25 +133,25 @@ export function createDrillsView({ api, apiPost, toast }) {
 
   function loadDrillItem() {
     const total = drillQueue.length;
-    document.getElementById('ds-due').textContent = total;
-    document.getElementById('drill-counter').textContent = `${Math.min(
+    dom.byId('ds-due').textContent = total;
+    dom.byId('drill-counter').textContent = `${Math.min(
       drillIdx + 1,
       total
     )} / ${total}`;
 
     if (drillIdx >= total) {
-      document.getElementById('drill-board').innerHTML = '';
-      document.getElementById('drill-feedback').className = 'drill-feedback';
-      document.getElementById('quality-section').hidden = true;
-      document.getElementById('drill-hint-card').hidden = true;
-      document.getElementById('drill-empty').hidden = false;
-      document.getElementById('drill-turn-label').textContent =
+      dom.byId('drill-board').innerHTML = '';
+      dom.byId('drill-feedback').className = 'drill-feedback';
+      dom.byId('quality-section').hidden = true;
+      dom.byId('drill-hint-card').hidden = true;
+      dom.byId('drill-empty').hidden = false;
+      dom.byId('drill-turn-label').textContent =
         'Session complete!';
       updateSessionStats();
       return;
     }
 
-    document.getElementById('drill-empty').hidden = true;
+    dom.byId('drill-empty').hidden = true;
 
     const item = drillQueue[drillIdx];
     answered = false;
@@ -163,17 +165,17 @@ export function createDrillsView({ api, apiPost, toast }) {
     currentTurn = fenTurn(item.fen);
 
     const turnLabel = currentTurn === 'w' ? 'White to move' : 'Black to move';
-    document.getElementById(
+    dom.byId(
       'drill-turn-label'
     ).textContent = `${turnLabel} — Find the best move`;
 
-    const fb = document.getElementById('drill-feedback');
+    const fb = dom.byId('drill-feedback');
     fb.className = 'drill-feedback';
-    document.getElementById('quality-section').hidden = true;
+    dom.byId('quality-section').hidden = true;
 
-    const hintCard = document.getElementById('drill-hint-card');
+    const hintCard = dom.byId('drill-hint-card');
     hintCard.hidden = false;
-    document.getElementById('drill-theme-label').textContent = item.theme
+    dom.byId('drill-theme-label').textContent = item.theme
       ? `Theme: ${item.theme.replace('_', ' ')}`
       : 'Type: ' + (item.mistake_type || 'mistake');
 
@@ -183,7 +185,7 @@ export function createDrillsView({ api, apiPost, toast }) {
   }
 
   function updateQueueList() {
-    const list = document.getElementById('drill-queue-list');
+    const list = dom.byId('drill-queue-list');
     const show = drillQueue.slice(drillIdx, drillIdx + 8);
     if (show.length === 0) {
       list.innerHTML = '';
@@ -209,14 +211,14 @@ export function createDrillsView({ api, apiPost, toast }) {
   }
 
   function updateSessionStats() {
-    document.getElementById('ds-done').textContent = sessionDone;
-    document.getElementById('ds-correct').textContent = sessionCorrect;
-    document.getElementById('ds-wrong').textContent = sessionWrong;
+    dom.byId('ds-done').textContent = sessionDone;
+    dom.byId('ds-correct').textContent = sessionCorrect;
+    dom.byId('ds-wrong').textContent = sessionWrong;
 
     const total = drillQueue.length;
     const pct = total > 0 ? (sessionDone / total) * 100 : 0;
-    document.getElementById('session-progress-bar').value = pct;
-    document.getElementById('drill-progress-text').textContent =
+    dom.byId('session-progress-bar').value = pct;
+    dom.byId('drill-progress-text').textContent =
       sessionDone > 0
         ? `${sessionDone} done · ${sessionCorrect} correct · accuracy: ${Math.round(
           (sessionCorrect / sessionDone) * 100
@@ -239,7 +241,7 @@ export function createDrillsView({ api, apiPost, toast }) {
       return;
     }
 
-    setBadgeCount(document.getElementById('drill-badge'), drillQueue.length);
+    setBadgeCount(dom.byId('drill-badge'), drillQueue.length);
     loadDrillItem();
   }
 
@@ -257,12 +259,14 @@ export function createDrillsView({ api, apiPost, toast }) {
   }
 
   function bindEvents() {
-    document.getElementById('btn-reload-drills').addEventListener('click', loadDrills);
-    document.querySelector('.flip-btn').addEventListener('click', flipBoard);
-    document.querySelectorAll('.quality-btn').forEach((btn) => {
-      btn.addEventListener('click', () => submitQuality(parseInt(btn.dataset.q)));
+    dom.byId('btn-reload-drills').addEventListener('click', loadDrills);
+    dom.query('.flip-btn').addEventListener('click', flipBoard);
+    dom.query('.quality-btns')?.addEventListener('click', (event) => {
+      const btn = event.target.closest('.quality-btn[data-q]');
+      if (!btn) return;
+      submitQuality(parseInt(btn.dataset.q, 10));
     });
-    document.getElementById('btn-show-hint').addEventListener('click', showHint);
+    dom.byId('btn-show-hint').addEventListener('click', showHint);
   }
 
   return {
