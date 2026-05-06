@@ -21,6 +21,7 @@ CREATE TABLE games (
     opening_eco     TEXT,              -- ECO code e.g. "B20"
     opening_name    TEXT,
     analyzed        INTEGER DEFAULT 0, -- 0=pending, 1=done, 2=error
+    mistake_count   INTEGER DEFAULT 0, -- New: total mistakes in game
     created_at      TEXT DEFAULT (datetime('now'))
 );
 
@@ -57,6 +58,7 @@ CREATE INDEX idx_moves_game_id ON moves(game_id);
 CREATE UNIQUE INDEX idx_moves_game_ply_unique ON moves(game_id, ply);
 CREATE INDEX idx_moves_classification ON moves(classification);
 CREATE INDEX idx_moves_hanging ON moves(is_hanging_piece) WHERE is_hanging_piece = 1;
+CREATE INDEX idx_moves_ply ON moves(ply);
 
 -- ── MISTAKES (denormalized for fast queries) ───────────────────────
 CREATE TABLE mistakes (
@@ -136,3 +138,10 @@ CREATE TABLE sessions (
 
 CREATE INDEX idx_games_date ON games(date DESC);
 CREATE INDEX idx_games_analyzed ON games(analyzed);
+CREATE INDEX idx_games_analyzed_date ON games(analyzed, date DESC);
+CREATE INDEX idx_games_color_result_analyzed_date ON games(color, result, analyzed, date DESC);
+CREATE INDEX idx_games_opening_eco_color_analyzed ON games(opening_eco, color, analyzed);
+CREATE INDEX idx_games_opponent_rating_date ON games(opponent_rating DESC, date DESC);
+CREATE INDEX idx_mistakes_type_phase ON mistakes(type, phase);
+CREATE INDEX idx_journal_entries_game_id ON journal_entries(game_id);
+CREATE INDEX idx_sessions_date ON sessions(date DESC);

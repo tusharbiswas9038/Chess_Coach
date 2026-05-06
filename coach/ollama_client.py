@@ -4,8 +4,10 @@ from config import OLLAMA_URL, OLLAMA_MODEL, OLLAMA_MODEL_FAST
 
 TIMEOUT = 180.0  # generous for ARM CPU inference
 
+_async_client = httpx.AsyncClient(timeout=TIMEOUT)
 
-def generate(prompt: str, fast: bool = False) -> str:
+
+async def generate(prompt: str, fast: bool = False) -> str:
     """
     Single-turn generation.
     fast=True → uses OLLAMA_MODEL_FAST (7B) for batch jobs.
@@ -22,12 +24,12 @@ def generate(prompt: str, fast: bool = False) -> str:
             "num_predict": 300,   # keep tight — faster, less hallucination
         }
     }
-    r = httpx.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=TIMEOUT)
+    r = await _async_client.post(f"{OLLAMA_URL}/api/generate", json=payload)
     r.raise_for_status()
     return r.json()["response"].strip()
 
 
-def chat(messages: list[dict]) -> str:
+async def chat(messages: list[dict]) -> str:
     """
     Multi-turn chat with full player context injected as system message.
     Always uses OLLAMA_MODEL (14B) for best quality in interactive mode.
@@ -54,6 +56,6 @@ def chat(messages: list[dict]) -> str:
             "num_predict": 500
         }
     }
-    r = httpx.post(f"{OLLAMA_URL}/api/chat", json=payload, timeout=TIMEOUT)
+    r = await _async_client.post(f"{OLLAMA_URL}/api/chat", json=payload)
     r.raise_for_status()
     return r.json()["message"]["content"].strip()

@@ -1,33 +1,28 @@
-from __future__ import annotations
-
 import logging
-import sqlite3
 import time
 
-from fastapi import BackgroundTasks
-
-from api.db import get_db
-from config import DB_PATH
+# from fastapi import BackgroundTasks # Removed
+from api.db import db_conn
+from api.job_queue import job_queue # New import
 
 
 def enqueue_journals_job(
-    background_tasks: BackgroundTasks, *, limit: int, logger: logging.Logger
+    # background_tasks: BackgroundTasks, # Removed
+    *, limit: int, logger: logging.Logger
 ) -> None:
     def _run() -> None:
         from coach.game_report import generate_and_store_report
 
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        games = conn.execute(
-            """
-            SELECT g.id FROM games g
-            LEFT JOIN journal_entries j ON j.game_id = g.id
-            WHERE g.analyzed=1 AND j.id IS NULL
-            ORDER BY g.date DESC LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
-        conn.close()
+        with db_conn() as conn:
+            games = conn.execute(
+                """
+                SELECT g.id FROM games g
+                LEFT JOIN journal_entries j ON j.game_id = g.id
+                WHERE g.analyzed=1 AND j.id IS NULL
+                ORDER BY g.date DESC LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
 
         logger.info("[job:journals] started candidates=%s limit=%s", len(games), limit)
         success = 0
@@ -41,11 +36,12 @@ def enqueue_journals_job(
                 logger.exception("[job:journals] failed game_id=%s error=%s", row["id"], e)
         logger.info("[job:journals] completed success=%s failed=%s", success, failed)
 
-    background_tasks.add_task(_run)
+    job_queue.enqueue_job(_run, job_id=f"journals-{time.time()}") # Changed from background_tasks.add_task
 
 
 def enqueue_coach_game_job(
-    background_tasks: BackgroundTasks, *, game_id: str, logger: logging.Logger
+    # background_tasks: BackgroundTasks, # Removed
+    *, game_id: str, logger: logging.Logger
 ) -> None:
     def _run() -> None:
         logger.info("[job:coach-game] started game_id=%s", game_id)
@@ -60,25 +56,25 @@ def enqueue_coach_game_job(
         except Exception as e:
             logger.exception("[job:coach-game] failed game_id=%s error=%s", game_id, e)
 
-    background_tasks.add_task(_run)
+    job_queue.enqueue_job(_run, job_id=f"coach-game-{game_id}") # Changed from background_tasks.add_task
 
 
 def enqueue_coach_batch_job(
-    background_tasks: BackgroundTasks, *, limit: int, logger: logging.Logger
+    # background_tasks: BackgroundTasks, # Removed
+    *, limit: int, logger: logging.Logger
 ) -> None:
     def _run() -> None:
-        conn = get_db()
-        games = conn.execute(
-            """
-            SELECT g.id FROM games g
-            LEFT JOIN journal_entries j ON j.game_id = g.id
-            WHERE g.analyzed=1 AND j.id IS NULL
-            ORDER BY g.date DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
-        conn.close()
+        with db_conn() as conn:
+            games = conn.execute(
+                """
+                SELECT g.id FROM games g
+                LEFT JOIN journal_entries j ON j.game_id = g.id
+                WHERE g.analyzed=1 AND j.id IS NULL
+                ORDER BY g.date DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
 
         from coach.game_report import generate_and_store_report
 
@@ -126,4 +122,4 @@ def enqueue_coach_batch_job(
             total,
         )
 
-    background_tasks.add_task(_run)
+    job_queue.enqueue_job(_run, job_id=f"coach-batch-{time.time()}") # Changed from background_tasks.add_task

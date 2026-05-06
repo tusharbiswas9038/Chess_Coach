@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 CHESS_USERNAME = os.getenv("CHESS_USERNAME", "Tushar9038")
+APP_SECRET_KEY = os.getenv("APP_SECRET_KEY", "super-secret-key") # TODO: Change this to a strong, random key in production!
+APP_ENV = os.getenv("APP_ENV", "development") # 'development', 'production', 'testing'
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "data" / "chess.db"

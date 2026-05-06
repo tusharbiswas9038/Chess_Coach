@@ -11,37 +11,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 from config import DB_PATH, STOCKFISH_PATH, STOCKFISH_DEPTH, STOCKFISH_THREADS, STOCKFISH_HASH_MB
+from core.chess_utils import ( # New Import
+    classify_move,
+    is_piece_hanging,
+    detect_phase,
+    INACCURACY_THRESHOLD,
+    MISTAKE_THRESHOLD,
+    BLUNDER_THRESHOLD,
+)
 
 DEPTH = STOCKFISH_DEPTH
 BATCH_SIZE = 5
-
-INACCURACY_THRESHOLD = 100
-MISTAKE_THRESHOLD = 200
-BLUNDER_THRESHOLD = 300
-
-PIECE_VALUES = {
-    chess.PAWN: 100,
-    chess.KNIGHT: 300,
-    chess.BISHOP: 310,
-    chess.ROOK: 500,
-    chess.QUEEN: 900,
-    chess.KING: 0,
-}
-
-
-def classify_move(delta: int) -> str:
-    """Classify move quality by centipawn loss (delta = eval_after - eval_before, negative = bad)."""
-    if delta >= -10:
-        return "best"
-    if delta >= -25:
-        return "excellent"
-    if delta >= -60:
-        return "good"
-    if delta >= -INACCURACY_THRESHOLD:
-        return "inaccuracy"
-    if delta >= -MISTAKE_THRESHOLD:
-        return "mistake"
-    return "blunder"
 
 
 def normalize_eval(score: chess.engine.Score, turn: chess.Color) -> int:
@@ -56,43 +36,7 @@ def normalize_eval(score: chess.engine.Score, turn: chess.Color) -> int:
     return cp if turn == chess.WHITE else -cp
 
 
-def is_piece_hanging(board: chess.Board, move: chess.Move) -> bool:
-    """
-    After pushing a move, check if the player who just moved left any piece hanging.
-    Uses simple SEE heuristic: undefended piece attacked, or cheapest attacker < piece value.
-    """
-    board_copy = board.copy()
-    board_copy.push(move)
-    mover_color = not board_copy.turn  # who just moved
 
-    for sq in chess.SQUARES:
-        piece = board_copy.piece_at(sq)
-        if piece is None or piece.color != mover_color or piece.piece_type == chess.KING:
-            continue
-        attackers = board_copy.attackers(not mover_color, sq)
-        if not attackers:
-            continue
-        defenders = board_copy.attackers(mover_color, sq)
-        if not defenders:
-            return True
-        min_atk = min(
-            PIECE_VALUES.get(board_copy.piece_at(s).piece_type, 0)
-            for s in attackers
-            if board_copy.piece_at(s)
-        )
-        piece_val = PIECE_VALUES.get(piece.piece_type, 0)
-        if min_atk < piece_val:
-            return True
-    return False
-
-
-def detect_phase(ply: int, board: chess.Board) -> str:
-    piece_count = len(board.piece_map())
-    if ply <= 20:
-        return "opening"
-    if piece_count <= 12:
-        return "endgame"
-    return "middlegame"
 
 
 def analyze_game(
@@ -104,7 +48,8 @@ def analyze_game(
 ) -> bool:
     """
     Analyze a single game. Returns True on success, False on error.
-    One Stockfish call per position (not two). Best move extracted from PV.
+    Uses one Stockfish call per position (fen_before of each ply).
+    eval_after is derived from the next ply's eval_before from opponent perspective.
     """
     player_color = chess.WHITE if player_color_str == "white" else chess.BLACK
 
@@ -121,9 +66,7 @@ def analyze_game(
     board = game.board()
     moves_data = []
     ply = 0
-    prev_eval: int | None = None  # eval from previous ply (player perspective)
-    prev_info_after = None
-    cached_info = None   # reuse previous info_after as next info
+    eval_before_by_ply: list[int | None] = []
 
     for node in game.mainline():
         move = node.move
@@ -132,24 +75,17 @@ def analyze_game(
 
         clock_before = int(node.clock()) if node.clock() is not None else None
 
-        # --- Single Stockfish call per position ---
         try:
-            if cached_info is not None:
-                info = cached_info
-            else:
-                info = engine.analyse(
-                        board,
-                        chess.engine.Limit(depth=DEPTH),
-                        )
+            info = engine.analyse(board, chess.engine.Limit(depth=DEPTH))
         except Exception as e:
             print(f"  [engine error] {game_id} ply {ply}: {e}")
             board.push(move)
             ply += 1
-            cached_info = None
-            prev_eval = None
+            eval_before_by_ply.append(None)
             continue
 
         eval_before = normalize_eval(info["score"].relative, board.turn)
+        eval_before_by_ply.append(eval_before)
 
         # Best move and its SAN come from the PV line
         pv = info.get("pv", [])
@@ -164,27 +100,7 @@ def analyze_game(
         fen_after = board.fen()
         ply += 1
 
-        # eval_after = negative of next position's eval from that player's perspective
-        # We re-use the engine call from next iteration via prev_eval for efficiency
-        # For now, compute it directly — still only ONE call (the one above)
-        # eval_after is approximated as: -(eval of next position from next player's POV)
-        # We do this by analysing the resulting position with 1 less depth for speed
-        try:
-            info_after = engine.analyse(
-                board,
-                chess.engine.Limit(depth=DEPTH))
-            cached_info = info_after
-            # From the mover's perspective: negate the relative eval of the opponent's position
-            eval_after = -normalize_eval(info_after["score"].relative, board.turn)
-        except Exception:
-            eval_after = None
-            cached_info = None
-
-        delta = (eval_after - eval_before) if eval_after is not None else None
-
         classification = None
-        if move_color == player_color_str and delta is not None:
-            classification = classify_move(delta)
 
         phase = detect_phase(ply, board)
 
@@ -198,8 +114,8 @@ def analyze_game(
             "fen_before": fen_before,
             "fen_after": fen_after,
             "eval_before": eval_before,
-            "eval_after": eval_after,
-            "eval_delta": delta,
+            "eval_after": None,
+            "eval_delta": None,
             "best_move_uci": best_move_uci,
             "best_move_san": best_move_san,
             "best_move_eval": eval_before,  # eval of the best line = eval_before (engine's view)
@@ -212,6 +128,17 @@ def analyze_game(
 
     if not moves_data:
         return False
+
+    # Populate eval_after / eval_delta using the next ply's eval_before.
+    for i, move_row in enumerate(moves_data):
+        current_eval = move_row["eval_before"]
+        next_eval = eval_before_by_ply[i + 1] if i + 1 < len(eval_before_by_ply) else None
+        eval_after = -next_eval if next_eval is not None else None
+        move_row["eval_after"] = eval_after
+        delta = (eval_after - current_eval) if (eval_after is not None and current_eval is not None) else None
+        move_row["eval_delta"] = delta
+        if move_row["color"] == player_color_str and delta is not None:
+            move_row["classification"] = classify_move(delta)
 
     # Idempotency: if this game is re-analyzed, replace old analysis rows.
     conn.execute("DELETE FROM mistakes WHERE game_id=?", (game_id,))
@@ -276,7 +203,11 @@ def analyze_game(
             )
         """, mistakes_data)
 
-    conn.execute("UPDATE games SET analyzed=1 WHERE id=?", (game_id,))
+    num_mistakes = len(mistakes_data)
+    conn.execute(
+        "UPDATE games SET analyzed=1, mistake_count=? WHERE id=?",
+        (num_mistakes, game_id)
+    )
     return True
 
 

@@ -12,38 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import DB_PATH, CHESS_USERNAME
-
-PIECE_VALUES = {
-    chess.PAWN: 100,
-    chess.KNIGHT: 300,
-    chess.BISHOP: 310,
-    chess.ROOK: 500,
-    chess.QUEEN: 900,
-}
-
-
-def get_hanging_squares(board: chess.Board, color: chess.Color) -> list[chess.Square]:
-    """Return squares where `color` has a piece that can be captured for free."""
-    hanging = []
-    for sq in chess.SQUARES:
-        piece = board.piece_at(sq)
-        if piece is None or piece.color != color or piece.piece_type == chess.KING:
-            continue
-        enemy_attackers = board.attackers(not color, sq)
-        if not enemy_attackers:
-            continue
-        own_defenders = board.attackers(color, sq)
-        if not own_defenders:
-            hanging.append(sq)
-            continue
-        min_atk = min(
-            PIECE_VALUES.get(board.piece_at(s).piece_type, 0)
-            for s in enemy_attackers
-            if board.piece_at(s)
-        )
-        if min_atk < PIECE_VALUES.get(piece.piece_type, 0):
-            hanging.append(sq)
-    return hanging
+from core.chess_utils import get_hanging_squares # New Import
 
 
 def scan_game_for_hanging(pgn_text: str, player_color_str: str) -> list[dict]:

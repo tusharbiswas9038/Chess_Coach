@@ -6,8 +6,7 @@ from pathlib import Path
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import sqlite3
-from config import DB_PATH
+from api.db import db_conn
 from coach.prompt_builder import build_game_coaching_prompt
 from coach.ollama_client import generate
 
@@ -23,27 +22,24 @@ def generate_and_store_report(game_id: str) -> str:
 
     report = generate(prompt, fast=True)
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("""
-        INSERT INTO journal_entries (game_id, summary_md, coach_note)
-        VALUES (?, ?, ?)
-        ON CONFLICT(game_id) DO UPDATE SET
-            summary_md = excluded.summary_md,
-            coach_note = excluded.coach_note
-    """, (game_id, report, report))
-    conn.commit()
-    conn.close()
+    with db_conn() as conn:
+        conn.execute("""
+            INSERT INTO journal_entries (game_id, summary_md, coach_note)
+            VALUES (?, ?, ?)
+            ON CONFLICT(game_id) DO UPDATE SET
+                summary_md = excluded.summary_md,
+                coach_note = excluded.coach_note
+        """, (game_id, report, report))
+        conn.commit()
 
     return report
 
 
 if __name__ == "__main__":
-    conn = sqlite3.connect(DB_PATH)
-    row = conn.execute(
-        "SELECT id FROM games WHERE analyzed=1 ORDER BY date DESC LIMIT 1"
-    ).fetchone()
-    conn.close()
+    with db_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM games WHERE analyzed=1 ORDER BY date DESC LIMIT 1"
+        ).fetchone()
 
     if row:
         print(f"Testing report for game: {row[0]}")

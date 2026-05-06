@@ -2,6 +2,7 @@
 import sqlite3
 import sys
 from pathlib import Path
+from contextlib import contextmanager
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import DB_PATH
@@ -15,3 +16,12 @@ def get_db() -> sqlite3.Connection:
     conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA busy_timeout = 5000")
     return conn
+
+
+@contextmanager
+def db_conn():
+    conn = get_db()
+    try:
+        yield conn
+    finally:
+        conn.close()
