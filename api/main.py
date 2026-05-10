@@ -1,95 +1,98 @@
 # api/main.py
-import os
-from typing import Any
-
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Depends, Security
+import logging
+import time
+import uuid
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security.api_key import APIKeyHeader
-from pydantic import BaseModel, Field
 
-from api.db import get_db, db_conn
-from api.repositories.game_repository import GameRepository # New Import
-
-from api.jobs_service import (
-    enqueue_coach_batch_job,
-    enqueue_coach_game_job,
-    enqueue_journals_job,
-)
-from sync.fetch_games import sync_all
-from engine.stockfish_worker import run_analysis_worker
-
+from api.db import db_conn
+from api.db_migrations import run_pending_migrations
+from api.dependencies import DRILLS_OK, COACH_OK
+from api.job_queue import job_queue
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-
-# New: import config for API_SECRET_KEY and APP_ENV
+from fastapi.responses import HTMLResponse
 import config
 
-
-# Optional modules — safe to import even if not built yet
-try:
-    from drills.srs_scheduler import get_due_items, record_result, populate_srs_from_mistakes
-    _DRILLS_OK = True
-except Exception:
-    _DRILLS_OK = False
-
-try:
-    from coach.ollama_client import chat as ollama_chat
-    from coach.game_report import generate_and_store_report as generate_game_report
-    _COACH_OK = True
-except Exception as e:
-    print(f"[coach] Module load failed: {e}")
-    _COACH_OK = False
-
-
-# New: API Key Security
-API_KEY_NAME = "X-CHESS-COACH-KEY"
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
-
-async def get_api_key(api_key: str = Security(api_key_header)):
-    if api_key == config.APP_SECRET_KEY:
-        return api_key
-    raise HTTPException(status_code=403, detail="Unauthorized")
-
-# New: Dependency for GameRepository
-def get_game_repo(conn: Any = Depends(db_conn)) -> GameRepository:
-    return GameRepository(conn)
-
-from api.job_queue import job_queue # New import
-
-# New: FastAPI app initialization with API Key dependency
-app = FastAPI(title="Chess Coach", version="1.0.0", dependencies=[Depends(get_api_key)])
+app = FastAPI(title="Chess Coach", version="1.0.0")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
 @app.on_event("startup")
 async def startup_event():
+    config.validate_startup_config()
+    applied = run_pending_migrations()
+    log.info(
+        "startup env=%s queue_max=%s debug_routes=%s migrations_applied=%s",
+        config.APP_ENV,
+        config.JOB_QUEUE_MAX_SIZE,
+        config.ENABLE_DEBUG_ROUTES,
+        applied,
+    )
     job_queue.start_worker()
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    log.info("shutdown initiated")
     job_queue.stop_worker()
 
 app.add_middleware(
     CORSMiddleware,
-    # New: Tighten CORS to specific origins
-    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=config.get_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 
-# Mount static files (no API key for frontend)
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 log = logging.getLogger("chess_coach.api")
 
-# New: Public endpoint for root, doesn't require API key
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    started = time.perf_counter()
+
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > config.MAX_REQUEST_BODY_BYTES:
+                raise HTTPException(413, "Request body too large")
+        except ValueError:
+            raise HTTPException(400, "Invalid Content-Length header")
+
+    response: Response = await call_next(request)
+    elapsed_ms = (time.perf_counter() - started) * 1000.0
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Content-Security-Policy"] = config.get_csp_header()
+    if config.is_production():
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    log.info(
+        "request_id=%s method=%s path=%s status=%s duration_ms=%.1f",
+        request_id,
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed_ms,
+    )
+    return response
+
 @app.get("/", include_in_schema=False)
 async def serve_dashboard():
-    return FileResponse("frontend/index.html")
+    with open("frontend/index.html", "r") as f:
+        return HTMLResponse(content=f.read())
 
 
 # ── HEALTH ────────────────────────────────────────────────────────
 
-@app.get("/api/health")
+@app.get("/api/health") # Public health check, no API key required
 def health():
     try:
         with db_conn() as conn:
@@ -98,13 +101,60 @@ def health():
         raise HTTPException(500, f"DB error: {e}")
     return {
         "ok": True,
-        "drills": _DRILLS_OK,
-        "coach": _COACH_OK,
+        "drills": DRILLS_OK,
+        "coach": COACH_OK,
     }
 
 
+@app.get("/api/ready")
+def ready():
+    try:
+        with db_conn() as conn:
+            conn.execute("SELECT 1")
+    except Exception as e:
+        raise HTTPException(503, f"DB unavailable: {e}")
+
+    worker_alive = job_queue.is_worker_running()
+    if not worker_alive:
+        raise HTTPException(503, "Job queue worker not running")
+
+    return {
+        "ok": True,
+        "db": "ok",
+        "job_queue": job_queue.get_current_job_status(),
+    }
+
+
+@app.get("/api/metrics")
+def metrics():
+    db_ok = 1
+    try:
+        with db_conn() as conn:
+            conn.execute("SELECT 1")
+    except Exception:
+        db_ok = 0
+
+    status = job_queue.get_current_job_status()
+    queue_size = int(status.get("queue_size", 0))
+    queue_max = int(status.get("queue_max_size", 0))
+    worker_running = 1 if status.get("worker_running") else 0
+    recent_jobs = status.get("recent_jobs", [])
+    failed_recent = sum(1 for j in recent_jobs if j.get("status") == "failed")
+
+    return {
+        "db_ok": db_ok,
+        "job_queue_size": queue_size,
+        "job_queue_max_size": queue_max,
+        "job_queue_worker_running": worker_running,
+        "job_recent_failed": failed_recent,
+        "env": config.APP_ENV,
+    }
+
 from api.routers.sessions import router as sessions_router
-app.include_router(sessions_router)
+app.include_router(sessions_router, prefix="/api/sessions")
+
+from api.routers.games import router as games_router
+app.include_router(games_router, prefix="/api/games")
 
 
 from api.routers.openings import router as openings_router
@@ -127,12 +177,10 @@ app.include_router(drills_router)
 from api.routers.coach import router as coach_router
 app.include_router(coach_router)
 
+from api.routers.product import router as product_router
+app.include_router(product_router)
+
 
 # ── DEBUG ─────────────────────────────────────────────────────────
-
-if config.APP_ENV != "production":
-    @app.get("/api/debug/db")
-    def debug_db(repo: GameRepository = Depends(get_game_repo)):
-        counts = repo.get_tables_and_counts()
-        return {"tables": counts}
-
+from api.routers.debug import router as debug_router
+app.include_router(debug_router)

@@ -44,6 +44,7 @@ def get_due_items(limit: int = 15) -> list[dict]:
     """Return SRS items due today, ordered by most overdue first."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     today = date.today().isoformat()
 
     rows = conn.execute("""
@@ -67,6 +68,7 @@ def record_result(item_id: int, quality: int):
     Updates interval, ease, due_date.
     """
     conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")
     row = conn.execute(
         "SELECT interval_days, ease_factor, repetitions FROM srs_items WHERE id=?",
         (item_id,)
@@ -96,6 +98,7 @@ def record_result(item_id: int, quality: int):
 def populate_srs_from_mistakes():
     """Add new mistakes to SRS queue if not already there."""
     conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")
     new_mistakes = conn.execute("""
         SELECT m.id, m.fen, m.best_move, m.theme
         FROM mistakes m

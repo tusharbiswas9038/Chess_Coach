@@ -1,15 +1,15 @@
 from typing import Any
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends
 
 from api.repositories.game_repository import GameRepository
-from api.main import get_game_repo
+from api.dependencies import get_game_repo # New: import from dependencies
 from api.services.job_enqueue_helpers import _enqueue_sessions_compute # Import helper
 
 
-router = APIRouter(prefix="/api/sessions", tags=["sessions"])
+router = APIRouter(tags=["sessions"])
 
 
-@router.get("/")
+@router.get("")
 def get_sessions(limit: int = 30, repo: GameRepository = Depends(get_game_repo)):
     limit = max(1, min(limit, 365))
     return repo.get_sessions(limit)
@@ -23,6 +23,6 @@ def get_today_session(repo: GameRepository = Depends(get_game_repo)):
 
 
 @router.post("/compute")
-def recompute_sessions(background_tasks: BackgroundTasks):
-    _enqueue_sessions_compute(background_tasks)
+def recompute_sessions():
+    _enqueue_sessions_compute()
     return {"status": "computing"}

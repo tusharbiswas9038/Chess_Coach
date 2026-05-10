@@ -5,9 +5,11 @@ import {
   fmt,
   mistakeCountClass,
   resultBadge,
+  tableStateRowMarkup,
   truncate,
 } from '../ui.js';
 import { createDomCache } from '../dom.js';
+import { endpoints, normalize } from '../contracts.js';
 
 const PAGE_SIZE = 30;
 
@@ -22,7 +24,7 @@ const DEFAULT_GAMES_FILTERS = {
   sort: 'date_desc',
 };
 
-export function createGamesView({ api, toast, loadGameDetail }) {
+export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
   const dom = createDomCache();
   let gamesPage = 0;
   let totalGames = 0;
@@ -100,12 +102,20 @@ export function createGamesView({ api, toast, loadGameDetail }) {
   }
 
   async function loadGames() {
+    const tbody = dom.byId('all-games-body');
+    tbody.innerHTML = tableStateRowMarkup('Loading games…', 8, { kind: 'loading' });
+
     const offset = gamesPage * PAGE_SIZE;
     let response;
     try {
-      response = await api(`/api/games?${buildQuery()}`);
+      response = await apiContract(
+        endpoints.gamesList(buildQuery()),
+        normalize.gamesList,
+        'gamesList'
+      );
     } catch (e) {
       toast('Failed to load games');
+      tbody.innerHTML = tableStateRowMarkup('Failed to load games', 8, { kind: 'error' });
       return;
     }
 
@@ -125,31 +135,30 @@ export function createGamesView({ api, toast, loadGameDetail }) {
     dom.byId('games-filter-summary').textContent =
       currentFilterSummary();
 
-    const tbody = dom.byId('all-games-body');
     if (data.length === 0) {
-      tbody.innerHTML =
-        '<tr><td colspan="7"><div class="empty"><div class="empty-icon">♟</div>No games match the current filters</div></td></tr>';
+      tbody.innerHTML = tableStateRowMarkup('No games match the current filters', 8);
       return;
     }
 
     tbody.innerHTML = data
       .map(
         (g) => `
-    <tr data-game-id="${g.id}" tabindex="0" role="button" aria-label="Open game from ${fmt(g.date)}">
-      <td>${fmt(g.date)}</td>
-      <td>${colorBadge(g.color)}</td>
-      <td>${resultBadge(g.result)}</td>
-      <td class="cell-strong">${esc(g.opponent_rating) || '?'}</td>
-      <td>
+    <tr>
+      <td data-label="Date">${fmt(g.date)}</td>
+      <td data-label="Color">${colorBadge(g.color)}</td>
+      <td data-label="Result">${resultBadge(g.result)}</td>
+      <td data-label="Opponent" class="cell-strong">${esc(g.opponent_rating) || '?'}</td>
+      <td data-label="Opening">
         <span class="opening-pill">${esc(g.opening_eco) || '?'}</span>
         ${truncate(g.opening_name, 28)}
       </td>
-      <td>
+      <td data-label="Mistakes">
         <span class="${mistakeCountClass(g.mistake_count)}">
           ${g.mistake_count}
         </span>
       </td>
-      <td>${analysisStatusMarkup(g.analyzed)}</td>
+      <td data-label="Status">${analysisStatusMarkup(g.analyzed)}</td>
+      <td data-label="Action"><button class="btn btn-ghost btn-table-action" type="button" data-open-game-id="${g.id}">Review</button></td>
     </tr>
   `
       )
@@ -231,15 +240,8 @@ export function createGamesView({ api, toast, loadGameDetail }) {
 
   function bindEvents() {
     dom.byId('all-games-body').addEventListener('click', (e) => {
-      const row = e.target.closest('tr[data-game-id]');
-      if (row) loadGameDetail(row.dataset.gameId);
-    });
-    dom.byId('all-games-body').addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      const row = e.target.closest('tr[data-game-id]');
-      if (!row) return;
-      e.preventDefault();
-      loadGameDetail(row.dataset.gameId);
+      const btn = e.target.closest('button[data-open-game-id]');
+      if (btn) loadGameDetail(btn.dataset.openGameId);
     });
     dom.byId('btn-prev').addEventListener('click', () => changePage(-1));
     dom.byId('btn-next').addEventListener('click', () => changePage(1));

@@ -1,16 +1,49 @@
 # reports/weekly_report.py
 import sqlite3
+import asyncio
+import threading
 from datetime import date, timedelta
 from pathlib import Path
+from fastapi import HTTPException
 from config import DB_PATH, CHESS_USERNAME
-from coach.ollama_client import generate as ollama_generate
+from coach.ollama_client import generate as ollama_generate # Import generate directly
+from api.dependencies import COACH_OK # New Import from dependencies
 
-REPORTS_DIR = Path("~/chess-coach/reports").expanduser()
+REPORTS_DIR = Path("reports")
 REPORTS_DIR.mkdir(exist_ok=True)
 
+def _run_async(coro):
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    holder = {"result": None, "error": None}
+
+    def _target():
+        try:
+            holder["result"] = asyncio.run(coro)
+        except Exception as exc:
+            holder["error"] = exc
+
+    t = threading.Thread(target=_target, daemon=True)
+    t.start()
+    t.join()
+    if holder["error"] is not None:
+        raise holder["error"]
+    return holder["result"]
+
+
+async def _generate_weekly_text(summary_prompt: str) -> str:
+    return await ollama_generate(summary_prompt)
+
+
 def generate_weekly_report() -> str:
+    if not COACH_OK:
+        raise HTTPException(501, "Coach module not available, cannot generate weekly report.")
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
 
     week_ago = (date.today() - timedelta(days=7)).isoformat()
 
@@ -73,7 +106,7 @@ Write in this exact format (keep it under 200 words):
 [1 sentence of genuine encouragement based on the numbers]
 """
 
-    report_md = ollama_generate(summary_prompt)
+    report_md = _run_async(_generate_weekly_text(summary_prompt))
 
     filename = REPORTS_DIR / f"week-{date.today().isoformat()}.md"
     filename.write_text(report_md)

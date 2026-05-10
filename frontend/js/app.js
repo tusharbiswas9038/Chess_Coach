@@ -1,4 +1,4 @@
-import { api, apiPost } from './modules/api.js';
+import { api, apiPost, apiContract } from './modules/api.js';
 import { createActionsView } from './modules/views/actions.js';
 import { createCoachView } from './modules/views/coach.js';
 import { createDashboardView } from './modules/views/dashboard.js';
@@ -8,11 +8,13 @@ import { createMistakesView } from './modules/views/mistakes.js';
 import { createNavigationView } from './modules/views/navigation.js';
 import { createOpeningsView } from './modules/views/openings.js';
 import { createReviewView } from './modules/views/review.js';
+import { initChartDefaults } from './modules/charts.js';
 
 if (typeof Chart === 'undefined') {
   document.body.innerHTML =
-    '<div class="load-error">⚠️ Chart library failed to load. Check your network connection.</div>';
+    '<div class="load-error">Chart library failed to load. Check your network connection.</div>';
 }
+initChartDefaults();
 // ── STATE ──
 let statsData = null;
 let charts = {};
@@ -21,6 +23,7 @@ let reviewView;
 let navigationView;
 const actionsView = createActionsView({
   api,
+  apiContract,
   apiPost,
   onReportReady: loadGameDetail,
   toast,
@@ -36,6 +39,7 @@ const coachView = createCoachView({
 
 reviewView = createReviewView({
   api,
+  apiContract,
   generateReport: actionsView.generateReport,
   onAskCoach: (prompt) => coachView.draftQuestion(prompt),
   showView,
@@ -43,6 +47,7 @@ reviewView = createReviewView({
 
 const gamesView = createGamesView({
   api,
+  apiContract,
   loadGameDetail,
   toast,
 });
@@ -63,12 +68,15 @@ const mistakesView = createMistakesView({
 
 const openingsView = createOpeningsView({
   api,
+  apiContract,
   charts,
   destroyChart,
+  toast,
 });
 
 const dashboardView = createDashboardView({
   api,
+  apiContract,
   charts,
   destroyChart,
   getStatsData: () => statsData,
@@ -101,9 +109,12 @@ document
 gamesView.bindEvents();
 coachView.bindEvents();
 drillsView.bindEvents();
+mistakesView.bindEvents();
 dashboardView.bindEvents();
 actionsView.bindEvents();
 navigationView.bindEvents();
+navigationView.restoreSidebarPreference();
+navigationView.syncFromRoute();
 
 function showView(name) {
   navigationView.showView(name);

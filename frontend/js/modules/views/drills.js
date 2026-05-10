@@ -7,6 +7,7 @@ import {
 } from '../board.js';
 import { esc, setBadgeCount } from '../ui.js';
 import { createDomCache } from '../dom.js';
+import { endpoints } from '../contracts.js';
 
 export function createDrillsView({ api, apiPost, toast }) {
   const dom = createDomCache();
@@ -84,12 +85,12 @@ export function createDrillsView({ api, apiPost, toast }) {
       renderBoard();
       fb.className = 'drill-feedback correct';
       fb.textContent =
-        '✓ Correct! ' + correctUCI.toUpperCase() + ' was the best move.';
+        'Correct. ' + correctUCI.toUpperCase() + ' was the best move.';
       sessionCorrect++;
     } else {
       renderBoard();
       fb.className = 'drill-feedback wrong';
-      fb.textContent = `✗ Not the best. You played ${uci.toUpperCase()}, but ${correctUCI.toUpperCase()} was correct.`;
+      fb.textContent = `Not the best. You played ${uci.toUpperCase()}, but ${correctUCI.toUpperCase()} was correct.`;
       sessionWrong++;
       setTimeout(() => {
         boardPosition = applyMove(boardPosition, correctUCI, currentTurn);
@@ -122,7 +123,7 @@ export function createDrillsView({ api, apiPost, toast }) {
     if (!item) return;
 
     try {
-      await apiPost('/api/drills/result', { item_id: item.id, quality: q });
+      await apiPost(endpoints.drillsResult(), { item_id: item.id, quality: q });
     } catch (e) {
       console.error('Failed to submit drill result:', e);
     }
@@ -235,7 +236,7 @@ export function createDrillsView({ api, apiPost, toast }) {
     selectedSq = null;
 
     try {
-      drillQueue = await api('/api/drills/due?limit=15');
+      drillQueue = await api(endpoints.drillsDue(15));
     } catch (e) {
       toast('Failed to load drills: ' + e.message);
       return;

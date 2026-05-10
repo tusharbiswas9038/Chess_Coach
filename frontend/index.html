@@ -7,17 +7,8 @@
       name="description"
       content="Personal chess coaching dashboard for Tushar9038"
     />
-    <meta name="robots" content="noindex, nofollow, noarchive" />
     <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self';
-               script-src 'self' https://cdn.jsdelivr.net;
-               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-               font-src https://fonts.gstatic.com;
-               img-src 'self' data:;
-               connect-src 'self';
-               frame-ancestors 'none';"
-    />
+      name="robots" content="noindex, nofollow, noarchive" />
     <title>Chess Coach — Tushar9038</title>
     <script
       src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"
@@ -45,7 +36,7 @@
 
     <div class="app">
       <!-- ── SIDEBAR ── -->
-      <aside class="sidebar" aria-label="Navigation">
+      <aside class="sidebar" id="sidebar" aria-label="Navigation">
         <div class="sidebar-logo">
           <svg
             width="28"
@@ -173,40 +164,78 @@
       <!-- ── MAIN ── -->
       <main class="main">
         <header class="topbar">
-          <div class="topbar-title" id="topbar-title">Dashboard</div>
-          <div class="topbar-actions">
-            <button class="btn btn-ghost" id="btn-sync" type="button">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <polyline points="23 4 23 10 17 10" />
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-              </svg>
-              Sync
-            </button>
+          <div class="topbar-main">
             <button
-              class="btn btn-ghost"
-              id="btn-analyze"
+              class="btn btn-ghost topbar-sidebar-toggle"
+              id="btn-sidebar-toggle"
               type="button"
+              aria-label="Toggle sidebar"
+              aria-expanded="true"
+              aria-controls="sidebar"
             >
               <svg
-                width="14"
-                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="2"
               >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
-              Analyze
             </button>
+            <div>
+              <div class="topbar-breadcrumb" id="topbar-breadcrumb">Workspace / Dashboard</div>
+              <div class="topbar-title" id="topbar-title">Dashboard</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button
+              class="btn btn-ghost topbar-actions-toggle"
+              id="btn-actions-menu"
+              type="button"
+              aria-expanded="false"
+              aria-controls="topbar-actions-list"
+            >
+              Actions
+            </button>
+            <div class="topbar-actions-list" id="topbar-actions-list">
+              <button class="btn btn-ghost" id="btn-sync" type="button">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <polyline points="23 4 23 10 17 10" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+                Sync
+              </button>
+              <button
+                class="btn btn-ghost"
+                id="btn-analyze"
+                type="button"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                Analyze
+              </button>
+              <button class="btn btn-ghost" id="btn-db-maintenance" type="button">
+                DB Optimize
+              </button>
+            </div>
           </div>
         </header>
 
@@ -252,6 +281,12 @@
                     <strong class="focus-metric-value" id="focus-weekly-form">—</strong>
                   </div>
                 </div>
+                <div class="focus-actions">
+                  <div class="focus-actions-title">Weekly Actions</div>
+                  <ul class="focus-actions-list" id="focus-actions-list">
+                    <li>Loading weekly plan…</li>
+                  </ul>
+                </div>
               </div>
             </section>
 
@@ -296,6 +331,7 @@
                     <th>Opponent</th>
                     <th>Opening</th>
                     <th>Mistakes</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody id="recent-games-body"></tbody>
@@ -463,6 +499,7 @@
                     <th>Opening</th>
                     <th>Mistakes</th>
                     <th>Status</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody id="all-games-body"></tbody>
@@ -499,6 +536,12 @@
 
           <!-- ── MISTAKES VIEW ── -->
           <div class="view" id="view-mistakes">
+            <div class="games-preset-row" id="mistakes-phase-tabs">
+              <button class="preset-btn active" type="button" data-phase="">All Phases</button>
+              <button class="preset-btn" type="button" data-phase="opening">Opening</button>
+              <button class="preset-btn" type="button" data-phase="middlegame">Middlegame</button>
+              <button class="preset-btn" type="button" data-phase="endgame">Endgame</button>
+            </div>
             <div class="kpi-grid kpi-grid-triple">
               <div class="kpi-card">
                 <div class="kpi-label">Total Blunders</div>
@@ -518,13 +561,13 @@
             </div>
 
             <div class="charts-row charts-row-triple">
-              <div class="chart-card">
+              <div class="chart-card" id="mistakes-card-phase">
                 <div class="chart-title">By Phase</div>
                 <div class="chart-container chart-container-short">
                   <canvas id="chart-phase"></canvas>
                 </div>
               </div>
-              <div class="chart-card chart-card-span-2">
+              <div class="chart-card chart-card-span-2" id="mistakes-card-trend">
                 <div class="chart-title">Blunders per Game — Last 20 Games</div>
                 <div class="chart-container chart-container-short">
                   <canvas id="chart-blunder-trend"></canvas>
@@ -532,7 +575,31 @@
               </div>
             </div>
 
-            <div class="card">
+            <div class="card card-pad" id="mistakes-card-heatmap">
+              <div class="card-header">
+                <div class="card-title">Blunder Heatmap</div>
+                <div class="table-meta">Squares where blunders happened most</div>
+              </div>
+              <div class="heatmap-board" id="heatmap-board" aria-label="Blunder heatmap"></div>
+              <div class="heatmap-legend" aria-hidden="true">
+                <span class="heatmap-legend-label">Low</span>
+                <span class="heatmap-legend-swatch heatmap-level-1"></span>
+                <span class="heatmap-legend-swatch heatmap-level-2"></span>
+                <span class="heatmap-legend-swatch heatmap-level-3"></span>
+                <span class="heatmap-legend-swatch heatmap-level-4"></span>
+                <span class="heatmap-legend-swatch heatmap-level-5"></span>
+                <span class="heatmap-legend-label">High</span>
+              </div>
+            </div>
+
+            <div class="card card-pad" id="mistakes-card-motifs">
+              <div class="card-header">
+                <div class="card-title">Top 3 Recurring Error Motifs (7 days)</div>
+              </div>
+              <div id="mistakes-motifs-list" class="coach-context-list"></div>
+            </div>
+
+            <div class="card" id="mistakes-card-critical">
               <div class="card-header">
                 <div class="card-title">
                   Recent Critical Mistakes (1 per game)
@@ -569,6 +636,39 @@
                   <canvas id="chart-openings-black"></canvas>
                 </div>
               </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Opening Genome</div>
+                <button class="btn btn-ghost" id="btn-refresh-openings" type="button">
+                  Refresh
+                </button>
+              </div>
+              <div class="filters-grid">
+                <div class="field">
+                  <label class="label" for="select-eco-genome">ECO</label>
+                  <select id="select-eco-genome">
+                    <option value="">-- Select ECO --</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="select-color-genome">Color</label>
+                  <select id="select-color-genome">
+                    <option value="white">White</option>
+                    <option value="black">Black</option>
+                  </select>
+                </div>
+              </div>
+              <div class="card-header">
+                <div class="card-title" id="genome-title">Select an opening to view its genome</div>
+                <div class="card-subtitle" id="genome-total-games"></div>
+              </div>
+              <div class="chart-container chart-container-short">
+                <canvas id="opening-genome-chart"></canvas>
+              </div>
+              <div class="table-meta card-pad" id="genome-insight">Select an opening to see a coaching insight.</div>
+              <div class="card-pad" id="opening-genome-status" hidden></div>
             </div>
 
             <div class="card">

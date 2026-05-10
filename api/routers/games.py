@@ -1,14 +1,13 @@
 from typing import Any, List, Dict, Optional
 from fastapi import APIRouter, HTTPException, Depends
 
-from api.repositories.game_repository import GameRepository, row, rows
-from api.main import get_game_repo # This will create a circular dependency. I need to fix this by defining get_game_repo in a common place or by passing the connection directly. For now, I'll proceed with this.
 
+from api.repositories.game_repository import GameRepository
+from api.dependencies import get_game_repo
 
-router = APIRouter(prefix="/api/games", tags=["games"])
+router = APIRouter(tags=["games"])
 
-
-@router.get("/")
+@router.get("")
 def list_games(
     limit: int = 20,
     offset: int = 0,
@@ -61,22 +60,20 @@ def list_games(
         return_total=return_total,
     )
 
-
 @router.get("/{game_id}")
 def get_game(game_id: str, repo: GameRepository = Depends(get_game_repo)):
-    game_row = repo.get_game_by_id(game_id)
-    if not game_row:
-        raise HTTPException(404, "Game not found")
-    moves_rows = repo.get_moves_for_game(game_id)
-    mistakes_rows = repo.get_mistakes_for_game(game_id)
-    journal_row = repo.get_journal_entry_for_game(game_id)
-    return {
+        game_row = repo.get_game_by_id(game_id)
+        if not game_row:
+            raise HTTPException(404, "Game not found")
+        moves_rows = repo.get_moves_for_game(game_id)
+        mistakes_rows = repo.get_mistakes_for_game(game_id)
+        journal_row = repo.get_journal_entry_for_game(game_id)
+        return {
             "game": game_row,
             "moves": moves_rows,
             "mistakes": mistakes_rows,
             "journal": journal_row,
-            }
-
+        }
 
 @router.get("/{game_id}/critical")
 def get_critical_moment(game_id: str, repo: GameRepository = Depends(get_game_repo)):

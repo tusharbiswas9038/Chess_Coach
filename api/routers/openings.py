@@ -2,9 +2,19 @@ from typing import Any, List, Dict
 from fastapi import APIRouter, HTTPException, Depends
 
 from api.repositories.game_repository import GameRepository
-from api.main import get_game_repo
+from api.dependencies import get_game_repo # New: import from dependencies
 
 router = APIRouter(prefix="/api/openings", tags=["openings"])
+
+
+@router.get("/summary")
+def openings_summary(limit: int = 300, repo: GameRepository = Depends(get_game_repo)):
+    """
+    Pre-aggregated opening performance summary by ECO + color.
+    Used by frontend openings view to avoid client-side full-game aggregation.
+    """
+    rows = repo.get_openings_summary(limit=limit)
+    return rows
 
 
 @router.get("/genome")

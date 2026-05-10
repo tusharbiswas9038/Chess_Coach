@@ -5,22 +5,45 @@
 
 .view.active {
   display: block;
+  animation: view-fade-in var(--dur-med) var(--ease-standard);
+}
+
+.view.active > :first-child {
+  margin-top: 0;
+}
+
+.view.active > section + section,
+.view.active > section + .card,
+.view.active > .card + .card,
+.view.active > .card + section {
+  margin-top: var(--space-3);
+}
+
+@keyframes view-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dashboard-focus {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.95fr);
-  gap: 24px;
+  gap: var(--space-3);
   align-items: stretch;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-3);
 }
 
 .dashboard-focus-main {
-  padding: 24px 0 8px;
+  padding: var(--space-3) 0 var(--space-1);
 }
 
 .dashboard-title {
-  margin-top: 10px;
+  margin-top: var(--space-1);
   max-width: 11ch;
   font-size: clamp(32px, 5vw, 52px);
   line-height: 0.95;
@@ -29,22 +52,22 @@
 
 .dashboard-summary {
   max-width: 52ch;
-  margin-top: 16px;
+  margin-top: var(--space-2);
   color: var(--muted);
-  font-size: 15px;
+  font-size: var(--text-body);
 }
 
 .dashboard-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 22px;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
 }
 
 .dashboard-focus-panel {
   border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 24px;
+  border-radius: calc(var(--radius-lg) + 4px);
+  padding: var(--space-6);
   background:
     radial-gradient(circle at top right, rgba(63, 185, 80, 0.14), transparent 34%),
     linear-gradient(180deg, rgba(28, 33, 40, 0.96), rgba(22, 27, 34, 0.96));
@@ -60,26 +83,26 @@
 }
 
 .focus-panel-value {
-  margin-top: 8px;
+  margin-top: var(--space-1);
   font-size: clamp(26px, 4vw, 34px);
   font-weight: 700;
   line-height: 1.05;
 }
 
 .focus-panel-text {
-  margin-top: 10px;
+  margin-top: var(--space-1);
   color: var(--muted);
 }
 
 .focus-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 20px;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
 }
 
 .focus-metric {
-  padding-top: 12px;
+  padding-top: var(--space-1);
   border-top: 1px solid var(--border);
 }
 
@@ -91,17 +114,61 @@
 
 .focus-metric-value {
   display: block;
-  margin-top: 6px;
+  margin-top: var(--space-1);
   font-size: 18px;
   font-weight: 700;
 }
 
+.focus-actions {
+  margin-top: var(--space-2);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border);
+}
+
+.focus-actions-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.focus-actions-list {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-2);
+  color: var(--text);
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-md);
+  line-height: 1.35;
+}
+
+.focus-action-item {
+  list-style: none;
+}
+
+.focus-action-label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  cursor: pointer;
+}
+
+.focus-action-label input[type='checkbox'] {
+  margin-top: 1px;
+}
+
+.focus-action-item.is-done span {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
 .games-workspace {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-3);
 }
 
 .games-workspace-title {
-  margin-top: 8px;
+  margin-top: var(--space-1);
   font-size: clamp(24px, 3vw, 34px);
   line-height: 1.05;
   letter-spacing: -0.03em;
@@ -109,27 +176,31 @@
 
 .games-workspace-summary {
   max-width: 58ch;
-  margin-top: 10px;
+  margin-top: var(--space-2);
   color: var(--muted);
 }
 
 .games-preset-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 18px;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
 }
 
 .preset-btn {
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 8px 12px;
+  min-height: 40px;
+  padding: 0 var(--space-2);
   background: var(--surface);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard);
 }
 
 .preset-btn:hover {
@@ -144,23 +215,23 @@
 }
 
 .games-filter-panel {
-  margin-top: 14px;
-  padding: 18px;
+  margin-top: var(--space-3);
+  padding: var(--space-3);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   background: var(--surface);
 }
 
 .games-filter-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-2);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .field-label {
@@ -173,13 +244,17 @@
 
 .field-input {
   min-width: 0;
-  height: 40px;
+  min-height: 44px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-2);
   color: var(--text);
-  padding: 0 12px;
+  padding: 0 var(--space-2);
   font: inherit;
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard);
 }
 
 .field-input::placeholder {
@@ -188,30 +263,31 @@
 
 .field-input:focus {
   outline: none;
-  border-color: var(--blue);
-  box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.35);
+  border-color: var(--primary);
+  box-shadow: var(--ring-focus);
+  background: var(--surface-raised);
 }
 
 .games-filter-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-top: 14px;
-  padding-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--border);
 }
 
 .games-filter-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-1);
 }
 
 .coach-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) 320px;
-  gap: 18px;
+  gap: var(--space-2);
   align-items: start;
 }
 
@@ -219,7 +295,7 @@
 .coach-panel {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
 
 .coach-main {
@@ -230,8 +306,8 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 18px;
-  padding: 24px;
+  gap: var(--space-2);
+  padding: var(--space-3);
   border-bottom: 1px solid var(--border);
   background:
     radial-gradient(circle at top right, rgba(88, 166, 255, 0.12), transparent 32%),
@@ -248,18 +324,18 @@
 
 .coach-summary {
   max-width: 58ch;
-  margin-top: 12px;
+  margin-top: var(--space-1);
   color: var(--muted);
 }
 
 .coach-messages {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-2);
   min-height: 360px;
   max-height: 58vh;
   overflow-y: auto;
-  padding: 22px;
+  padding: var(--space-3);
   scrollbar-width: thin;
   scrollbar-color: var(--faint) transparent;
 }
@@ -273,20 +349,25 @@
 }
 
 .coach-empty-icon {
-  font-size: 34px;
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 24px;
+  line-height: 1;
 }
 
 .coach-empty-title {
-  margin-top: 10px;
+  margin-top: var(--space-1);
   color: var(--text);
-  font-size: 15px;
+  font-size: var(--text-lg);
   font-weight: 700;
 }
 
 .coach-empty-copy {
   max-width: 42ch;
-  margin-top: 6px;
-  font-size: 13px;
+  margin-top: var(--space-1);
+  font-size: var(--text-md);
 }
 
 .coach-message {
@@ -305,9 +386,9 @@
   max-width: min(74ch, 86%);
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 14px 16px;
-  font-size: 14px;
-  line-height: 1.7;
+  padding: var(--space-2);
+  font-size: var(--text-body);
+  line-height: var(--lh-relaxed);
   white-space: pre-wrap;
 }
 
@@ -325,13 +406,13 @@
 }
 
 .coach-form {
-  padding: 18px 22px 22px;
+  padding: var(--space-2) var(--space-3) var(--space-3);
   border-top: 1px solid var(--border);
   background: var(--surface);
 }
 
 .coach-input-field {
-  gap: 8px;
+  gap: var(--space-1);
 }
 
 .coach-input {
@@ -342,57 +423,65 @@
   border-radius: var(--radius);
   background: var(--surface-2);
   color: var(--text);
-  padding: 12px;
+  padding: var(--space-2);
   font: inherit;
-  line-height: 1.5;
+  line-height: var(--lh-body);
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard);
 }
 
 .coach-input:focus {
   outline: none;
-  border-color: var(--blue);
-  box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.35);
+  border-color: var(--primary);
+  box-shadow: var(--ring-focus);
+  background: var(--surface-raised);
 }
 
 .coach-form-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .coach-sidebar {
   display: grid;
-  gap: 16px;
+  gap: var(--space-2);
 }
 
 .coach-panel {
-  padding: 18px;
+  padding: var(--space-2);
 }
 
 .coach-panel-title {
-  margin-bottom: 12px;
-  font-size: 13px;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-md);
   font-weight: 700;
 }
 
 .coach-prompt-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-1);
 }
 
 .coach-prompt {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 11px 12px;
+  min-height: 44px;
+  padding: var(--space-1) var(--space-2);
   background: var(--surface-2);
   color: var(--text);
   text-align: left;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-md);
   cursor: pointer;
-  transition: border-color 150ms ease, background 150ms ease;
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard);
 }
 
 .coach-prompt:hover {
@@ -402,16 +491,16 @@
 
 .coach-context-list {
   display: grid;
-  gap: 10px;
+  gap: var(--space-1);
 }
 
 .coach-context-row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 10px;
+  gap: var(--space-2);
+  padding-bottom: var(--space-1);
   border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  font-size: var(--text-md);
 }
 
 .coach-context-row:last-child {

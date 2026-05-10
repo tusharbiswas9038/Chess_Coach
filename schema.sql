@@ -143,5 +143,14 @@ CREATE INDEX idx_games_color_result_analyzed_date ON games(color, result, analyz
 CREATE INDEX idx_games_opening_eco_color_analyzed ON games(opening_eco, color, analyzed);
 CREATE INDEX idx_games_opponent_rating_date ON games(opponent_rating DESC, date DESC);
 CREATE INDEX idx_mistakes_type_phase ON mistakes(type, phase);
-CREATE INDEX idx_journal_entries_game_id ON journal_entries(game_id);
+CREATE INDEX idx_mistakes_game_type_eval_loss ON mistakes(game_id, type, eval_loss DESC);
+CREATE INDEX idx_mistakes_game_id ON mistakes(game_id);
+CREATE INDEX idx_mistakes_type ON mistakes(type);
 CREATE INDEX idx_sessions_date ON sessions(date DESC);
+
+-- ── DB MIGRATIONS TRACKING ────────────────────────────────────────
+-- Used by api/db_migrations.py to apply idempotent schema/index fixes.
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    id          TEXT PRIMARY KEY,
+    applied_at  TEXT DEFAULT (datetime('now'))
+);

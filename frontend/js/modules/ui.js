@@ -37,9 +37,9 @@ export function colorBadge(c) {
 export function mistakeTag(type) {
   if (!type) return '<span class="mtag">—</span>';
   const labels = {
-    blunder: '⚡ Blunder',
-    hanging_piece: '⚠️ Hanging',
-    mistake: '△ Mistake',
+    blunder: 'Blunder',
+    hanging_piece: 'Hanging Piece',
+    mistake: 'Mistake',
   };
   return `<span class="mtag mtag-${esc(type)}">${
     labels[type] || esc(type)
@@ -71,12 +71,12 @@ export function mistakeCountClass(count) {
 
 export function analysisStatusMarkup(status) {
   if (status === 1) {
-    return '<span class="status-text status-done">✓ analyzed</span>';
+    return '<span class="status-text status-done">Analyzed</span>';
   }
   if (status === 2) {
-    return '<span class="status-text status-error">✗ error</span>';
+    return '<span class="status-text status-error">Error</span>';
   }
-  return '<span class="status-text status-pending">⏳ pending</span>';
+  return '<span class="status-text status-pending">Pending</span>';
 }
 
 export function evalDeltaClass(delta) {
@@ -103,5 +103,20 @@ export function emptyStateMarkup(message, icon = '♟', compact = false) {
 }
 
 export function errorStateMarkup(message) {
-  return `<div class="empty">${esc(message)}</div>`;
+  return `<div class="empty empty-error"><div class="empty-icon">⚠</div>${esc(message)}</div>`;
+}
+
+export function loadingStateMarkup(message = 'Loading…', compact = false) {
+  return `<div class="empty${compact ? ' empty-compact' : ''}"><div class="empty-icon">⏳</div>${esc(message)}</div>`;
+}
+
+export function tableStateRowMarkup(message, colspan, options = {}) {
+  const { kind = 'empty', icon = '♟' } = options;
+  const content =
+    kind === 'loading'
+      ? loadingStateMarkup(message, true)
+      : kind === 'error'
+        ? errorStateMarkup(message)
+        : emptyStateMarkup(message, icon, true);
+  return `<tr><td colspan="${Number(colspan) || 1}">${content}</td></tr>`;
 }

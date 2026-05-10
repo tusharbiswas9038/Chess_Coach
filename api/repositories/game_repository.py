@@ -1,4 +1,5 @@
 import sqlite3
+import chess
 from typing import Any, List, Dict, Optional
 
 from api.db import db_conn
@@ -71,6 +72,32 @@ class GameRepository:
             "total_games": total_games,
             "ply_rows": rows(ply_rows)
         }
+
+    def get_openings_summary(self, limit: int = 200) -> List[Dict[str, Any]]:
+        return rows(
+            self.conn.execute(
+                """
+                SELECT
+                    g.opening_eco AS eco,
+                    COALESCE(MAX(NULLIF(g.opening_name, '')), 'Unknown opening') AS name,
+                    g.color AS color,
+                    COUNT(*) AS games,
+                    SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) AS wins,
+                    ROUND(
+                        100.0 * SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) / COUNT(*),
+                        1
+                    ) AS win_pct
+                FROM games g
+                WHERE g.analyzed = 1
+                  AND g.opening_eco IS NOT NULL
+                  AND TRIM(g.opening_eco) <> ''
+                GROUP BY g.opening_eco, g.color
+                ORDER BY games DESC, eco ASC
+                LIMIT ?
+                """,
+                (max(1, min(limit, 1000)),),
+            ).fetchall()
+        )
 
     def get_stats(self, drills_ok: bool) -> Dict[str, Any]:
         profile = self.conn.execute(
@@ -158,43 +185,83 @@ class GameRepository:
             FROM games
         """).fetchone())
 
-    def get_mistakes_by_phase(self) -> List[Dict[str, Any]]:
+    def get_mistakes_by_phase(self, phase: Optional[str] = None) -> List[Dict[str, Any]]:
+        where = "WHERE phase IS NOT NULL"
+        params: List[Any] = []
+        if phase:
+            where += " AND phase = ?"
+            params.append(phase)
         return rows(self.conn.execute("""
             SELECT phase, COUNT(*) AS count
             FROM mistakes
-            WHERE phase IS NOT NULL
+            """ + where + """
             GROUP BY phase
             ORDER BY count DESC
-        """).fetchall())
+        """, params).fetchall())
+
+    def get_critical_mistakes(self, limit: int, phase: Optional[str] = None) -> List[Dict[str, Any]]:
+        phase_clause = ""
+        params: List[Any] = []
+        if phase:
+            phase_clause = " AND m.phase = ? "
+            params.append(phase)
+        params.append(limit)
+        return rows(self.conn.execute("""
+            SELECT
+                m.game_id,
+                g.date AS game_date,
+                m.type,
+                m.phase,
+                m.played_move,
+                m.best_move,
+                m.eval_loss
+            FROM mistakes m
+            JOIN games g ON g.id = m.game_id
+            WHERE m.is_critical = 1
+              AND g.analyzed = 1
+              """ + phase_clause + """
+            ORDER BY g.date DESC
+            LIMIT ?
+        """, params).fetchall())
+
+    def get_weekly_error_motifs(self, limit: int = 3, phase: Optional[str] = None) -> List[Dict[str, Any]]:
+        phase_clause = ""
+        params: List[Any] = []
+        if phase:
+            phase_clause = " AND m.phase = ? "
+            params.append(phase)
+        params.append(max(1, min(limit, 10)))
+        return rows(self.conn.execute("""
+            SELECT
+                m.type,
+                COALESCE(m.phase, 'unknown') AS phase,
+                COUNT(*) AS count,
+                ROUND(AVG(COALESCE(m.eval_loss, 0)), 1) AS avg_eval_loss
+            FROM mistakes m
+            JOIN games g ON g.id = m.game_id
+            WHERE g.date >= datetime('now', '-7 days')
+            """ + phase_clause + """
+            GROUP BY m.type, COALESCE(m.phase, 'unknown')
+            ORDER BY count DESC, avg_eval_loss DESC
+            LIMIT ?
+        """, params).fetchall())
 
     def get_tables_and_counts(self) -> Dict[str, Optional[int]]:
-        # Safely retrieve table names. This is less vulnerable as we control `name`.
-        # However, for robustness, we'll still use a whitelist for the count query.
         raw_tables = self.conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
         ).fetchall()
         
-        # Create a whitelist of expected table names to prevent SQL injection
-        # in the dynamic COUNT(*) query.
-        # This list should be kept up-to-date with your schema.
-        # For simplicity, we'll build it from the queried tables, but a hardcoded
-        # list might be more secure if sqlite_master itself could be tampered with.
         valid_table_names = {t["name"] for t in raw_tables}
-
         counts = {}
         for t in raw_tables:
             name = t["name"]
-            # Only execute COUNT for known, whitelisted table names
             if name in valid_table_names:
                 try:
-                    # Use parameter binding if possible, but for table NAMES it's tricky.
-                    # String formatting is generally discouraged for identifiers,
-                    # but if names are whitelisted, it mitigates the risk.
-                    counts[name] = self.conn.execute(f"SELECT COUNT(*) FROM \"{name}\"").fetchone()[0]
+                    counts[name] = self.conn.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
                 except Exception:
                     counts[name] = None
             else:
-                counts[name] = None # Or raise an error if an unknown table is encountered
+                counts[name] = None
         return counts
 
     def list_games(
@@ -211,7 +278,7 @@ class GameRepository:
         sort: str,
         valid_sorts: Dict[str, str],
         return_total: bool,
-    ) -> Any: # Returns List[Dict] or Dict with total
+    ) -> Any:
         inner_where: List[str] = []
         inner_params: List[Any] = []
         outer_where: List[str] = []
@@ -307,4 +374,71 @@ class GameRepository:
             "total": total,
             "limit": limit,
             "offset": offset,
+        }
+
+    def get_blunder_heatmap_data(self, phase: Optional[str] = None) -> Dict[str, int]:
+        params: List[Any] = []
+        phase_clause = ""
+        if phase:
+            phase_clause = " AND phase = ? "
+            params.append(phase)
+        blunders = self.conn.execute("""
+            SELECT fen, played_move FROM mistakes
+            WHERE type IN ('blunder', 'hanging_piece')
+            """ + phase_clause + """
+        """, params).fetchall()
+
+        heatmap: Dict[str, int] = {}
+        for blunder in blunders:
+            try:
+                board = chess.Board(blunder["fen"])
+                move = chess.Move.from_uci(blunder["played_move"])
+                target_square = chess.square_name(move.to_square)
+                heatmap[target_square] = heatmap.get(target_square, 0) + 1
+            except Exception:
+                continue
+        return heatmap
+
+    def get_weekly_focus_snapshot(self) -> Dict[str, Any]:
+        recent_mistakes = rows(self.conn.execute("""
+            SELECT
+                m.type,
+                m.phase,
+                COUNT(*) AS cnt,
+                ROUND(AVG(COALESCE(m.eval_loss, 0)), 1) AS avg_loss
+            FROM mistakes m
+            JOIN games g ON g.id = m.game_id
+            WHERE g.date >= datetime('now', '-14 days')
+            GROUP BY m.type, m.phase
+            ORDER BY cnt DESC, avg_loss DESC
+        """).fetchall())
+
+        prior_mistakes_total = self.conn.execute("""
+            SELECT COUNT(*) AS cnt
+            FROM mistakes m
+            JOIN games g ON g.id = m.game_id
+            WHERE g.date >= datetime('now', '-28 days')
+              AND g.date < datetime('now', '-14 days')
+        """).fetchone()["cnt"] or 0
+
+        recent_mistakes_total = sum(int(r["cnt"]) for r in recent_mistakes)
+
+        due_drills = self.conn.execute(
+            "SELECT COUNT(*) AS cnt FROM srs_items WHERE due_date <= date('now')"
+        ).fetchone()["cnt"] or 0
+
+        recent_games = self.conn.execute("""
+            SELECT COUNT(*) AS total,
+                   SUM(CASE WHEN analyzed = 1 THEN 1 ELSE 0 END) AS analyzed
+            FROM games
+            WHERE date >= datetime('now', '-14 days')
+        """).fetchone()
+
+        return {
+            "recent_mistakes": recent_mistakes,
+            "recent_mistakes_total": recent_mistakes_total,
+            "prior_mistakes_total": prior_mistakes_total,
+            "due_drills": due_drills,
+            "recent_games_total": recent_games["total"] or 0,
+            "recent_games_analyzed": recent_games["analyzed"] or 0,
         }

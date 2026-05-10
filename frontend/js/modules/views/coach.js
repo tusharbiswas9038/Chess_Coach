@@ -1,5 +1,6 @@
 import { esc } from '../ui.js';
 import { createDomCache } from '../dom.js';
+import { endpoints } from '../contracts.js';
 
 export function createCoachView({
   apiPost,
@@ -105,7 +106,7 @@ export function createCoachView({
     renderMessages(true);
 
     try {
-      const result = await apiPost('/api/coach/chat', {
+      const result = await apiPost(endpoints.coachChat(), {
         message,
         history: apiHistory,
       });

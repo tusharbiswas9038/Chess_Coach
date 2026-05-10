@@ -10,6 +10,7 @@ def build_player_context() -> str:
     """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
 
     profile = conn.execute(
         "SELECT * FROM player_profile WHERE id=1"
@@ -86,6 +87,7 @@ def build_game_coaching_prompt(game_id: str) -> str:
     """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
 
     game = conn.execute(
         "SELECT * FROM games WHERE id=?", (game_id,)
@@ -154,4 +156,22 @@ WENT WELL: [one honest sentence, or "Nothing notable this game"]
 FIX THIS: [the single most important mistake, name the piece and move]
 NEXT GAME: [one concrete habit or question to apply, specific not generic]""".strip()
 
+    return prompt
+
+
+def build_critical_move_note_prompt(fen: str, played_move: str, best_move: str) -> str:
+    """
+    Build a focused prompt for Ollama to generate a concise coaching note
+    for a single critical mistake.
+    """
+    prompt = f"""You are a helpful chess coach. Given a chess position, the move played by the student,
+and the best move according to the engine, explain the mistake in 2-3 sentences.
+Focus on *why* the played move was a mistake and *what* the best move achieves.
+Do NOT use FEN notation in your explanation. Be encouraging.
+
+FEN: {fen}
+Student Played: {played_move}
+Best Move: {best_move}
+
+Explain the mistake:"""
     return prompt

@@ -66,6 +66,7 @@ def nightly_journals():
 
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
         games = conn.execute("""
             SELECT g.id FROM games g
             LEFT JOIN journal_entries j ON j.game_id = g.id
