@@ -1,4 +1,5 @@
-import { endpoints } from './contracts.js';
+import { endpoints, normalize } from './contracts.js';
+import { clearAllCaches } from './cache.js';
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -11,6 +12,30 @@ function findRecentJob(status, prefix, startedAtSec) {
   );
 }
 
+function emitInvalidation(job) {
+  const scopes = Array.isArray(job?.invalidates) ? job.invalidates : [];
+  if (scopes.length === 0) return;
+
+  clearAllCaches();
+  document.dispatchEvent(
+    new CustomEvent('app:data-invalidated', {
+      detail: {
+        scopes,
+        source: job.source || job.id || 'job',
+        event: job.event || 'analytics:invalidated',
+        finishedAt: job.finished_at || Date.now() / 1000,
+      },
+    })
+  );
+  if (scopes.includes('games') || scopes.includes('analytics')) {
+    document.dispatchEvent(
+      new CustomEvent('data:games-updated', {
+        detail: { source: job.source || job.id || 'job', scopes },
+      })
+    );
+  }
+}
+
 export async function waitForJobByPrefix(api, prefix, options = {}) {
   const {
     startedAtSec = Date.now() / 1000,
@@ -20,12 +45,13 @@ export async function waitForJobByPrefix(api, prefix, options = {}) {
 
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const status = await api(endpoints.jobStatus());
+    const status = normalize.jobStatus(await api(endpoints.jobStatus()));
     const runningId = String(status?.id || '');
     const isActive = runningId.startsWith(prefix);
     const recent = findRecentJob(status, prefix, startedAtSec);
 
     if (recent?.status === 'completed') {
+      emitInvalidation(recent);
       return { ok: true, job: recent, status };
     }
     if (recent?.status === 'failed') {
@@ -39,4 +65,3 @@ export async function waitForJobByPrefix(api, prefix, options = {}) {
   }
   return { ok: false, timeout: true };
 }
-

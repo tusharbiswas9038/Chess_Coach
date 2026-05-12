@@ -57,9 +57,42 @@ def _optimize_indexes_for_hot_paths(conn: sqlite3.Connection) -> None:
     )
 
 
+def _create_player_model_snapshots(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS player_model_snapshots (
+            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+            computed_at             TEXT DEFAULT (datetime('now')),
+            source                  TEXT NOT NULL DEFAULT 'job',
+            games_analyzed          INTEGER NOT NULL DEFAULT 0,
+            window_days             INTEGER NOT NULL DEFAULT 90,
+            current_rating          INTEGER,
+            blunders_per_game       REAL,
+            hanging_piece_rate      REAL,
+            weak_phase              TEXT,
+            top_mistake_type        TEXT,
+            top_mistake_theme       TEXT,
+            favorite_opening_white  TEXT,
+            favorite_opening_black  TEXT,
+            style_tactical          REAL,
+            style_attacking         REAL,
+            style_solid             REAL,
+            payload_json            TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_player_model_snapshots_computed_at
+        ON player_model_snapshots(computed_at DESC)
+        """
+    )
+
+
 MIGRATIONS: List[Migration] = [
     ("001_cleanup_orphans_and_reconcile_indexes", _cleanup_orphan_srs_and_reconcile_indexes),
     ("002_optimize_indexes_for_hot_paths", _optimize_indexes_for_hot_paths),
+    ("003_create_player_model_snapshots", _create_player_model_snapshots),
 ]
 
 

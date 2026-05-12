@@ -9,6 +9,7 @@ import { createNavigationView } from './modules/views/navigation.js';
 import { createOpeningsView } from './modules/views/openings.js';
 import { createReviewView } from './modules/views/review.js';
 import { initChartDefaults } from './modules/charts.js';
+import { createPreferences } from './modules/preferences.js';
 
 if (typeof Chart === 'undefined') {
   document.body.innerHTML =
@@ -37,6 +38,8 @@ const coachView = createCoachView({
   toast,
 });
 
+const preferences = createPreferences({ toast });
+
 reviewView = createReviewView({
   api,
   apiContract,
@@ -54,6 +57,7 @@ const gamesView = createGamesView({
 
 const drillsView = createDrillsView({
   api,
+  apiContract,
   apiPost,
   toast,
 });
@@ -115,6 +119,15 @@ actionsView.bindEvents();
 navigationView.bindEvents();
 navigationView.restoreSidebarPreference();
 navigationView.syncFromRoute();
+preferences.bindEvents();
+preferences.init();
+
+document.addEventListener('app:data-invalidated', (event) => {
+  const scopes = event.detail?.scopes || [];
+  if (scopes.includes('analytics') || scopes.includes('dashboard')) {
+    dashboardView.loadStats({ force: true });
+  }
+});
 
 function showView(name) {
   navigationView.showView(name);
@@ -124,6 +137,8 @@ function showView(name) {
 function toast(msg, duration = 3000) {
   const el = document.createElement('div');
   el.className = 'toast';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), duration);

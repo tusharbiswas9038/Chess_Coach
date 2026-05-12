@@ -40,6 +40,37 @@ export function createDashboardView({
         };
   let btnSyncGames; // Define btnSyncGames here
   let weeklyPlanStorageKey = null;
+  const DRILL_PROGRESS_KEY = 'drills.progress.v1';
+
+  function getDrillProgress() {
+    try {
+      const raw = localStorage.getItem(DRILL_PROGRESS_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function todayKey() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function updateDrillProgressKpi() {
+    const drillProgress = getDrillProgress();
+    const goalTarget = Number(drillProgress.goalTarget) || 5;
+    const todayProgress = drillProgress[todayKey()] || {};
+    const todayDone = Number(todayProgress.done) || 0;
+    const streak = Number(drillProgress.streak) || 0;
+    const achievement =
+      streak >= 10 ? 'On Fire' : streak >= 5 ? 'Consistent' : streak >= 2 ? 'Starter' : 'New';
+    const goalEl = dom.byId('kpi-drill-goal-value');
+    const streakEl = dom.byId('kpi-streak-value');
+    const achievementEl = dom.byId('kpi-streak-sub');
+    if (goalEl) goalEl.textContent = `${todayDone}/${goalTarget}`;
+    if (streakEl) streakEl.textContent = `${streak} day${streak === 1 ? '' : 's'}`;
+    if (achievementEl) achievementEl.textContent = achievement;
+  }
 
   function getWeekKey() {
     const now = new Date();
@@ -326,6 +357,14 @@ export function createDashboardView({
     const analyzed = statsData.games.analyzed;
     const total = statsData.games.total;
 
+    const drillProgress = getDrillProgress();
+    const goalTarget = Number(drillProgress.goalTarget) || 5;
+    const todayProgress = drillProgress[todayKey()] || {};
+    const todayDone = Number(todayProgress.done) || 0;
+    const streak = Number(drillProgress.streak) || 0;
+    const achievement =
+      streak >= 10 ? 'On Fire' : streak >= 5 ? 'Consistent' : streak >= 2 ? 'Starter' : 'New';
+
     dom.byId('kpi-grid').innerHTML = `
     <div class="kpi-card">
       <div class="kpi-label">Games Analyzed</div>
@@ -352,6 +391,16 @@ export function createDashboardView({
     : '—'
 }</div>
       <div class="kpi-sub">this week</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Drill Goal</div>
+      <div class="kpi-value kpi-good" id="kpi-drill-goal-value">${todayDone}/${goalTarget}</div>
+      <div class="kpi-sub">daily target progress</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Streak / Achievement</div>
+      <div class="kpi-value kpi-blue" id="kpi-streak-value">${streak} day${streak === 1 ? '' : 's'}</div>
+      <div class="kpi-sub" id="kpi-streak-sub">${achievement}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Total Mistakes</div>
@@ -425,6 +474,9 @@ export function createDashboardView({
     dom.byId('recent-games-body').addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-open-game-id]');
       if (btn) onOpenGame(btn.dataset.openGameId);
+    });
+    document.addEventListener('drills:progress-updated', () => {
+      updateDrillProgressKpi();
     });
   }
 

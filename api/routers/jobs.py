@@ -8,6 +8,7 @@ from api.services.job_enqueue_helpers import (
     _enqueue_sync,
     _enqueue_analysis,
     _enqueue_sessions_compute,
+    _enqueue_player_model,
     _enqueue_weekly_report,
     _enqueue_db_maintenance,
 )
@@ -72,6 +73,19 @@ def job_sessions(request: Request): # Removed background_tasks
     except RuntimeError as e:
         raise HTTPException(429, str(e))
     return {"status": "computing sessions"}
+
+
+@router.post("/player-model")
+def job_player_model(request: Request):
+    require_admin_if_configured(request)
+    enforce_rate_limit(request, bucket="jobs-write", limit=10, window_sec=60)
+    if job_queue.is_job_type_active("player-model"):
+        raise HTTPException(429, "Player model job already in progress or queued.")
+    try:
+        _enqueue_player_model()
+    except RuntimeError as e:
+        raise HTTPException(429, str(e))
+    return {"status": "computing player model"}
 
 
 @router.post("/weekly-report")

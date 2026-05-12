@@ -79,6 +79,11 @@ export function createNavigationView({
     dom.byId('topbar-title').textContent = titles[safeName] || safeName;
     const breadcrumbEl = dom.byId('topbar-breadcrumb');
     if (breadcrumbEl) breadcrumbEl.textContent = breadcrumbs[safeName] || 'Workspace';
+    const topbarMain = document.querySelector('.topbar-main');
+    if (topbarMain) {
+      topbarMain.classList.remove('is-view-changing');
+      requestAnimationFrame(() => topbarMain.classList.add('is-view-changing'));
+    }
     updateTopbarActionsForView(safeName);
     currentView = safeName;
 
@@ -102,6 +107,18 @@ export function createNavigationView({
   }
 
   function bindEvents() {
+    const shortcutTitles = {
+      dashboard: 'Dashboard (Alt+1)',
+      games: 'Games (Alt+2)',
+      mistakes: 'Mistakes (Alt+3)',
+      openings: 'Openings (Alt+4)',
+      drills: 'Drills (Alt+5)',
+      coach: 'Coach (Alt+6, /)',
+    };
+    dom.queryAll('.nav-item[data-view]').forEach((btn) => {
+      const view = btn.dataset.view;
+      if (shortcutTitles[view]) btn.setAttribute('title', shortcutTitles[view]);
+    });
     dom.query('.sidebar-nav')?.addEventListener('click', (event) => {
       const btn = event.target.closest('.nav-item[data-view]');
       if (!btn) return;
@@ -120,6 +137,49 @@ export function createNavigationView({
     });
 
     window.addEventListener('resize', handleViewportMode);
+    window.addEventListener('keydown', handleGlobalShortcuts);
+  }
+
+  function isTypingTarget(target) {
+    if (!target) return false;
+    const tag = target.tagName?.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    return !!target.closest?.('[contenteditable="true"]');
+  }
+
+  function handleGlobalShortcuts(event) {
+    if (isTypingTarget(event.target)) return;
+    if (event.altKey && !event.ctrlKey && !event.metaKey) {
+      const map = {
+        '1': 'dashboard',
+        '2': 'games',
+        '3': 'mistakes',
+        '4': 'openings',
+        '5': 'drills',
+        '6': 'coach',
+      };
+      const view = map[event.key];
+      if (view) {
+        event.preventDefault();
+        showView(view);
+        return;
+      }
+      if (event.key.toLowerCase() === 'm') {
+        event.preventDefault();
+        document.getElementById('btn-toggle-motion')?.click();
+        return;
+      }
+      if (event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        document.getElementById('btn-toggle-density')?.click();
+      }
+    }
+    if (event.key === '/' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      showView('coach');
+      const coachInput = document.getElementById('coach-input');
+      coachInput?.focus();
+    }
   }
 
   function setSidebarCollapsed(collapsed, options = {}) {

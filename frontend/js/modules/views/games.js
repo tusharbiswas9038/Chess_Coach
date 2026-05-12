@@ -12,6 +12,7 @@ import { createDomCache } from '../dom.js';
 import { endpoints, normalize } from '../contracts.js';
 
 const PAGE_SIZE = 30;
+const FILTER_SLOT_KEY = 'games.filters.slots.v1';
 
 const DEFAULT_GAMES_FILTERS = {
   search: '',
@@ -32,6 +33,7 @@ export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
   let gamesFilters = { ...DEFAULT_GAMES_FILTERS };
   let activeGamesPreset = '';
   let gamesSearchTimer = null;
+  let lastLoadedGames = [];
 
   function writeFiltersToControls() {
     dom.byId('games-search').value = gamesFilters.search;
@@ -120,6 +122,7 @@ export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
     }
 
     const data = response.items || [];
+    lastLoadedGames = data;
     totalGames = response.total || 0;
     const start = totalGames === 0 ? 0 : offset + 1;
     const end = offset + data.length;
@@ -169,6 +172,101 @@ export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
     syncFiltersFromControls();
     gamesPage = 0;
     loadGames();
+  }
+
+  function readFilterSlots() {
+    try {
+      const raw = localStorage.getItem(FILTER_SLOT_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writeFilterSlots(slots) {
+    localStorage.setItem(FILTER_SLOT_KEY, JSON.stringify(slots || {}));
+  }
+
+  function saveFilterSlot(slotName) {
+    syncFiltersFromControls();
+    const slots = readFilterSlots();
+    slots[slotName] = { ...gamesFilters, savedAt: Date.now() };
+    writeFilterSlots(slots);
+    toast(`Saved filters to ${slotName.toUpperCase()}`);
+  }
+
+  function loadFilterSlot(slotName) {
+    const slots = readFilterSlots();
+    const slot = slots[slotName];
+    if (!slot) {
+      toast(`No saved filters in ${slotName.toUpperCase()}`);
+      return;
+    }
+    gamesFilters = {
+      ...DEFAULT_GAMES_FILTERS,
+      ...slot,
+    };
+    delete gamesFilters.savedAt;
+    writeFiltersToControls();
+    activeGamesPreset = '';
+    updatePresetUI();
+    gamesPage = 0;
+    loadGames();
+    toast(`Loaded filters from ${slotName.toUpperCase()}`);
+  }
+
+  function exportCurrentPageCsv() {
+    if (!lastLoadedGames.length) {
+      toast('No games to export');
+      return;
+    }
+    const rows = [
+      ['date', 'color', 'result', 'opponent_rating', 'opening_eco', 'opening_name', 'mistakes', 'analyzed'],
+      ...lastLoadedGames.map((g) => [
+        g.date || '',
+        g.color || '',
+        g.result || '',
+        g.opponent_rating || '',
+        g.opening_eco || '',
+        g.opening_name || '',
+        g.mistake_count ?? 0,
+        g.analyzed ?? 0,
+      ]),
+    ];
+    const csv = rows
+      .map((row) =>
+        row
+          .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
+          .join(',')
+      )
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `games_page_${gamesPage + 1}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast('CSV exported');
+  }
+
+  async function copyQueueSummary() {
+    const summary = [
+      `Study Queue Summary`,
+      `Filters: ${currentFilterSummary()}`,
+      `Page: ${gamesPage + 1}`,
+      `Total matches: ${totalGames}`,
+      `Visible rows: ${lastLoadedGames.length}`,
+    ].join('\n');
+    try {
+      await navigator.clipboard.writeText(summary);
+      toast('Queue summary copied');
+    } catch {
+      toast('Copy failed');
+    }
   }
 
   function handleFilterChange() {
@@ -246,6 +344,14 @@ export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
     dom.byId('btn-prev').addEventListener('click', () => changePage(-1));
     dom.byId('btn-next').addEventListener('click', () => changePage(1));
     dom.byId('btn-clear-games-filters').addEventListener('click', clearFilters);
+    dom.byId('btn-save-filter-slot-1')?.addEventListener('click', () => saveFilterSlot('s1'));
+    dom.byId('btn-load-filter-slot-1')?.addEventListener('click', () => loadFilterSlot('s1'));
+    dom.byId('btn-save-filter-slot-2')?.addEventListener('click', () => saveFilterSlot('s2'));
+    dom.byId('btn-load-filter-slot-2')?.addEventListener('click', () => loadFilterSlot('s2'));
+    dom.byId('btn-save-filter-slot-3')?.addEventListener('click', () => saveFilterSlot('s3'));
+    dom.byId('btn-load-filter-slot-3')?.addEventListener('click', () => loadFilterSlot('s3'));
+    dom.byId('btn-export-games-csv')?.addEventListener('click', exportCurrentPageCsv);
+    dom.byId('btn-copy-games-summary')?.addEventListener('click', copyQueueSummary);
     dom.byId('games-preset-row')?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-preset]');
       if (!btn) return;

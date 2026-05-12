@@ -26,7 +26,9 @@ export const endpoints = {
   jobStatus: () => '/api/jobs/status',
   jobSync: () => '/api/jobs/sync',
   jobAnalyze: () => '/api/jobs/analyze',
+  jobPlayerModel: () => '/api/jobs/player-model',
   jobDbMaintenance: () => '/api/jobs/db-maintenance',
+  playerModelLatest: () => '/api/product/player-model/latest',
   drillsResult: () => '/api/drills/result',
   drillsDue: (limit = 15) => `/api/drills/due?limit=${limit}`,
 };
@@ -112,5 +114,40 @@ export const normalize = {
   openingsSummary(payload) {
     const items = expectArray(payload, 'openingsSummary');
     return items.map((item) => expectObject(item, 'openingsSummary.item'));
+  },
+
+  jobStatus(payload) {
+    const p = expectObject(payload, 'jobStatus');
+    const recent = Array.isArray(p.recent_jobs) ? p.recent_jobs : [];
+    return {
+      ...p,
+      status: String(p.status || 'unknown'),
+      queue_size: Number(p.queue_size || 0),
+      queue_max_size: Number(p.queue_max_size || 0),
+      worker_running: Boolean(p.worker_running),
+      recent_jobs: recent.map((job) => ({
+        ...expectObject(job, 'jobStatus.recent_jobs.item'),
+        id: String(job.id || ''),
+        status: String(job.status || 'unknown'),
+        finished_at: Number(job.finished_at || 0),
+        invalidates: Array.isArray(job.invalidates) ? job.invalidates : [],
+      })),
+    };
+  },
+
+  playerModel(payload) {
+    const p = expectObject(payload, 'playerModel');
+    if (p.status === 'empty') return p;
+    if (!p.summary || typeof p.summary !== 'object') {
+      fail('playerModel', 'missing summary');
+    }
+    if (!p.payload || typeof p.payload !== 'object') {
+      fail('playerModel', 'missing payload');
+    }
+    return p;
+  },
+
+  drillsDue(payload) {
+    return expectArray(payload, 'drillsDue').map((item) => expectObject(item, 'drillsDue.item'));
   },
 };

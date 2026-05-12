@@ -7,9 +7,9 @@ import {
 } from '../board.js';
 import { esc, setBadgeCount } from '../ui.js';
 import { createDomCache } from '../dom.js';
-import { endpoints } from '../contracts.js';
+import { endpoints, normalize } from '../contracts.js';
 
-export function createDrillsView({ api, apiPost, toast }) {
+export function createDrillsView({ api, apiContract, apiPost, toast }) {
   const dom = createDomCache();
   let drillQueue = [];
   let drillIdx = 0;
@@ -23,9 +23,52 @@ export function createDrillsView({ api, apiPost, toast }) {
   let sessionDone = 0;
   let sessionCorrect = 0;
   let sessionWrong = 0;
+  let sessionCorrectStreak = 0;
   let lastFrom = null;
   let lastTo = null;
   let loaded = false;
+  const DRILL_PROGRESS_KEY = 'drills.progress.v1';
+
+  function todayKey() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function getDrillProgress() {
+    try {
+      const raw = localStorage.getItem(DRILL_PROGRESS_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function setDrillProgress(next) {
+    localStorage.setItem(DRILL_PROGRESS_KEY, JSON.stringify(next || {}));
+  }
+
+  function updateGoalProgress(isCorrect) {
+    const key = todayKey();
+    const data = getDrillProgress();
+    const day = data[key] || { done: 0, correct: 0, wrong: 0, goalDone: false };
+    day.done += 1;
+    if (isCorrect) day.correct += 1;
+    else day.wrong += 1;
+    const goalTarget = Number(data.goalTarget) || 5;
+    day.goalDone = day.done >= goalTarget;
+    data[key] = day;
+
+    const dates = Object.keys(data).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+    let streak = 0;
+    for (let i = dates.length - 1; i >= 0; i--) {
+      if (!data[dates[i]]?.goalDone) break;
+      streak++;
+    }
+    data.streak = streak;
+    data.lastUpdatedAt = Date.now();
+    setDrillProgress(data);
+    document.dispatchEvent(new CustomEvent('drills:progress-updated', { detail: { streak, day, goalTarget } }));
+  }
 
   function renderBoard() {
     renderPositionBoard('drill-board', boardPosition, {
@@ -84,14 +127,18 @@ export function createDrillsView({ api, apiPost, toast }) {
       lastTo = correct.to;
       renderBoard();
       fb.className = 'drill-feedback correct';
+      const streakNote = sessionCorrectStreak >= 3 ? ` Hot streak: ${sessionCorrectStreak}.` : '';
       fb.textContent =
-        'Correct. ' + correctUCI.toUpperCase() + ' was the best move.';
+        'Correct. ' + correctUCI.toUpperCase() + ' was the best move.' + streakNote;
       sessionCorrect++;
+      sessionCorrectStreak += 1;
     } else {
       renderBoard();
       fb.className = 'drill-feedback wrong';
-      fb.textContent = `Not the best. You played ${uci.toUpperCase()}, but ${correctUCI.toUpperCase()} was correct.`;
+      const acc = sessionDone > 0 ? Math.round((sessionCorrect / sessionDone) * 100) : 0;
+      fb.textContent = `Not the best. You played ${uci.toUpperCase()}, but ${correctUCI.toUpperCase()} was correct. Accuracy ${acc}%. Slow down and check forcing moves.`;
       sessionWrong++;
+      sessionCorrectStreak = 0;
       setTimeout(() => {
         boardPosition = applyMove(boardPosition, correctUCI, currentTurn);
         lastFrom = correct.from;
@@ -101,6 +148,7 @@ export function createDrillsView({ api, apiPost, toast }) {
     }
 
     sessionDone++;
+    updateGoalProgress(isCorrect);
     updateSessionStats();
     dom.byId('quality-section').hidden = false;
     dom.byId('drill-hint-card').hidden = true;
@@ -223,7 +271,7 @@ export function createDrillsView({ api, apiPost, toast }) {
       sessionDone > 0
         ? `${sessionDone} done · ${sessionCorrect} correct · accuracy: ${Math.round(
           (sessionCorrect / sessionDone) * 100
-        )}%`
+        )}% · streak: ${sessionCorrectStreak}`
         : '';
   }
 
@@ -236,7 +284,7 @@ export function createDrillsView({ api, apiPost, toast }) {
     selectedSq = null;
 
     try {
-      drillQueue = await api(endpoints.drillsDue(15));
+      drillQueue = await apiContract(endpoints.drillsDue(15), normalize.drillsDue, 'drillsDue');
     } catch (e) {
       toast('Failed to load drills: ' + e.message);
       return;

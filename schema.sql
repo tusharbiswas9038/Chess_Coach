@@ -115,6 +115,27 @@ CREATE TABLE player_profile (
     updated_at              TEXT DEFAULT (datetime('now'))
 );
 
+-- ── PLAYER MODEL SNAPSHOTS (append-only coaching profile history) ──
+CREATE TABLE player_model_snapshots (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    computed_at             TEXT DEFAULT (datetime('now')),
+    source                  TEXT NOT NULL DEFAULT 'job',
+    games_analyzed          INTEGER NOT NULL DEFAULT 0,
+    window_days             INTEGER NOT NULL DEFAULT 90,
+    current_rating          INTEGER,
+    blunders_per_game       REAL,
+    hanging_piece_rate      REAL,
+    weak_phase              TEXT,
+    top_mistake_type        TEXT,
+    top_mistake_theme       TEXT,
+    favorite_opening_white  TEXT,
+    favorite_opening_black  TEXT,
+    style_tactical          REAL,
+    style_attacking         REAL,
+    style_solid             REAL,
+    payload_json            TEXT NOT NULL
+);
+
 -- ── GAME JOURNAL ──────────────────────────────────────────────────
 CREATE TABLE journal_entries (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -147,6 +168,7 @@ CREATE INDEX idx_mistakes_game_type_eval_loss ON mistakes(game_id, type, eval_lo
 CREATE INDEX idx_mistakes_game_id ON mistakes(game_id);
 CREATE INDEX idx_mistakes_type ON mistakes(type);
 CREATE INDEX idx_sessions_date ON sessions(date DESC);
+CREATE INDEX idx_player_model_snapshots_computed_at ON player_model_snapshots(computed_at DESC);
 
 -- ── DB MIGRATIONS TRACKING ────────────────────────────────────────
 -- Used by api/db_migrations.py to apply idempotent schema/index fixes.

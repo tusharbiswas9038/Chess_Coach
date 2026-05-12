@@ -1,11 +1,9 @@
 import { createDomCache } from '../dom.js';
 import { endpoints } from '../contracts.js';
-import { createCache } from '../cache.js';
 import { waitForJobByPrefix } from '../jobs.js';
 
 export function createActionsView({ api, apiPost, onReportReady, toast }) {
   const dom = createDomCache();
-  const cache = createCache('api');
 
   function closeActionsMenu() {
     const container = dom.query('.topbar-actions');
@@ -31,12 +29,10 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
     try {
       const startedAtSec = Date.now() / 1000;
       await apiPost(endpoints.jobSync());
-      cache.clear();
       toast('Sync started. Check back in a minute.');
       const result = await waitForJobByPrefix(api, 'sync', { startedAtSec });
       if (result.ok) {
         toast('Sync completed.');
-        document.dispatchEvent(new CustomEvent('data:games-updated', { detail: { source: 'sync' } }));
       }
       else if (result.timeout) toast('Sync is still running in background');
       else toast(`Sync job failed: ${result.job?.error || 'unknown error'}`);
@@ -56,12 +52,10 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
     try {
       const startedAtSec = Date.now() / 1000;
       await apiPost(endpoints.jobAnalyze());
-      cache.clear();
       toast('Analysis started. This may take a few minutes.');
       const result = await waitForJobByPrefix(api, 'analyze', { startedAtSec, timeoutMs: 480000 });
       if (result.ok) {
         toast('Analysis completed.');
-        document.dispatchEvent(new CustomEvent('data:games-updated', { detail: { source: 'analyze' } }));
       }
       else if (result.timeout) toast('Analysis is still running in background');
       else toast(`Analysis job failed: ${result.job?.error || 'unknown error'}`);
@@ -81,7 +75,6 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
     try {
       const startedAtSec = Date.now() / 1000;
       await apiPost(endpoints.jobDbMaintenance(), { vacuum: false });
-      cache.clear();
       toast('Database optimization queued.');
       const result = await waitForJobByPrefix(api, 'db-maintenance', { startedAtSec });
       if (result.ok) toast('Database optimization completed.');

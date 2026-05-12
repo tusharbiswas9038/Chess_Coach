@@ -100,7 +100,24 @@ def compute_sessions():
         log.error(f"Session compute failed: {e}")
 
 
-# ── JOB 6: Weekly report every Sunday at 8:00 PM ─────────────────
+# ── JOB 6: Player model snapshot at 2:15 AM ──────────────────────
+@scheduler.scheduled_job(CronTrigger(hour=2, minute=15))
+def compute_player_model():
+    log.info("Computing player model snapshot...")
+    try:
+        from api.services.player_model import compute_and_store_player_model_snapshot
+
+        snapshot = compute_and_store_player_model_snapshot(source="scheduled")
+        log.info(
+            "Player model snapshot saved: id=%s games_analyzed=%s",
+            snapshot["id"],
+            snapshot["games_analyzed"],
+        )
+    except Exception as e:
+        log.error(f"Player model snapshot failed: {e}")
+
+
+# ── JOB 7: Weekly report every Sunday at 8:00 PM ─────────────────
 @scheduler.scheduled_job(CronTrigger(day_of_week="sun", hour=20, minute=0))
 def weekly_report():
     log.info("Generating weekly report...")

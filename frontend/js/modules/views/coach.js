@@ -12,6 +12,11 @@ export function createCoachView({
   const dom = createDomCache();
   let coachHistory = [];
   let coachBusy = false;
+  const EXTRA_PROMPTS = [
+    'Build me a 7-day improvement plan using my current weaknesses.',
+    'Give me opening prep priorities for my next rapid session.',
+    'I just lost two games. Give me a 10-minute reset routine before I play again.',
+  ];
 
   function updateContext() {
     const statsData = getStatsData();
@@ -79,7 +84,13 @@ export function createCoachView({
   function draftQuestion(text) {
     showView('coach');
     const input = dom.byId('coach-input');
-    input.value = text;
+    const stats = getStatsData() || {};
+    const profile = stats.profile || {};
+    const contextual = [
+      `Context: rating ${profile.current_rating || 'unknown'}, blunders/game ${stats.blunders_per_game ?? 'unknown'}, drills due ${stats.drills_due ?? 'unknown'}.`,
+      text,
+    ].join('\n');
+    input.value = contextual;
     input.focus();
     dom.byId('coach-status').textContent = 'Draft ready';
   }
@@ -134,6 +145,18 @@ export function createCoachView({
       if (!btn) return;
       draftQuestion(btn.dataset.coachPrompt);
     });
+    const promptList = dom.query('.coach-prompt-list');
+    if (promptList && !promptList.dataset.enhanced) {
+      EXTRA_PROMPTS.forEach((prompt) => {
+        const b = document.createElement('button');
+        b.className = 'coach-prompt';
+        b.type = 'button';
+        b.dataset.coachPrompt = prompt;
+        b.textContent = prompt.length > 46 ? `${prompt.slice(0, 46)}...` : prompt;
+        promptList.appendChild(b);
+      });
+      promptList.dataset.enhanced = '1';
+    }
   }
 
   function draftReviewQuestion() {

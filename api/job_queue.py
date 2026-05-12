@@ -38,13 +38,17 @@ class JobQueue:
                     self._running_job_info = {"id": job_id, "status": "running", "start_time": start_time}
                 
                 try:
-                    job_func(*job_args, **job_kwargs)
+                    result = job_func(*job_args, **job_kwargs)
                     elapsed = round(time.time() - start_time, 3)
+                    metadata = result if isinstance(result, dict) else {}
                     self._recent_jobs.appendleft({
                         "id": job_id,
                         "status": "completed",
                         "duration_sec": elapsed,
                         "finished_at": time.time(),
+                        "invalidates": metadata.get("invalidates", []),
+                        "event": metadata.get("event"),
+                        "source": metadata.get("source"),
                     })
                     log.info(f"Job {job_id} completed successfully.")
                 except Exception as e:

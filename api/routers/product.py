@@ -13,6 +13,10 @@ _CACHE: Dict[str, Dict[str, Any]] = {}
 _TTL_SECONDS = 60
 
 
+def clear_product_cache() -> None:
+    _CACHE.clear()
+
+
 def _cache_get(key: str):
     item = _CACHE.get(key)
     if not item:
@@ -83,4 +87,19 @@ def weekly_focus(request: Request, repo: GameRepository = Depends(get_game_repo)
 
     payload = build_weekly_focus_payload(repo)
     _cache_set("weekly_focus", payload)
+    return payload
+
+
+@router.get("/player-model/latest")
+def latest_player_model(request: Request):
+    enforce_rate_limit(request, bucket="product-player-model", limit=60, window_sec=60)
+    from api.services.player_model import get_latest_player_model_snapshot
+
+    cached = _cache_get("player_model_latest")
+    if cached is not None:
+        return cached
+
+    snapshot = get_latest_player_model_snapshot()
+    payload = snapshot or {"status": "empty", "message": "No player model snapshot computed yet."}
+    _cache_set("player_model_latest", payload)
     return payload

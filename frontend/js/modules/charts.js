@@ -32,10 +32,10 @@ export function initChartDefaults() {
     intersect: false,
     axis: 'x',
   };
-  Chart.defaults.animation = {
+  Object.assign(Chart.defaults.animation, {
     duration: 500,
     easing: 'easeOutQuart',
-  };
+  });
   Object.assign(Chart.defaults.plugins.legend.labels, {
     color: palette.muted,
     usePointStyle: true,

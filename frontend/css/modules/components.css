@@ -440,6 +440,17 @@ tbody tr[data-id]:hover td {
   cursor: pointer;
 }
 
+.btn-table-action {
+  transition:
+    transform var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard);
+}
+
+.btn-table-action:hover {
+  transform: translateY(-1px);
+}
+
 /* ── BADGES ── */
 .badge {
   display: inline-flex;

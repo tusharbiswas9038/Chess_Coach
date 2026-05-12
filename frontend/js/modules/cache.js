@@ -53,3 +53,10 @@ export function createCache(namespace = 'default') {
   };
 }
 
+export function clearCacheNamespace(namespace = 'default') {
+  stores.get(namespace)?.clear();
+}
+
+export function clearAllCaches() {
+  stores.forEach((store) => store.clear());
+}
