@@ -23,10 +23,42 @@ def _build_snapshot_payload(conn) -> Dict[str, Any]:
         SELECT
             COUNT(*) AS total_games,
             SUM(CASE WHEN analyzed = 1 THEN 1 ELSE 0 END) AS analyzed_games,
-            MAX(date) AS latest_game_date,
-            AVG(CASE WHEN analyzed = 1 THEN opponent_rating ELSE NULL END) AS avg_opponent_rating,
-            MAX(opponent_rating) AS peak_opponent_rating
+            MAX(date) AS latest_game_date
         FROM games
+        """
+    ).fetchone()
+
+    rating_row = conn.execute(
+        """
+        SELECT
+            CASE
+                WHEN color = 'white' THEN white_rating
+                WHEN color = 'black' THEN black_rating
+            END AS current_rating
+        FROM games
+        WHERE analyzed = 1
+          AND (
+              (color = 'white' AND white_rating IS NOT NULL AND white_rating > 0)
+              OR (color = 'black' AND black_rating IS NOT NULL AND black_rating > 0)
+          )
+        ORDER BY date DESC
+        LIMIT 1
+        """
+    ).fetchone()
+
+    peak_rating = conn.execute(
+        """
+        SELECT MAX(player_rating) AS peak_rating
+        FROM (
+            SELECT
+                CASE
+                    WHEN color = 'white' THEN white_rating
+                    WHEN color = 'black' THEN black_rating
+                END AS player_rating
+            FROM games
+            WHERE analyzed = 1
+        )
+        WHERE player_rating IS NOT NULL AND player_rating > 0
         """
     ).fetchone()
 
@@ -119,8 +151,8 @@ def _build_snapshot_payload(conn) -> Dict[str, Any]:
             "recent_30d_games": int(recent["games"] or 0),
         },
         "rating": {
-            "current": round(totals["avg_opponent_rating"] or 0) or None,
-            "peak_opponent": totals["peak_opponent_rating"],
+            "current": rating_row["current_rating"] if rating_row else None,
+            "peak": peak_rating["peak_rating"] if peak_rating else None,
         },
         "weaknesses": {
             "weak_phase": weak_phase["phase"] if weak_phase else None,
@@ -200,6 +232,7 @@ def compute_and_store_player_model_snapshot(source: str = "job") -> Dict[str, An
                 id,
                 username,
                 current_rating,
+                peak_rating,
                 games_analyzed,
                 hanging_piece_rate,
                 blunder_per_game,
@@ -212,9 +245,10 @@ def compute_and_store_player_model_snapshot(source: str = "job") -> Dict[str, An
                 top_mistake_theme,
                 updated_at
             )
-            VALUES (1, COALESCE((SELECT username FROM player_profile WHERE id = 1), 'player'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            VALUES (1, COALESCE((SELECT username FROM player_profile WHERE id = 1), 'player'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
                 current_rating = excluded.current_rating,
+                peak_rating = excluded.peak_rating,
                 games_analyzed = excluded.games_analyzed,
                 hanging_piece_rate = excluded.hanging_piece_rate,
                 blunder_per_game = excluded.blunder_per_game,
@@ -229,6 +263,7 @@ def compute_and_store_player_model_snapshot(source: str = "job") -> Dict[str, An
             """,
             (
                 rating["current"],
+                rating["peak"],
                 sample["analyzed_games"],
                 weaknesses["hanging_piece_rate"],
                 weaknesses["blunders_per_game"],
