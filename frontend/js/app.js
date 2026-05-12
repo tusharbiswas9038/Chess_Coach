@@ -84,8 +84,11 @@ const dashboardView = createDashboardView({
   charts,
   destroyChart,
   getStatsData: () => statsData,
+  onOpenCoach: () => showView('coach'),
+  onOpenDrills: () => showView('drills'),
   onOpenGame: loadGameDetail,
   onOpenGames: () => showView('games'),
+  onOpenMistakes: () => showView('mistakes'),
   onStatsLoaded: () => coachView.updateContext(),
   setStatsData: (next) => {
     statsData = next;

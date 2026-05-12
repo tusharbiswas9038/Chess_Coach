@@ -273,6 +273,34 @@
                 <p class="focus-panel-text" id="focus-primary-text">
                   Loading your current training target…
                 </p>
+                <div class="next-step-panel" id="next-step-panel">
+                  <div class="next-step-header">
+                    <div>
+                      <div class="focus-actions-title">Next Best Step</div>
+                      <div class="next-step-subtitle" id="next-step-subtitle">
+                        Ranked by urgency and training value.
+                      </div>
+                    </div>
+                    <span class="next-step-badge" id="next-step-badge">Loading</span>
+                  </div>
+                  <div class="next-step-list" id="next-step-list">
+                    <div class="next-step-item">
+                      <div class="next-step-rank">1</div>
+                      <div>
+                        <div class="next-step-title">Loading plan…</div>
+                        <div class="next-step-rationale">Checking your drill queue and latest analysis.</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="next-step-actions">
+                    <button class="btn btn-primary" id="btn-next-step-action" type="button">
+                      Start
+                    </button>
+                    <button class="btn btn-ghost" id="btn-next-step-secondary" type="button">
+                      Review
+                    </button>
+                  </div>
+                </div>
                 <div class="focus-metrics">
                   <div class="focus-metric">
                     <span class="focus-metric-label">Drills due</span>
@@ -293,6 +321,50 @@
                     <li>Loading weekly plan…</li>
                   </ul>
                 </div>
+              </div>
+            </section>
+
+            <section class="session-flow-widget" aria-labelledby="session-flow-title">
+              <div class="session-flow-copy">
+                <p class="section-kicker">Training Session</p>
+                <h2 id="session-flow-title" class="session-flow-title">Warmup → Review → Drill → Coach</h2>
+                <p class="session-flow-summary">
+                  A short loop that turns today’s data into one focused training block.
+                </p>
+              </div>
+              <div class="session-flow-steps" id="session-flow-steps">
+                <button class="session-step" type="button" data-flow-step="warmup" data-target-view="drills">
+                  <span class="session-step-index">01</span>
+                  <span class="session-step-body">
+                    <strong>Warmup</strong>
+                    <span>5 tactical positions</span>
+                  </span>
+                  <span class="session-step-state" id="session-step-warmup">Ready</span>
+                </button>
+                <button class="session-step" type="button" data-flow-step="review" data-target-view="games">
+                  <span class="session-step-index">02</span>
+                  <span class="session-step-body">
+                    <strong>Review</strong>
+                    <span>Latest critical game</span>
+                  </span>
+                  <span class="session-step-state" id="session-step-review">Queued</span>
+                </button>
+                <button class="session-step" type="button" data-flow-step="drill" data-target-view="drills">
+                  <span class="session-step-index">03</span>
+                  <span class="session-step-body">
+                    <strong>Drill</strong>
+                    <span>Fix the recurring theme</span>
+                  </span>
+                  <span class="session-step-state" id="session-step-drill">Queued</span>
+                </button>
+                <button class="session-step" type="button" data-flow-step="coach" data-target-view="coach">
+                  <span class="session-step-index">04</span>
+                  <span class="session-step-body">
+                    <strong>Coach follow-up</strong>
+                    <span>Ask for one correction rule</span>
+                  </span>
+                  <span class="session-step-state" id="session-step-coach">Optional</span>
+                </button>
               </div>
             </section>
 

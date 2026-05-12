@@ -19,8 +19,11 @@ export function createDashboardView({
   charts,
   destroyChart,
   getStatsData,
+  onOpenCoach,
+  onOpenDrills,
   onOpenGame,
   onOpenGames,
+  onOpenMistakes,
   onStatsLoaded,
   setStatsData,
   toast,
@@ -40,6 +43,7 @@ export function createDashboardView({
         };
   let btnSyncGames; // Define btnSyncGames here
   let weeklyPlanStorageKey = null;
+  let nextStepTargets = { primary: 'drills', secondary: 'games' };
   const DRILL_PROGRESS_KEY = 'drills.progress.v1';
 
   function getDrillProgress() {
@@ -140,6 +144,164 @@ export function createDashboardView({
     });
   }
 
+  function buildNextSteps(statsData, weeklyFocus = null) {
+    const dueCount = Number(statsData?.drills_due || 0);
+    const pending = Number(statsData?.games?.pending || 0);
+    const hRate = Number(statsData?.hanging_piece_rate || 0) * 100;
+    const bpg = Number(statsData?.blunders_per_game || 0);
+    const primaryFocus = weeklyFocus?.primary_focus;
+    const focusType = primaryFocus?.type ? primaryFocus.type.replace('_', ' ') : null;
+    const focusPhase = primaryFocus?.phase || 'all phases';
+
+    const candidates = [];
+    if (dueCount > 0) {
+      candidates.push({
+        title: `Clear ${Math.min(dueCount, 15)} due drill${dueCount === 1 ? '' : 's'}`,
+        rationale:
+          dueCount > 10
+            ? 'Your review queue is large enough to block new learning. Finish the due items first.'
+            : 'Spaced-repetition positions are time-sensitive and come from your own mistakes.',
+        target: 'drills',
+        score: 100 + dueCount,
+        badge: 'Drills',
+      });
+    }
+    if (primaryFocus) {
+      candidates.push({
+        title: `Attack ${focusType} in ${focusPhase}`,
+        rationale: weeklyFocus?.actions?.[0] || 'This is the strongest current pattern in your recent games.',
+        target: 'mistakes',
+        score: 86,
+        badge: 'Focus',
+      });
+    }
+    if (hRate >= 40) {
+      candidates.push({
+        title: 'Run a piece-safety review',
+        rationale: `${hRate.toFixed(1)}% hanging-piece rate is high enough to cost games before strategy matters.`,
+        target: 'mistakes',
+        score: 82,
+        badge: 'Leak',
+      });
+    }
+    if (bpg >= 3) {
+      candidates.push({
+        title: 'Practice a one-move blunder check',
+        rationale: `${bpg.toFixed(1)} blunders per game means the fastest gain is reducing one tactical miss.`,
+        target: 'drills',
+        score: 78,
+        badge: 'Tactics',
+      });
+    }
+    if (pending > 0) {
+      candidates.push({
+        title: `Analyze ${pending} pending game${pending === 1 ? '' : 's'}`,
+        rationale: 'The dashboard is missing fresh signals from games that are already in the database.',
+        target: 'games',
+        score: 62 + Math.min(pending, 20),
+        badge: 'Backlog',
+      });
+    }
+    candidates.push({
+      title: 'Review the latest critical game',
+      rationale: 'One concrete mistake reviewed deeply is better than scanning ten games loosely.',
+      target: 'games',
+      score: 50,
+      badge: 'Review',
+    });
+    candidates.push({
+      title: 'Ask coach for one correction rule',
+      rationale: 'Convert the pattern into a short rule you can use before your next game.',
+      target: 'coach',
+      score: 42,
+      badge: 'Coach',
+    });
+
+    return candidates
+      .sort((a, b) => b.score - a.score)
+      .filter((step, index, arr) => arr.findIndex((item) => item.title === step.title) === index)
+      .slice(0, 3);
+  }
+
+  function renderNextBestStep(statsData, weeklyFocus = null) {
+    const steps = buildNextSteps(statsData, weeklyFocus);
+    const list = dom.byId('next-step-list');
+    const badge = dom.byId('next-step-badge');
+    const subtitle = dom.byId('next-step-subtitle');
+    const primaryBtn = dom.byId('btn-next-step-action');
+    const secondaryBtn = dom.byId('btn-next-step-secondary');
+    if (!list || !steps.length) return;
+
+    nextStepTargets = {
+      primary: steps[0]?.target || 'drills',
+      secondary: steps[1]?.target || 'games',
+    };
+    badge.textContent = steps[0]?.badge || 'Ready';
+    subtitle.textContent = `Top action selected from ${steps.length} current signal${steps.length === 1 ? '' : 's'}.`;
+    primaryBtn.textContent =
+      nextStepTargets.primary === 'drills'
+        ? 'Start Drills'
+        : nextStepTargets.primary === 'coach'
+          ? 'Ask Coach'
+          : nextStepTargets.primary === 'mistakes'
+            ? 'Open Mistakes'
+            : 'Review Games';
+    secondaryBtn.textContent =
+      nextStepTargets.secondary === 'coach'
+        ? 'Coach'
+        : nextStepTargets.secondary === 'mistakes'
+          ? 'Mistakes'
+          : nextStepTargets.secondary === 'drills'
+            ? 'Drills'
+            : 'Games';
+
+    list.innerHTML = steps
+      .map(
+        (step, idx) => `
+          <div class="next-step-item${idx === 0 ? ' is-primary' : ''}">
+            <div class="next-step-rank">${idx + 1}</div>
+            <div class="next-step-copy">
+              <div class="next-step-title">${esc(step.title)}</div>
+              <div class="next-step-rationale">${esc(step.rationale)}</div>
+            </div>
+          </div>
+        `
+      )
+      .join('');
+  }
+
+  function renderSessionFlow(statsData, latestSession = null) {
+    const drillProgress = getDrillProgress();
+    const goalTarget = Number(drillProgress.goalTarget) || 5;
+    const todayProgress = drillProgress[todayKey()] || {};
+    const todayDone = Number(todayProgress.done) || 0;
+    const dueCount = Number(statsData?.drills_due || 0);
+    const recentGames = statsData?.recent_games?.length || 0;
+    const tiltDetected = Boolean(latestSession?.tilt_detected);
+
+    const warmupState = todayDone > 0 ? `${todayDone}/${goalTarget}` : dueCount > 0 ? 'Ready' : 'Light';
+    const reviewState = recentGames > 0 ? 'Ready' : 'No games';
+    const drillState = dueCount > 0 ? `${dueCount} due` : 'Clear';
+    const coachState = tiltDetected ? 'Recommended' : 'Optional';
+
+    dom.byId('session-step-warmup').textContent = warmupState;
+    dom.byId('session-step-review').textContent = reviewState;
+    dom.byId('session-step-drill').textContent = drillState;
+    dom.byId('session-step-coach').textContent = coachState;
+
+    dom.query('[data-flow-step="warmup"]')?.classList.toggle('is-done', todayDone >= goalTarget);
+    dom.query('[data-flow-step="review"]')?.classList.toggle('is-muted', recentGames === 0);
+    dom.query('[data-flow-step="drill"]')?.classList.toggle('is-active', dueCount > 0);
+    dom.query('[data-flow-step="coach"]')?.classList.toggle('is-active', tiltDetected);
+  }
+
+  function openTarget(target) {
+    if (target === 'drills') onOpenDrills?.();
+    else if (target === 'coach') onOpenCoach?.();
+    else if (target === 'mistakes') onOpenMistakes?.();
+    else onOpenGames();
+  }
+
   function updateDashboardFocus(statsData, weeklyFocus = null) {
     const dueCount = statsData?.drills_due || 0;
     const pending = statsData?.games?.pending || 0;
@@ -196,6 +358,7 @@ export function createDashboardView({
       : 'fallback';
     weeklyPlanStorageKey = `weekly-plan:${getWeekKey()}:${focusKey}`;
     renderWeeklyActions(actions);
+    renderNextBestStep(statsData, weeklyFocus);
   }
 
   function updateSyncButtonWarning(dueDrillsWarning) {
@@ -347,6 +510,7 @@ export function createDashboardView({
     dom.byId('sidebar-rating').textContent =
       p.current_rating || '—';
     updateDashboardFocus(statsData, weeklyFocus);
+    renderSessionFlow(statsData, latestSession);
     dom.byId('btn-review-latest').disabled =
       !statsData.recent_games.length;
 
@@ -471,6 +635,17 @@ export function createDashboardView({
   function bindEvents() {
     btnSyncGames = dom.byId('btn-sync');
     dom.byId('btn-review-latest').addEventListener('click', reviewLatestGame);
+    dom.byId('btn-next-step-action')?.addEventListener('click', () => {
+      openTarget(nextStepTargets.primary);
+    });
+    dom.byId('btn-next-step-secondary')?.addEventListener('click', () => {
+      openTarget(nextStepTargets.secondary);
+    });
+    dom.byId('session-flow-steps')?.addEventListener('click', (e) => {
+      const step = e.target.closest('[data-target-view]');
+      if (!step) return;
+      openTarget(step.dataset.targetView);
+    });
     dom.byId('recent-games-body').addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-open-game-id]');
       if (btn) onOpenGame(btn.dataset.openGameId);

@@ -49,6 +49,14 @@
     grid-template-columns: 1fr;
   }
 
+  .session-flow-widget {
+    grid-template-columns: 1fr;
+  }
+
+  .session-flow-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .games-filter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -63,6 +71,10 @@
 
   .focus-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .next-step-panel {
+    padding: var(--space-2);
   }
 
   .game-detail-grid {
@@ -215,6 +227,19 @@
     padding: var(--space-2);
   }
 
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-1);
+  }
+
+  .kpi-card {
+    padding: 14px;
+  }
+
+  .kpi-value {
+    font-size: 22px;
+  }
+
   .topbar {
     height: auto;
     min-height: 56px;
@@ -319,6 +344,37 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .session-flow-widget {
+    padding: var(--space-2);
+  }
+
+  .session-flow-steps {
+    display: flex;
+    gap: var(--space-1);
+    margin: 0 calc(var(--space-2) * -1);
+    padding: 0 var(--space-2) 4px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+  }
+
+  .session-step {
+    flex: 0 0 min(78vw, 260px);
+    min-height: 96px;
+    scroll-snap-align: start;
+  }
+
+  .next-step-header {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .next-step-actions .btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
+  }
+
   .journal-empty-row {
     flex-direction: column;
     align-items: flex-start;
@@ -328,6 +384,14 @@
     align-items: flex-start;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .session-flow-title {
+    font-size: 22px;
+  }
+
+  .session-flow-summary {
+    max-width: 34ch;
   }
 
   .card-title {
@@ -477,6 +541,31 @@
     width: 100%;
   }
 
+  .dashboard-focus-panel {
+    padding: 16px;
+  }
+
+  .focus-panel-value {
+    font-size: 24px;
+  }
+
+  .focus-panel-text {
+    font-size: 13px;
+  }
+
+  .kpi-grid {
+    gap: 8px;
+  }
+
+  .kpi-card {
+    min-height: 112px;
+  }
+
+  .kpi-label,
+  .kpi-sub {
+    font-size: 11px;
+  }
+
   .dashboard-actions .btn,
   .review-nav .btn {
     flex: 1;
@@ -530,7 +619,19 @@
   .drill-toolbar-actions .flip-btn {
     flex: 1;
     justify-content: center;
-    min-height: 36px;
+    min-height: 44px;
+  }
+
+  .drill-layout {
+    gap: 14px;
+  }
+
+  .board-wrap {
+    padding: 12px;
+  }
+
+  #drill-board {
+    max-width: min(100%, max(260px, calc(100svh - 260px)));
   }
 
   .board-header {
@@ -558,6 +659,21 @@
 
   .quality-btns {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .quality-btn {
+    min-height: 48px;
+    display: grid;
+    align-content: center;
+  }
+
+  .drill-info-card {
+    padding: 14px;
+  }
+
+  .drill-stat-row {
+    min-height: 40px;
   }
 
   .bar-row {
@@ -613,8 +729,17 @@
     font-size: 22px;
   }
 
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .session-step {
+    flex-basis: 86vw;
+  }
+
   .review-nav .btn,
   .dashboard-actions .btn,
+  .next-step-actions .btn,
   .drill-toolbar-actions .btn,
   .drill-toolbar-actions .flip-btn {
     font-size: 12px;
