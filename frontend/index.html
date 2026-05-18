@@ -164,7 +164,7 @@
 
       <!-- ── MAIN ── -->
       <main class="main flex min-h-dvh flex-1 flex-col max-sm:ml-0">
-        <header class="topbar sticky top-0 z-50 flex min-h-4 items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface)]/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-[var(--surface)]/80 max-sm:min-h-[56px] max-sm:px-2">
+        <header class="topbar sticky top-0 z-50 flex min-h-4 items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface)]/95 px-5 backdrop-blur supports-[backdrop-filter]:bg-[var(--surface)]/80 max-sm:min-h-[56px] max-sm:px-2">
           <div class="topbar-main flex min-w-0 items-center gap-2">
             <button
               class="btn btn-ghost topbar-sidebar-toggle max-sm:hidden"
@@ -243,19 +243,19 @@
           </div>
         </header>
 
-        <div class="content flex-1 p-6 max-sm:p-2">
+        <div class="content mx-auto w-full max-w-[1420px] flex-1 p-5 max-md:p-4 max-sm:p-2">
           <!-- ── DASHBOARD VIEW ── -->
           <div class="view active" id="view-dashboard">
-            <section class="dashboard-focus mb-3 grid items-stretch gap-3 [grid-template-columns:minmax(0,_1.45fr)_minmax(280px,_0.95fr)] max-md:[grid-template-columns:1fr]">
+            <section class="dashboard-focus mb-4 grid items-stretch gap-3 [grid-template-columns:minmax(0,_1.4fr)_minmax(280px,_1fr)] max-md:[grid-template-columns:1fr]">
               <div class="dashboard-focus-main pb-1 pt-3 max-md:pt-0">
                 <p class="section-kicker">Today</p>
-                <h1 class="dashboard-title mt-1 max-w-[11ch] text-[clamp(32px,5vw,52px)] leading-[0.95] tracking-[-0.04em] text-[var(--text)]">Train before you queue.</h1>
+                <h1 class="dashboard-title mt-1 max-w-[11ch] text-[clamp(31px,5vw,50px)] leading-[0.95] tracking-[-0.038em] text-[var(--text)]">Train before you queue.</h1>
                 <p class="dashboard-summary mt-2 max-w-[52ch] text-[15px] text-[var(--muted)]">
                   Use your own mistakes as the main workspace. Clear the drill queue,
                   review the latest critical swing, then decide whether to sync or
                   analyze more games.
                 </p>
-                <div class="dashboard-actions mt-3 flex flex-wrap gap-1">
+                <div class="dashboard-actions mt-3 flex flex-wrap gap-1.5">
                   <button class="btn btn-primary" id="btn-start-drills" type="button">
                     Start Drills
                   </button>
@@ -265,13 +265,13 @@
                 </div>
               </div>
 
-              <div class="dashboard-focus-panel rounded-[calc(var(--radius-lg)+4px)] border border-[var(--border)] bg-[linear-gradient(180deg,rgba(28,33,40,0.96),rgba(22,27,34,0.96)),radial-gradient(circle_at_top_right,rgba(63,185,80,0.14),transparent_34%)] p-6 shadow-cc-md">
+              <div class="dashboard-focus-panel surface-premium rounded-[calc(var(--radius-lg)+4px)] border border-[var(--border)] bg-[linear-gradient(180deg,rgba(28,33,40,0.96),rgba(22,27,34,0.96)),radial-gradient(circle_at_top_right,rgba(63,185,80,0.14),transparent_34%)] p-5 shadow-cc-md">
                 <div class="focus-panel-label text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--muted)]">Current priority</div>
                 <div class="focus-panel-value mt-1 text-[clamp(26px,4vw,34px)] font-bold leading-[1.05]" id="focus-primary-value">—</div>
                 <p class="focus-panel-text mt-1 text-[var(--muted)]" id="focus-primary-text">
                   Loading your current training target…
                 </p>
-                <div class="next-step-panel mt-3 rounded-cc-lg border border-[rgba(63,185,80,0.24)] bg-[linear-gradient(180deg,rgba(63,185,80,0.08),rgba(63,185,80,0.025)),rgba(15,17,23,0.3)] p-2" id="next-step-panel">
+                <div class="next-step-panel mt-3 rounded-cc-lg border border-[rgba(88,166,255,0.24)] bg-[linear-gradient(180deg,rgba(88,166,255,0.08),rgba(88,166,255,0.03)),rgba(15,17,23,0.3)] p-2" id="next-step-panel">
                   <div class="next-step-header flex items-start justify-between gap-2">
                     <div>
                       <div class="focus-actions-title">Next Best Step</div>
@@ -279,7 +279,7 @@
                         Ranked by urgency and training value.
                       </div>
                     </div>
-                    <span class="next-step-badge inline-flex items-center rounded-full border border-[rgba(63,185,80,0.36)] bg-[rgba(63,185,80,0.1)] px-2 py-[2px] text-[11px] font-bold text-[var(--primary)]" id="next-step-badge">Loading</span>
+                    <span class="next-step-badge inline-flex items-center rounded-full border border-[rgba(88,166,255,0.4)] bg-[rgba(88,166,255,0.12)] px-2 py-[2px] text-[11px] font-bold text-[var(--blue)]" id="next-step-badge">Loading</span>
                   </div>
                   <div class="next-step-list mt-2 grid gap-1" id="next-step-list">
                     <div class="next-step-item">
@@ -322,7 +322,7 @@
               </div>
             </section>
 
-            <section class="session-flow-widget mb-3 grid items-stretch gap-3 rounded-cc-lg border border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.018),rgba(255,255,255,0)),var(--surface)] p-3 shadow-cc-soft [grid-template-columns:minmax(220px,_0.6fr)_minmax(0,_1.4fr)] max-md:[grid-template-columns:1fr] max-sm:p-2" aria-labelledby="session-flow-title">
+            <section class="session-flow-widget surface-premium mb-4 grid items-stretch gap-3 rounded-cc-lg border border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.018),rgba(255,255,255,0)),var(--surface)] p-3 shadow-cc-soft [grid-template-columns:minmax(220px,_0.6fr)_minmax(0,_1.4fr)] max-md:[grid-template-columns:1fr] max-sm:p-2" aria-labelledby="session-flow-title">
               <div class="session-flow-copy">
                 <p class="section-kicker">Training Session</p>
                 <h2 id="session-flow-title" class="session-flow-title">Warmup → Review → Drill → Coach</h2>
@@ -366,12 +366,12 @@
               </div>
             </section>
 
-            <div class="kpi-grid mb-6 grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]" id="kpi-grid">
+            <div class="kpi-grid mb-5 grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]" id="kpi-grid">
               <!-- filled by JS -->
             </div>
 
-            <div class="charts-row mb-6 grid gap-2 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
-              <div class="chart-card">
+            <div class="charts-row mb-5 grid gap-2.5 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
+              <div class="chart-card surface-premium">
                 <div class="chart-title">Weekly Win Rate %</div>
                 <div class="chart-container">
                   <canvas id="chart-winrate"
@@ -380,7 +380,7 @@
                   >
                 </div>
               </div>
-              <div class="chart-card">
+              <div class="chart-card surface-premium">
                 <div class="chart-title">Mistake Breakdown</div>
                 <div class="chart-container">
                   <canvas id="chart-mistakes"
@@ -391,7 +391,7 @@
               </div>
             </div>
 
-            <div class="card mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] shadow-cc-soft">
+            <div class="card surface-premium mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] shadow-cc-soft">
               <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
                 <div class="card-title">Recent Games</div>
                 <button class="btn btn-ghost" id="btn-view-all-games" type="button">
@@ -417,7 +417,7 @@
             </div>
 
             <!-- Hanging piece rate bar -->
-            <div class="card card-pad mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-cc-soft">
+            <div class="card card-pad surface-premium mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-cc-soft">
               <div class="hanging-header">
                 <div class="hanging-copy">
                   <div class="hanging-title">Hanging Piece Rate</div>
@@ -444,7 +444,7 @@
 
           <!-- ── GAMES VIEW ── -->
           <div class="view" id="view-games">
-            <section class="games-workspace mb-3">
+            <section class="games-workspace mb-4">
               <div class="games-workspace-copy">
                 <div class="section-kicker">Study Queue</div>
                 <h2 class="games-workspace-title mt-1 text-[clamp(24px,3vw,34px)] leading-[1.05] tracking-[-0.03em] text-[var(--text)]">Find the right game to review next.</h2>
@@ -469,7 +469,7 @@
                 </button>
               </div>
 
-              <div class="games-filter-panel mt-3 rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+              <div class="games-filter-panel surface-premium mt-3 rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-3.5">
                 <div class="games-filter-grid grid grid-cols-4 gap-2 max-md:grid-cols-2 max-sm:grid-cols-1">
                   <label class="field">
                     <span class="field-label">Search</span>
@@ -553,32 +553,32 @@
 
                 <div class="games-filter-actions mt-2 flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2 max-sm:items-start max-sm:flex-col">
                   <div class="meta-label" id="games-filter-summary">All games</div>
-                  <div class="games-filter-buttons flex flex-wrap gap-1">
-                    <button class="btn btn-ghost" id="btn-save-filter-slot-1" type="button">
+                  <div class="games-filter-buttons flex flex-wrap gap-1 max-sm:grid max-sm:w-full max-sm:grid-cols-2">
+                    <button class="btn btn-ghost btn-sm" id="btn-save-filter-slot-1" type="button">
                       Save S1
                     </button>
-                    <button class="btn btn-ghost" id="btn-load-filter-slot-1" type="button">
+                    <button class="btn btn-ghost btn-sm" id="btn-load-filter-slot-1" type="button">
                       Load S1
                     </button>
-                    <button class="btn btn-ghost" id="btn-save-filter-slot-2" type="button">
+                    <button class="btn btn-ghost btn-sm" id="btn-save-filter-slot-2" type="button">
                       Save S2
                     </button>
-                    <button class="btn btn-ghost" id="btn-load-filter-slot-2" type="button">
+                    <button class="btn btn-ghost btn-sm" id="btn-load-filter-slot-2" type="button">
                       Load S2
                     </button>
-                    <button class="btn btn-ghost" id="btn-save-filter-slot-3" type="button">
+                    <button class="btn btn-ghost btn-sm" id="btn-save-filter-slot-3" type="button">
                       Save S3
                     </button>
-                    <button class="btn btn-ghost" id="btn-load-filter-slot-3" type="button">
+                    <button class="btn btn-ghost btn-sm" id="btn-load-filter-slot-3" type="button">
                       Load S3
                     </button>
-                    <button class="btn btn-ghost" id="btn-export-games-csv" type="button">
+                    <button class="btn btn-ghost btn-sm" id="btn-export-games-csv" type="button">
                       Export CSV
                     </button>
-                    <button class="btn btn-ghost" id="btn-copy-games-summary" type="button">
+                    <button class="btn btn-ghost btn-sm" id="btn-copy-games-summary" type="button">
                       Copy Summary
                     </button>
-                    <button class="btn btn-ghost" id="btn-clear-games-filters" type="button">
+                    <button class="btn btn-ghost btn-sm" id="btn-clear-games-filters" type="button">
                       Clear Filters
                     </button>
                   </div>
@@ -646,7 +646,7 @@
               <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-phase="middlegame">Middlegame</button>
               <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-phase="endgame">Endgame</button>
             </div>
-            <div class="kpi-grid kpi-grid-triple mb-6 grid gap-2 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
+            <div class="kpi-grid kpi-grid-triple mb-5 grid gap-2 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
               <div class="kpi-card">
                 <div class="kpi-label">Total Blunders</div>
                 <div class="kpi-value kpi-bad" id="m-blunders">—</div>
@@ -664,14 +664,14 @@
               </div>
             </div>
 
-            <div class="charts-row charts-row-triple mb-6 grid gap-2 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
-              <div class="chart-card" id="mistakes-card-phase">
+            <div class="charts-row charts-row-triple mb-5 grid gap-2.5 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
+              <div class="chart-card surface-premium" id="mistakes-card-phase">
                 <div class="chart-title">By Phase</div>
                 <div class="chart-container chart-container-short">
                   <canvas id="chart-phase"></canvas>
                 </div>
               </div>
-              <div class="chart-card chart-card-span-2 col-span-2 max-md:col-span-1" id="mistakes-card-trend">
+              <div class="chart-card surface-premium chart-card-span-2 col-span-2 max-md:col-span-1" id="mistakes-card-trend">
                 <div class="chart-title">Blunders per Game — Last 20 Games</div>
                 <div class="chart-container chart-container-short">
                   <canvas id="chart-blunder-trend"></canvas>
@@ -679,7 +679,7 @@
               </div>
             </div>
 
-            <div class="card card-pad mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-cc-soft" id="mistakes-card-heatmap">
+            <div class="card card-pad surface-premium mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-cc-soft" id="mistakes-card-heatmap">
               <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
                 <div class="card-title">Blunder Heatmap</div>
                 <div class="table-meta">Squares where blunders happened most</div>
@@ -696,18 +696,19 @@
               </div>
             </div>
 
-            <div class="card card-pad mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-cc-soft" id="mistakes-card-motifs">
+            <div class="card card-pad surface-premium mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-cc-soft" id="mistakes-card-motifs">
               <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
                 <div class="card-title">Top 3 Recurring Error Motifs (7 days)</div>
               </div>
               <div id="mistakes-motifs-list" class="coach-context-list"></div>
             </div>
 
-            <div class="card mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] shadow-cc-soft" id="mistakes-card-critical">
+            <div class="card surface-premium mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] shadow-cc-soft" id="mistakes-card-critical">
               <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
                 <div class="card-title">
                   Recent Critical Mistakes (1 per game)
                 </div>
+                <div class="table-meta" id="mistakes-critical-meta">Latest priority positions</div>
               </div>
               <div class="table-shell overflow-x-auto">
               <table>
@@ -729,14 +730,14 @@
 
           <!-- ── OPENINGS VIEW ── -->
           <div class="view" id="view-openings">
-            <div class="charts-row charts-row-openings mb-6 grid gap-2 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
-              <div class="chart-card">
+            <div class="charts-row charts-row-openings mb-5 grid gap-2 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
+              <div class="chart-card surface-premium">
                 <div class="chart-title">Top Openings as White</div>
                 <div class="chart-container chart-container-tall">
                   <canvas id="chart-openings-white"></canvas>
                 </div>
               </div>
-              <div class="chart-card">
+              <div class="chart-card surface-premium">
                 <div class="chart-title">Top Openings as Black</div>
                 <div class="chart-container chart-container-tall">
                   <canvas id="chart-openings-black"></canvas>
@@ -744,14 +745,14 @@
               </div>
             </div>
 
-            <div class="card mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] shadow-cc-soft">
+            <div class="card surface-premium mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] shadow-cc-soft">
               <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
                 <div class="card-title">Opening Genome</div>
                 <button class="btn btn-ghost" id="btn-refresh-openings" type="button">
                   Refresh
                 </button>
               </div>
-              <div class="filters-grid grid grid-cols-2 gap-2 p-3">
+              <div class="filters-grid grid grid-cols-2 gap-2 p-3 max-sm:grid-cols-1">
                 <div class="field">
                   <label class="label" for="select-eco-genome">ECO</label>
                   <select id="select-eco-genome" class="field-input select select-bordered w-full">
@@ -770,14 +771,14 @@
                 <div class="card-title" id="genome-title">Select an opening to view its genome</div>
                 <div class="card-subtitle" id="genome-total-games"></div>
               </div>
-              <div class="chart-container chart-container-short">
+              <div class="chart-container chart-container-short chart-container-genome">
                 <canvas id="opening-genome-chart"></canvas>
               </div>
               <div class="table-meta card-pad p-3" id="genome-insight">Select an opening to see a coaching insight.</div>
               <div class="card-pad p-3" id="opening-genome-status" hidden></div>
             </div>
 
-            <div class="card mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] shadow-cc-soft">
+            <div class="card surface-premium mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] shadow-cc-soft">
               <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
                 <div class="card-title">Opening Win Rates</div>
               </div>
@@ -801,7 +802,7 @@
 
           <!-- ── DRILLS VIEW ── -->
           <div class="view" id="view-drills">
-            <div class="drill-toolbar mb-3 flex items-start justify-between gap-2 max-md:flex-col max-md:items-stretch max-sm:gap-[10px] max-sm:mb-[14px]">
+            <div class="drill-toolbar mb-4 flex items-start justify-between gap-2 max-md:flex-col max-md:items-stretch max-sm:gap-[10px] max-sm:mb-[14px]">
               <div class="drill-toolbar-copy min-w-0">
                 <div class="drill-toolbar-title text-[16px] font-bold text-[var(--text)]">Daily Drills</div>
                 <div class="drill-toolbar-subtitle mt-1 text-[13px] text-[var(--muted)]">
@@ -816,9 +817,9 @@
               </div>
             </div>
 
-            <div class="drill-layout grid items-start gap-3 [grid-template-columns:minmax(280px,480px)_minmax(0,1fr)] max-md:[grid-template-columns:1fr] max-sm:gap-[14px]">
+            <div class="drill-layout grid items-start gap-3 [grid-template-columns:minmax(280px,500px)_minmax(0,1fr)] max-md:[grid-template-columns:1fr] max-sm:gap-[14px]">
               <!-- BOARD -->
-              <div class="board-wrap rounded-cc border border-[var(--border)] bg-[var(--surface)] p-5">
+              <div class="board-wrap surface-premium rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
                 <div class="board-header mb-2 flex items-center justify-between">
                   <div class="board-title" id="drill-turn-label">
                     Find the best move
@@ -833,7 +834,7 @@
                   <div class="mb-1 text-[13px] text-[var(--muted)]">
                     How hard was this? (affects next review date)
                   </div>
-                  <div class="grid grid-cols-4 gap-1 mt-2">
+                  <div class="mt-2 grid grid-cols-4 gap-1 max-sm:grid-cols-2">
                     <button class="quality-btn" data-q="0" type="button">
                       Again<br /><span class="quality-sub">Blackout</span>
                     </button>
@@ -864,7 +865,7 @@
 
               <!-- SIDEBAR -->
               <div class="drill-sidebar flex flex-col gap-2">
-                <div class="drill-info-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3">
+                <div class="drill-info-card surface-premium rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3">
                   <div class="drill-card-title mb-2 text-[13px] font-semibold">Session Stats</div>
                   <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-[13px]">
                     <span class="drill-stat-label text-[var(--muted)]">Due today</span>
@@ -894,12 +895,17 @@
                   </div>
                 </div>
 
-                <div class="drill-info-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3">
+                <div class="drill-info-card surface-premium rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3">
                   <div class="drill-card-title mb-2 text-[13px] font-semibold">Queue</div>
                   <div class="drill-queue-list flex max-h-[300px] flex-col gap-[6px] overflow-y-auto" id="drill-queue-list"></div>
                 </div>
 
-                <div class="drill-info-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3" id="drill-hint-card" hidden>
+                <div class="drill-info-card surface-premium rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3">
+                  <div class="drill-card-title mb-1">Session Focus</div>
+                  <div class="meta-label">Solve first move quickly, then verify one tactical threat before you commit.</div>
+                </div>
+
+                <div class="drill-info-card surface-premium rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3" id="drill-hint-card" hidden>
                   <div class="drill-card-title mb-1">Position Info</div>
                   <div id="drill-theme-label" class="meta-label">—</div>
                   <button class="btn btn-ghost btn-block mt-1" id="btn-show-hint" type="button">
@@ -913,7 +919,7 @@
           <!-- ── COACH VIEW ── -->
           <div class="view" id="view-coach">
             <section class="coach-workspace grid items-start gap-2 [grid-template-columns:minmax(0,_1.35fr)_320px] max-md:[grid-template-columns:1fr]">
-              <div class="coach-main overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] shadow-cc-soft">
+              <div class="coach-main surface-premium overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] shadow-cc-soft">
                 <div class="coach-hero flex items-start justify-between gap-2 border-b border-[var(--border)] bg-[radial-gradient(circle_at_top_right,rgba(88,166,255,0.12),transparent_32%),var(--surface)] p-3">
                   <div>
                     <div class="section-kicker">Ask Coach</div>
@@ -923,18 +929,24 @@
                       what to study before the next rapid session.
                     </p>
                   </div>
-                  <button class="btn btn-ghost" id="btn-coach-clear" type="button">
+                  <button class="btn btn-ghost max-sm:min-h-[40px]" id="btn-coach-clear" type="button">
                     Clear Chat
                   </button>
                 </div>
 
                 <div class="coach-messages flex max-h-[58vh] min-h-[360px] flex-col gap-2 overflow-y-auto p-3" id="coach-messages" aria-live="polite">
-                  <div class="coach-empty">
-                    <div class="coach-empty-icon">♟</div>
-                    <div class="coach-empty-title">No coach conversation yet</div>
-                    <div class="coach-empty-copy">
-                      Pick a prompt or ask a direct question. The coach will use your
-                      current chess data as context.
+                  <div class="coach-empty space-y-3">
+                    <div class="empty alert alert-neutral border border-[var(--border)] bg-[var(--surface-2)] py-3 text-[var(--text)]" role="status">
+                      <div class="empty-icon text-base leading-none">♟</div>
+                      <span>No coach conversation yet</span>
+                    </div>
+                    <div class="coach-empty-copy text-sm text-[var(--muted)]">
+                      Pick a prompt or ask a direct question. The coach will use your current chess data as context.
+                    </div>
+                    <div class="coach-mode-grid" aria-hidden="true">
+                      <div class="coach-mode-chip">Game Review</div>
+                      <div class="coach-mode-chip">Opening Prep</div>
+                      <div class="coach-mode-chip">Training Plan</div>
                     </div>
                   </div>
                 </div>
@@ -961,25 +973,25 @@
               </div>
 
               <aside class="coach-sidebar grid gap-2">
-                <div class="coach-panel rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-2">
+                <div class="coach-panel surface-premium rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-2">
                   <div class="coach-panel-title mb-2 text-[14px] font-bold">Quick Questions</div>
-                  <div class="coach-prompt-list grid gap-1">
-                    <button class="coach-prompt btn btn-ghost w-full justify-start" data-coach-prompt="What should I study today based on my recent games?" type="button">
+                  <div class="coach-prompt-list grid grid-cols-1 gap-1">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="What should I study today based on my recent games?" type="button">
                       What should I study today?
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start" data-coach-prompt="What is my biggest recurring weakness and how do I fix it in one week?" type="button">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="What is my biggest recurring weakness and how do I fix it in one week?" type="button">
                       Biggest recurring weakness
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start" data-coach-prompt="Give me a 20 minute warm-up routine before I play rapid chess." type="button">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="Give me a 20 minute warm-up routine before I play rapid chess." type="button">
                       20 minute warm-up
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start" data-coach-prompt="Which openings are currently hurting my results most?" type="button">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="Which openings are currently hurting my results most?" type="button">
                       Opening weaknesses
                     </button>
                   </div>
                 </div>
 
-                <div class="coach-panel rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-2">
+                <div class="coach-panel surface-premium rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-2">
                   <div class="coach-panel-title mb-2 text-[14px] font-bold">Current Context</div>
                   <div class="coach-context-list">
                     <div class="coach-context-row">

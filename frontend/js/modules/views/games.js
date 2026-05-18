@@ -152,7 +152,7 @@ export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
       <td data-label="Result">${resultBadge(g.result)}</td>
       <td data-label="Opponent" class="cell-strong">${esc(g.opponent_rating) || '?'}</td>
       <td data-label="Opening">
-        <span class="opening-pill">${esc(g.opening_eco) || '?'}</span>
+        <span class="opening-pill badge badge-outline badge-sm">${esc(g.opening_eco) || '?'}</span>
         ${truncate(g.opening_name, 28)}
       </td>
       <td data-label="Mistakes">

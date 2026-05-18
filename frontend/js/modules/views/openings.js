@@ -175,7 +175,7 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
       setGenomeStatus('');
     } catch (e) {
       console.error('Opening genome chart failed:', e);
-      genomeTitleEl.textContent = 'Unable to load genome';
+      genomeTitleEl.textContent = 'Unable to load opening genome';
       genomeTotalEl.textContent = '';
       destroyChart('opening-genome');
       setChartError('opening-genome-chart', true);
@@ -198,7 +198,7 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
     statusEl.innerHTML = statePanelMarkup(message, {
       kind: 'error',
       compact: true,
-      actions: showRetry ? '<button class="btn btn-ghost mt-2" type="button" data-retry-genome>Retry</button>' : '',
+      actions: showRetry ? '<button class="btn btn-ghost" type="button" data-retry-genome>Retry</button>' : '',
     });
   }
 
@@ -209,8 +209,8 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
     setLoadingCharts(true);
     const genomeTitleEl = dom.byId('genome-title');
     const genomeTotalEl = dom.byId('genome-total-games');
-    if (genomeTitleEl) genomeTitleEl.textContent = 'Loading opening data...';
-    if (genomeTotalEl) genomeTotalEl.textContent = '';
+    if (genomeTitleEl) genomeTitleEl.textContent = 'Building opening workspace…';
+    if (genomeTotalEl) genomeTotalEl.textContent = 'Preparing summary and genome';
     const insightEl = dom.byId('genome-insight');
     if (insightEl) insightEl.textContent = 'Loading genome insight...';
     setGenomeStatus('');
@@ -230,7 +230,7 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
       tbody.innerHTML = `
         ${tableStateRowMarkup('Unable to load openings.', 6, {
           kind: 'error',
-          actions: '<button class="btn btn-ghost mt-2" type="button" data-retry-openings>Retry</button>',
+          actions: '<button class="btn btn-ghost" type="button" data-retry-openings>Retry</button>',
         })}
       `;
       toast?.('Unable to load openings.');
@@ -275,7 +275,7 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
     if (!openingsSummary.length) {
       loadedAtMs = Date.now();
       tbody.innerHTML = tableStateRowMarkup('No analyzed openings available yet.', 6, {
-        actions: '<button class="btn btn-ghost mt-2" type="button" data-run-analysis-openings>Run Analysis</button>',
+        actions: '<button class="btn btn-ghost" type="button" data-run-analysis-openings>Run Analysis</button>',
       });
       return;
     }

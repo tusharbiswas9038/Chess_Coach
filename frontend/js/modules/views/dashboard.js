@@ -117,10 +117,10 @@ export function createDashboardView({
       .map((action, idx) => {
         const isChecked = checked.has(idx);
         return `
-          <li class="focus-action-item${isChecked ? ' is-done' : ''}" data-action-index="${idx}">
-            <label class="focus-action-label">
-              <input type="checkbox" ${isChecked ? 'checked' : ''} />
-              <span>${esc(action)}</span>
+          <li class="focus-action-item rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm ${isChecked ? 'is-done border-[var(--primary)]/35 bg-[color-mix(in_srgb,var(--primary)_12%,var(--surface-2))]' : ''}" data-action-index="${idx}">
+            <label class="focus-action-label flex cursor-pointer items-start gap-2">
+              <input class="checkbox checkbox-xs mt-[2px] border-[var(--border)]" type="checkbox" ${isChecked ? 'checked' : ''} />
+              <span class="leading-snug">${esc(action)}</span>
             </label>
           </li>
         `;
@@ -258,7 +258,7 @@ export function createDashboardView({
     list.innerHTML = steps
       .map(
         (step, idx) => `
-          <div class="next-step-item flex items-start gap-3 rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3 transition-colors ${idx === 0 ? 'is-primary border-[var(--primary)]/50 bg-[color-mix(in_srgb,var(--primary)_10%,var(--surface))]' : ''}">
+          <div class="next-step-item flex items-start gap-3 rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3 transition-colors ${idx === 0 ? 'is-primary border-[var(--blue)]/40 bg-[color-mix(in_srgb,var(--blue)_11%,var(--surface))]' : ''}">
             <div class="next-step-rank inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-2)] text-xs font-semibold text-[var(--muted)]">${idx + 1}</div>
             <div class="next-step-copy min-w-0">
               <div class="next-step-title text-sm font-semibold text-[var(--text)]">${esc(step.title)}</div>

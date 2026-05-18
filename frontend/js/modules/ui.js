@@ -138,7 +138,10 @@ export function statePanelMarkup(message, options = {}) {
       : kind === 'error'
         ? errorStateMarkup(message)
         : emptyStateMarkup(message, icon, compact);
-  return `${content}${actions || ''}`;
+  const actionsMarkup = actions
+    ? `<div class="mt-2 flex flex-wrap items-center gap-2">${actions}</div>`
+    : '';
+  return `${content}${actionsMarkup}`;
 }
 
 export function tableStateRowMarkup(message, colspan, options = {}) {

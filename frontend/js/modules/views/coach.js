@@ -42,6 +42,11 @@ export function createCoachView({
           <div class="coach-empty-copy text-sm text-[var(--muted)]">
             Pick a prompt or ask a direct question. The coach will use your current chess data as context.
           </div>
+          <div class="coach-mode-grid" aria-hidden="true">
+            <div class="coach-mode-chip">Game Review</div>
+            <div class="coach-mode-chip">Opening Prep</div>
+            <div class="coach-mode-chip">Training Plan</div>
+          </div>
         </div>
       `;
       return;
@@ -55,7 +60,7 @@ export function createCoachView({
 
       const bubble = document.createElement('div');
       bubble.className =
-        'coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm leading-relaxed';
+        'coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap';
       bubble.textContent = String(message?.content || '');
 
       row.appendChild(bubble);
@@ -67,7 +72,7 @@ export function createCoachView({
       row.className = 'coach-message coach-message-assistant coach-message-pending mb-3 flex justify-start';
       const bubble = document.createElement('div');
       bubble.className =
-        'coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm';
+        'coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm whitespace-pre-wrap';
       bubble.textContent = 'Coach is thinking…';
       row.appendChild(bubble);
       container.appendChild(row);
@@ -156,7 +161,8 @@ export function createCoachView({
     if (promptList && !promptList.dataset.enhanced) {
       EXTRA_PROMPTS.forEach((prompt) => {
         const b = document.createElement('button');
-        b.className = 'coach-prompt btn btn-ghost w-full justify-start';
+        b.className =
+          'coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]';
         b.type = 'button';
         b.dataset.coachPrompt = prompt;
         b.textContent = prompt.length > 46 ? `${prompt.slice(0, 46)}...` : prompt;

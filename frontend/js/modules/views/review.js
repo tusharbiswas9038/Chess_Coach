@@ -427,10 +427,10 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
     const journalMarkup = renderJournalMarkup(data.journal);
 
     container.innerHTML = `
-    <div class="game-meta-row mb-5 flex flex-wrap items-center gap-2">
+    <div class="game-meta-row mb-4 flex flex-wrap items-center gap-2">
       ${colorBadge(g.color)}
       ${resultBadge(g.result)}
-      <span class="opening-pill">${esc(g.opening_eco || '?')}</span>
+      <span class="opening-pill badge badge-outline badge-sm">${esc(g.opening_eco || '?')}</span>
       <span class="game-meta-detail text-[13px]">${
   esc(g.opening_name || 'Unknown opening')
 }</span>
@@ -441,7 +441,7 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
     </div>
 
     <div class="review-workspace mb-2 grid gap-2 [grid-template-columns:minmax(0,_1.25fr)_320px] max-md:[grid-template-columns:1fr]">
-      <section class="review-stage rounded-cc border border-[var(--border)] bg-[var(--surface)] p-5">
+      <section class="review-stage surface-premium rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
         <div class="review-header flex flex-wrap items-start justify-between gap-2">
           <div>
             <div class="section-kicker">Review Workspace</div>
@@ -456,12 +456,12 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
         </div>
 
         <div class="review-toolbar mt-2 flex flex-wrap items-center justify-between gap-2 max-sm:items-start">
-          <div class="review-nav flex flex-wrap gap-1 max-sm:w-full">
-            <button class="btn btn-ghost" id="review-prev">← Prev</button>
-            <button class="btn btn-ghost" id="review-next">Next →</button>
-            <button class="btn btn-ghost" id="review-critical">Critical</button>
-            <button class="btn btn-ghost" id="review-flip">Flip Board</button>
-            <button class="btn btn-primary" id="review-ask-coach">Ask Coach</button>
+          <div class="review-nav flex flex-wrap gap-1 max-sm:grid max-sm:w-full max-sm:grid-cols-2">
+            <button class="btn btn-ghost btn-sm min-h-[40px]" id="review-prev">← Prev</button>
+            <button class="btn btn-ghost btn-sm min-h-[40px]" id="review-next">Next →</button>
+            <button class="btn btn-ghost btn-sm min-h-[40px]" id="review-critical">Critical</button>
+            <button class="btn btn-ghost btn-sm min-h-[40px]" id="review-flip">Flip Board</button>
+            <button class="btn btn-primary btn-sm min-h-[40px] max-sm:col-span-2" id="review-ask-coach">Ask Coach</button>
           </div>
           <div class="meta-label" id="review-counter"></div>
         </div>
@@ -478,7 +478,7 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
           />
         </div>
 
-        <div class="review-choice-grid mt-2 grid gap-[10px] [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
+        <div class="review-choice-grid mt-2 grid gap-2 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
           <button class="review-choice active rounded-cc border border-[var(--border)] bg-[var(--surface-2)] p-3 text-left transition-colors duration-150 hover:border-[var(--blue)]" data-review-mode="before" type="button">
             <div class="review-choice-label text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">Position</div>
             <div class="review-choice-value mt-1 text-[15px] font-semibold" id="review-position-label">Current position</div>
@@ -498,7 +498,7 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
       </section>
 
       <aside class="mistake-panel flex flex-col gap-1">
-        <div class="review-side-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-[18px]">
+        <div class="review-side-card surface-premium rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
           <div class="review-side-title text-[13px] font-semibold">Move Summary</div>
           <div class="review-summary-list mt-2 grid gap-[10px]">
             <div class="review-summary-row flex items-center justify-between gap-2 border-b border-[var(--border)] pb-2">
@@ -533,7 +533,7 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
 
     <div class="game-detail-grid grid items-start gap-2 [grid-template-columns:1fr_340px] max-md:[grid-template-columns:1fr]">
       <div>
-        <div class="card">
+        <div class="card surface-premium">
           <div class="card-header flex items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2">
             <div class="card-title">Your Moves Analysis</div>
             <div class="table-meta">${
