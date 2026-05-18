@@ -245,7 +245,7 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
         (item, i) => `
     <div class="drill-queue-item ${i === 0 ? 'current' : ''}">
       <span class="queue-order">${drillIdx + i + 1}.</span>
-      <span class="mtag queue-tag mtag-${
+      <span class="mtag badge badge-xs queue-tag mtag-${
   item.mistake_type || 'blunder'
 }">
         ${(item.mistake_type || 'blunder').replace('_', ' ')}

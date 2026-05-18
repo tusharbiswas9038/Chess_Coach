@@ -25,6 +25,7 @@ export function initChartDefaults() {
   Chart.defaults.color = palette.text;
   Chart.defaults.font.family = 'Inter, sans-serif';
   Chart.defaults.font.size = 12;
+  Chart.defaults.font.weight = '500';
   Chart.defaults.maintainAspectRatio = false;
   Chart.defaults.events = ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'];
   Chart.defaults.interaction = {
@@ -42,7 +43,11 @@ export function initChartDefaults() {
     pointStyle: 'circle',
     boxWidth: 8,
     boxHeight: 8,
-    padding: 12,
+    padding: 14,
+    font: {
+      size: 11,
+      weight: '600',
+    },
   });
   const defaultTooltipCallbacks = Chart.defaults.plugins.tooltip.callbacks || {};
   Object.assign(Chart.defaults.plugins.tooltip, {
@@ -57,6 +62,8 @@ export function initChartDefaults() {
     padding: 10,
     displayColors: true,
     cornerRadius: 10,
+    titleFont: { size: 12, weight: '700' },
+    bodyFont: { size: 11, weight: '500' },
     callbacks: {
       ...defaultTooltipCallbacks,
       label(context) {
@@ -77,12 +84,20 @@ export function baseCartesianOptions({ min = null, max = null, percent = false }
     scales: {
       x: {
         grid: { color: palette.grid, drawBorder: false },
-        ticks: { color: palette.muted, maxRotation: 0, autoSkipPadding: 12 },
+        ticks: {
+          color: palette.muted,
+          maxRotation: 0,
+          autoSkipPadding: 12,
+          font: { size: 11, weight: '500' },
+          padding: 6,
+        },
       },
       y: {
         grid: { color: palette.grid, drawBorder: false },
         ticks: {
           color: palette.muted,
+          font: { size: 11, weight: '500' },
+          padding: 6,
           callback(value) {
             const raw = Number(value);
             if (!Number.isFinite(raw)) return value;

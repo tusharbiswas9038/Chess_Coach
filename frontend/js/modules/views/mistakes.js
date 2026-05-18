@@ -54,13 +54,13 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
         'card card-pad mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-cc-soft';
       view.prepend(panel);
     }
-    panel.innerHTML = `
+      panel.innerHTML = `
       ${statePanelMarkup(message, {
         kind: 'error',
         compact: true,
         actions: `
-          ${showRetry ? '<button class="btn btn-ghost mt-2" type="button" data-retry-mistakes>Retry</button>' : ''}
-          <button class="btn btn-ghost mt-2" type="button" data-run-analysis-mistakes>Run Analysis</button>
+          ${showRetry ? '<button class="btn btn-ghost" type="button" data-retry-mistakes>Retry</button>' : ''}
+          <button class="btn btn-ghost" type="button" data-run-analysis-mistakes>Run Analysis</button>
         `,
       })}
     `;
@@ -145,6 +145,8 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
     ).toLocaleString();
 
     const tbody = dom.byId('critical-mistakes-body');
+    const criticalMeta = dom.byId('mistakes-critical-meta');
+    if (criticalMeta) criticalMeta.textContent = 'Loading latest priority positions…';
     tbody.innerHTML = tableStateRowMarkup('Loading critical mistakes...', 6, { kind: 'loading' });
 
     const [phaseResult, heatmapResult, criticalResult, motifsResult] = await Promise.allSettled([
@@ -256,6 +258,7 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
       tbody.innerHTML = tableStateRowMarkup('Unable to load critical mistakes.', 6, {
         kind: 'error',
       });
+      if (criticalMeta) criticalMeta.textContent = 'Unavailable right now';
       setSectionError('mistakes-card-critical', true);
       hadSectionError = true;
       renderInlineStatus('Some mistake insights failed to load.', true);
@@ -264,9 +267,16 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
     }
     setSectionError('mistakes-card-critical', false);
     const rows = criticalResult.value || [];
+    const visibleRows = rows.slice(0, 60);
+    if (criticalMeta) {
+      criticalMeta.textContent =
+        rows.length > 60
+          ? `Showing top 60 of ${rows.length} positions`
+          : `${rows.length} priority positions`;
+    }
 
     tbody.innerHTML =
-      rows
+      visibleRows
         .map(
           (m) => `
     <tr>
@@ -281,7 +291,7 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
         )
         .join('') ||
       tableStateRowMarkup('No critical mistakes available yet.', 6, {
-        actions: '<button class="btn btn-ghost mt-2" type="button" data-run-analysis-mistakes>Run Analysis</button>',
+        actions: '<button class="btn btn-ghost" type="button" data-run-analysis-mistakes>Run Analysis</button>',
       });
 
     if (hadSectionError) {
