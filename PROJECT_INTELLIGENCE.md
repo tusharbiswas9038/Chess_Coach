@@ -21,28 +21,28 @@
 ## 3. High-Level Architecture
 
 ### Frontend architecture
-- Single-page shell in [frontend/index.html](/home/chess_coach/chess-coach/frontend/index.html).
-- App bootstrap in [frontend/js/app.js](/home/chess_coach/chess-coach/frontend/js/app.js) composes feature modules (`views/*`), shared helpers (`api`, `contracts`, `ui`, `charts`, `cache`, `preferences`, `jobs`).
-- Hash-based route state (`#/dashboard`, etc.) via [navigation.js](/home/chess_coach/chess-coach/frontend/js/modules/views/navigation.js).
-- API paths + response normalizers centralized in [contracts.js](/home/chess_coach/chess-coach/frontend/js/modules/contracts.js).
+- Single-page shell in [frontend/index.html](/frontend/index.html).
+- App bootstrap in [frontend/js/app.js](/frontend/js/app.js) composes feature modules (`views/*`), shared helpers (`api`, `contracts`, `ui`, `charts`, `cache`, `preferences`, `jobs`).
+- Hash-based route state (`#/dashboard`, etc.) via [navigation.js](/frontend/js/modules/views/navigation.js).
+- API paths + response normalizers centralized in [contracts.js](/frontend/js/modules/contracts.js).
 
 ### Backend architecture
-- FastAPI entrypoint in [api/main.py](/home/chess_coach/chess-coach/api/main.py) mounts static frontend and includes routers.
+- FastAPI entrypoint in [api/main.py](/api/main.py) mounts static frontend and includes routers.
 - Router layer in `api/routers/*` for endpoint grouping.
-- Data access via [GameRepository](/home/chess_coach/chess-coach/api/repositories/game_repository.py).
-- Job orchestration in [api/services/job_enqueue_helpers.py](/home/chess_coach/chess-coach/api/services/job_enqueue_helpers.py) + [api/job_queue.py](/home/chess_coach/chess-coach/api/job_queue.py).
+- Data access via [GameRepository](/api/repositories/game_repository.py).
+- Job orchestration in [api/services/job_enqueue_helpers.py](/api/services/job_enqueue_helpers.py) + [api/job_queue.py](/api/job_queue.py).
 - Background computations: sync, stockfish analysis, session aggregation, player model snapshot, weekly report, DB maintenance.
 
 ### Data + AI flow
-1. `POST /api/jobs/sync` -> [sync/fetch_games.py](/home/chess_coach/chess-coach/sync/fetch_games.py) inserts new games.
-2. `POST /api/jobs/analyze` -> [engine/stockfish_worker.py](/home/chess_coach/chess-coach/engine/stockfish_worker.py) analyzes pending games, writes `moves` and `mistakes`.
-3. `POST /api/jobs/player-model` or post-sync/analyze hooks -> [player_model.py](/home/chess_coach/chess-coach/api/services/player_model.py) writes snapshots + updates `player_profile`.
+1. `POST /api/jobs/sync` -> [sync/fetch_games.py](/sync/fetch_games.py) inserts new games.
+2. `POST /api/jobs/analyze` -> [engine/stockfish_worker.py](/engine/stockfish_worker.py) analyzes pending games, writes `moves` and `mistakes`.
+3. `POST /api/jobs/player-model` or post-sync/analyze hooks -> [player_model.py](/api/services/player_model.py) writes snapshots + updates `player_profile`.
 4. Dashboard/stats/product APIs read aggregates from repository.
-5. Coach/game reports call Ollama through [coach/ollama_client.py](/home/chess_coach/chess-coach/coach/ollama_client.py).
+5. Coach/game reports call Ollama through [coach/ollama_client.py](/coach/ollama_client.py).
 
 ### Request lifecycle
-- Security headers + CSP + request-id + body-size gate in middleware ([api/main.py](/home/chess_coach/chess-coach/api/main.py)).
-- Optional admin token guard and in-memory rate limits ([api/security.py](/home/chess_coach/chess-coach/api/security.py)).
+- Security headers + CSP + request-id + body-size gate in middleware ([api/main.py](/api/main.py)).
+- Optional admin token guard and in-memory rate limits ([api/security.py](/api/security.py)).
 - DB opened per request via dependency/context manager (`db_conn()`).
 
 ## 4. Folder & File Breakdown
@@ -68,20 +68,20 @@
 ## 5. Frontend Analysis
 
 ### Routing/navigation/state
-- Route parsing + hash sync in [navigation.js](/home/chess_coach/chess-coach/frontend/js/modules/views/navigation.js).
-- Central mutable app state in [app.js](/home/chess_coach/chess-coach/frontend/js/app.js) (`statsData`, `charts`).
+- Route parsing + hash sync in [navigation.js](/frontend/js/modules/views/navigation.js).
+- Central mutable app state in [app.js](/frontend/js/app.js) (`statsData`, `charts`).
 - View modules created with dependency injection style; each binds its own events.
 
 ### Reusable frontend primitives
-- API contract/normalization: [contracts.js](/home/chess_coach/chess-coach/frontend/js/modules/contracts.js).
-- Fetch helpers: [api.js](/home/chess_coach/chess-coach/frontend/js/modules/api.js).
-- Shared markup helpers (state rows/badges/etc.): [ui.js](/home/chess_coach/chess-coach/frontend/js/modules/ui.js).
-- Chart defaults + palettes: [charts.js](/home/chess_coach/chess-coach/frontend/js/modules/charts.js).
-- Cache + invalidation hooks: [cache.js](/home/chess_coach/chess-coach/frontend/js/modules/cache.js), [jobs.js](/home/chess_coach/chess-coach/frontend/js/modules/jobs.js).
+- API contract/normalization: [contracts.js](/frontend/js/modules/contracts.js).
+- Fetch helpers: [api.js](/frontend/js/modules/api.js).
+- Shared markup helpers (state rows/badges/etc.): [ui.js](/frontend/js/modules/ui.js).
+- Chart defaults + palettes: [charts.js](/frontend/js/modules/charts.js).
+- Cache + invalidation hooks: [cache.js](/frontend/js/modules/cache.js), [jobs.js](/frontend/js/modules/jobs.js).
 
 ### Styling system and UX direction
-- Tailwind+daisy is primary owner ([tailwind.input.css](/home/chess_coach/chess-coach/frontend/css/tailwind.input.css)).
-- Residual CSS constrained by [STYLING_CONTRACT.md](/home/chess_coach/chess-coach/frontend/STYLING_CONTRACT.md).
+- Tailwind+daisy is primary owner ([tailwind.input.css](/frontend/css/tailwind.input.css)).
+- Residual CSS constrained by [STYLING_CONTRACT.md](/frontend/STYLING_CONTRACT.md).
 - Current direction: dark, data-dense “premium coaching workspace”, stronger hierarchy, selective accent usage, improved loading/error states.
 
 ### Frontend strengths
@@ -150,25 +150,25 @@ Core tables: `games`, `moves`, `mistakes`, `srs_items`, `player_profile`, `playe
 ## 8. AI / Chess Intelligence System
 
 ### Stockfish pipeline
-- Entry: [run_analysis_worker](/home/chess_coach/chess-coach/engine/stockfish_worker.py) scans `games.analyzed=0`.
+- Entry: [run_analysis_worker](/engine/stockfish_worker.py) scans `games.analyzed=0`.
 - Per move: computes eval before; derives eval after from next ply; classifies player moves.
 - Mistake extraction: thresholds + hanging-piece detection + critical move flag.
 - Idempotent re-analysis by deleting prior `moves`/`mistakes` for game first.
 
 ### Classification and phase
-- Uses shared helpers in [core/chess_utils.py](/home/chess_coach/chess-coach/core/chess_utils.py) (classify_move, phase detect, hanging logic).
+- Uses shared helpers in [core/chess_utils.py](/core/chess_utils.py) (classify_move, phase detect, hanging logic).
 
 ### Ollama integration
-- [coach/ollama_client.py](/home/chess_coach/chess-coach/coach/ollama_client.py): async client, chat stream/non-stream, model split fast vs full.
+- [coach/ollama_client.py](/coach/ollama_client.py): async client, chat stream/non-stream, model split fast vs full.
 - Batch reports use `fast=True`; chat uses main model with injected player context.
 
 ### Prompt building/report generation
-- [prompt_builder.py](/home/chess_coach/chess-coach/coach/prompt_builder.py): builds player context and per-game structured prompts.
-- [game_report.py](/home/chess_coach/chess-coach/coach/game_report.py): async generation wrapped for sync callers, writes `journal_entries`.
-- [weekly_report.py](/home/chess_coach/chess-coach/reports/weekly_report.py): weekly summary markdown with actionable sections.
+- [prompt_builder.py](/coach/prompt_builder.py): builds player context and per-game structured prompts.
+- [game_report.py](/coach/game_report.py): async generation wrapped for sync callers, writes `journal_entries`.
+- [weekly_report.py](/reports/weekly_report.py): weekly summary markdown with actionable sections.
 
 ### Drill/SRS logic
-- [drills/srs_scheduler.py](/home/chess_coach/chess-coach/drills/srs_scheduler.py): SM-2 style update, due query, result writeback.
+- [drills/srs_scheduler.py](/drills/srs_scheduler.py): SM-2 style update, due query, result writeback.
 - Populates from high eval-loss mistakes not already in queue.
 
 ## 9. Current Features (Implemented)
@@ -232,8 +232,8 @@ Core tables: `games`, `moves`, `mistakes`, `srs_items`, `player_profile`, `playe
 ### Preserve these patterns
 - Keep **Vanilla JS + ES modules** architecture.
 - Keep **FastAPI + repository/service split**; avoid dumping SQL into routers.
-- Keep endpoint contracts centralized in [frontend/js/modules/contracts.js](/home/chess_coach/chess-coach/frontend/js/modules/contracts.js).
-- Keep Tailwind token authority in [frontend/css/tailwind.input.css](/home/chess_coach/chess-coach/frontend/css/tailwind.input.css); follow [frontend/STYLING_CONTRACT.md](/home/chess_coach/chess-coach/frontend/STYLING_CONTRACT.md).
+- Keep endpoint contracts centralized in [frontend/js/modules/contracts.js](/frontend/js/modules/contracts.js).
+- Keep Tailwind token authority in [frontend/css/tailwind.input.css](/frontend/css/tailwind.input.css); follow [frontend/STYLING_CONTRACT.md](/frontend/STYLING_CONTRACT.md).
 
 ### Preferred implementation style
 - Small, surgical changes with clear ownership.
