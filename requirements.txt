@@ -1,9 +1,13 @@
-fastapi
+fastapi==0.109.1
+starlette==0.40.0
+anyio==4.4.0
+h11==0.16.0
+zipp==3.19.1
+python-dotenv==1.2.2
 uvicorn[standard]
 httpx
 python-chess
 pydantic
 jinja2
-python-dotenv
 aiofiles
 apscheduler
