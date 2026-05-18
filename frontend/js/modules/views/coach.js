@@ -1,4 +1,4 @@
-import { emptyStateMarkup, esc } from '../ui.js';
+import { emptyStateMarkup } from '../ui.js';
 import { createDomCache } from '../dom.js';
 import { endpoints } from '../contracts.js';
 
@@ -47,26 +47,31 @@ export function createCoachView({
       return;
     }
 
-    container.innerHTML =
-      coachHistory
-        .map(
-          (message) => {
-            const role = message?.role === 'user' ? 'user' : 'assistant';
-            return `
-          <div class="coach-message coach-message-${role} mb-3 flex ${role === 'user' ? 'justify-end' : 'justify-start'}">
-            <div class="coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm leading-relaxed">${esc(message.content)}</div>
-          </div>
-        `
-          }
-        )
-        .join('') +
-      (pending
-        ? `
-          <div class="coach-message coach-message-assistant coach-message-pending mb-3 flex justify-start">
-            <div class="coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm">Coach is thinking…</div>
-          </div>
-        `
-        : '');
+    container.textContent = '';
+    coachHistory.forEach((message) => {
+      const role = message?.role === 'user' ? 'user' : 'assistant';
+      const row = document.createElement('div');
+      row.className = `coach-message coach-message-${role} mb-3 flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+
+      const bubble = document.createElement('div');
+      bubble.className =
+        'coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm leading-relaxed';
+      bubble.textContent = String(message?.content || '');
+
+      row.appendChild(bubble);
+      container.appendChild(row);
+    });
+
+    if (pending) {
+      const row = document.createElement('div');
+      row.className = 'coach-message coach-message-assistant coach-message-pending mb-3 flex justify-start';
+      const bubble = document.createElement('div');
+      bubble.className =
+        'coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm';
+      bubble.textContent = 'Coach is thinking…';
+      row.appendChild(bubble);
+      container.appendChild(row);
+    }
     container.scrollTop = container.scrollHeight;
   }
 
