@@ -4,8 +4,8 @@ anyio==4.4.0
 h11==0.16.0
 zipp==3.19.1
 python-dotenv==1.2.2
-uvicorn[standard]
-httpx
+uvicorn[standard]==0.43.0
+httpx==0.28.1
 python-chess
 pydantic
 jinja2
