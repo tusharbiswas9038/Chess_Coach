@@ -50,11 +50,14 @@ export function createCoachView({
     container.innerHTML =
       coachHistory
         .map(
-          (message) => `
-          <div class="coach-message coach-message-${message.role} mb-3 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}">
+          (message) => {
+            const role = message?.role === 'user' ? 'user' : 'assistant';
+            return `
+          <div class="coach-message coach-message-${role} mb-3 flex ${role === 'user' ? 'justify-end' : 'justify-start'}">
             <div class="coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm leading-relaxed">${esc(message.content)}</div>
           </div>
         `
+          }
         )
         .join('') +
       (pending
