@@ -1,136 +1,6 @@
-/* ── RESPONSIVE ── */
-@media (max-width: 900px) {
-  :root {
-    --sidebar-width: 60px;
-  }
+/* ── RESPONSIVE (Residual custom rules only) ── */
 
-  .sidebar {
-    width: var(--sidebar-width);
-  }
-
-  .topbar-sidebar-toggle {
-    display: inline-flex;
-  }
-
-  body.sidebar-collapsed {
-    --sidebar-width: 60px;
-  }
-
-  .sidebar-logo-text,
-  .sidebar-logo-sub,
-  .nav-item span {
-    display: none;
-  }
-
-  .main {
-    margin-left: var(--sidebar-width);
-  }
-
-  body.sidebar-tablet-open {
-    --sidebar-width: 220px;
-  }
-
-  body.sidebar-tablet-open .sidebar-logo-text,
-  body.sidebar-tablet-open .sidebar-logo-sub,
-  body.sidebar-tablet-open .nav-item span {
-    display: block;
-  }
-
-  body.sidebar-tablet-open .nav-item {
-    justify-content: flex-start;
-    padding: var(--space-1) var(--space-2);
-  }
-
-  .charts-row {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-focus {
-    grid-template-columns: 1fr;
-  }
-
-  .session-flow-widget {
-    grid-template-columns: 1fr;
-  }
-
-  .session-flow-steps {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .games-filter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .dashboard-focus-main {
-    padding-top: 0;
-  }
-
-  .dashboard-title {
-    max-width: none;
-  }
-
-  .focus-metrics {
-    grid-template-columns: 1fr;
-  }
-
-  .next-step-panel {
-    padding: var(--space-2);
-  }
-
-  .game-detail-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .review-workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .coach-workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .review-choice-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .kpi-grid-triple {
-    grid-template-columns: 1fr;
-  }
-
-  .charts-row-triple,
-  .charts-row-openings {
-    grid-template-columns: 1fr;
-  }
-
-  /* drill board */
-  .drill-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .drill-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .drill-toolbar-actions {
-    justify-content: flex-start;
-  }
-
-  #drill-board {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1;
-  }
-
-  .piece {
-    font-size: 6vw;
-  }
-
-  .chart-card-span-2 {
-    grid-column: span 1;
-  }
-}
-
+/* 1) Mobile bottom-nav behavior */
 @media (max-width: 640px) {
   :root {
     --sidebar-width: 0px;
@@ -144,12 +14,12 @@
     width: 100%;
     height: auto;
     top: auto;
+    right: 0;
     bottom: 0;
     left: 0;
-    right: 0;
-    border-right: none;
-    border-top: 1px solid var(--border);
     z-index: 120;
+    border-top: 1px solid var(--border);
+    border-right: none;
   }
 
   body.sidebar-collapsed {
@@ -162,32 +32,23 @@
   }
 
   .sidebar-nav {
-    padding: 6px max(8px, env(safe-area-inset-left))
-      calc(6px + env(safe-area-inset-bottom))
-      max(8px, env(safe-area-inset-right));
     flex-direction: row;
     align-items: stretch;
     justify-content: space-between;
     gap: 6px;
-  }
-
-  body.sidebar-collapsed .sidebar-nav {
-    align-items: stretch;
+    padding: 6px max(8px, env(safe-area-inset-left))
+      calc(6px + env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-right));
   }
 
   .nav-item {
     position: relative;
-    flex-direction: column;
-    gap: 2px;
-    min-height: 48px;
-    padding: 8px 6px;
     justify-content: center;
+    min-height: 48px;
     border-radius: 10px;
-  }
-
-  body.sidebar-collapsed .nav-item {
-    width: auto;
     padding: 8px 6px;
+    gap: 2px;
+    flex-direction: column;
   }
 
   .nav-item span {
@@ -200,212 +61,23 @@
     line-height: 1.1;
   }
 
-  body.sidebar-collapsed .nav-item span {
-    display: block;
-  }
-
-  .nav-item svg {
-    width: 18px;
-    height: 18px;
-  }
-
   .nav-badge {
     position: absolute;
     top: 4px;
     right: 4px;
     min-width: 16px;
-    padding: 0 5px;
     margin-left: 0;
+    padding: 0 5px;
     font-size: 10px;
   }
 
   .main {
     margin-left: 0;
   }
+}
 
-  .content {
-    padding: var(--space-2);
-  }
-
-  .kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-1);
-  }
-
-  .kpi-card {
-    padding: 14px;
-  }
-
-  .kpi-value {
-    font-size: 22px;
-  }
-
-  .topbar {
-    height: auto;
-    min-height: 56px;
-    padding: 0 var(--space-2);
-  }
-
-  .topbar-main {
-    min-width: 0;
-    gap: var(--space-1);
-  }
-
-  .topbar-breadcrumb {
-    display: none;
-  }
-
-  .topbar-actions {
-    margin-left: auto;
-    position: relative;
-  }
-
-  .topbar-title {
-    font-size: 15px;
-  }
-
-  .topbar-sidebar-toggle {
-    display: none;
-  }
-
-  .topbar-actions-toggle {
-    display: inline-flex;
-  }
-
-  .topbar-actions-list {
-    display: none;
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    z-index: 130;
-    min-width: 180px;
-    padding: var(--space-1);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    flex-direction: column;
-  }
-
-  .topbar-actions.is-open .topbar-actions-list {
-    display: flex;
-  }
-
-  .topbar-actions-list .btn {
-    width: 100%;
-    justify-content: flex-start;
-    min-height: 44px;
-    padding: var(--space-1) var(--space-2);
-  }
-
-  .hanging-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .games-filter-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .games-filter-actions {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .coach-hero,
-  .coach-form-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .coach-title {
-    max-width: none;
-  }
-
-  .coach-bubble {
-    max-width: 100%;
-  }
-
-  .review-toolbar {
-    align-items: flex-start;
-  }
-
-  .review-scrubber-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .pagination {
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-
-  .quality-btns {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .session-flow-widget {
-    padding: var(--space-2);
-  }
-
-  .session-flow-steps {
-    display: flex;
-    gap: var(--space-1);
-    margin: 0 calc(var(--space-2) * -1);
-    padding: 0 var(--space-2) 4px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
-  }
-
-  .session-step {
-    flex: 0 0 min(78vw, 260px);
-    min-height: 96px;
-    scroll-snap-align: start;
-  }
-
-  .next-step-header {
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .next-step-actions .btn {
-    flex: 1;
-    justify-content: center;
-    min-height: 44px;
-  }
-
-  .journal-empty-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .card-header {
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .session-flow-title {
-    font-size: 22px;
-  }
-
-  .session-flow-summary {
-    max-width: 34ch;
-  }
-
-  .card-title {
-    min-width: 0;
-  }
-
-  .table-meta {
-    white-space: normal;
-  }
-
-  .card {
-    overflow-x: auto;
-  }
-
+/* 2) Table-to-card transformation rules */
+@media (max-width: 640px) {
   table {
     min-width: 640px;
   }
@@ -446,12 +118,12 @@
   #view-dashboard #recent-games-body td,
   #view-games #all-games-body td {
     display: grid;
-    grid-template-columns: 90px 1fr;
-    gap: 10px;
     align-items: center;
-    white-space: normal;
-    padding: 6px 14px;
     border: none;
+    gap: 10px;
+    padding: 6px 14px;
+    white-space: normal;
+    grid-template-columns: 90px 1fr;
   }
 
   #view-dashboard #recent-games-body td::before,
@@ -459,9 +131,9 @@
     content: attr(data-label);
     color: var(--muted);
     font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
     font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   #view-dashboard #recent-games-body td[data-label='Action'],
@@ -486,342 +158,42 @@
     content: none;
   }
 
-  #view-dashboard .btn-table-action,
-  #view-games .btn-table-action {
+  #view-dashboard #recent-games-body td[data-label='Action'] .btn,
+  #view-games #all-games-body td[data-label='Action'] .btn {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* 3) Chess board/heatmap sizing constraints */
+@media (max-width: 900px) {
+  #drill-board {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .piece {
+    font-size: 6vw;
   }
 }
 
 @media (max-width: 480px) {
-  .content {
-    padding: 14px;
-  }
-
-  .topbar {
-    padding: 8px 14px;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .topbar-title {
-    font-size: 14px;
-  }
-
-  .topbar-actions {
-    margin-left: 0;
-    width: auto;
-  }
-
-  .topbar-actions-toggle {
-    min-height: 36px;
-  }
-
-  .topbar-actions-list {
-    left: 0;
-    right: 0;
-    min-width: 0;
-  }
-
-  .card-header,
-  .card-pad,
-  .card-body,
-  .journal-content {
-    padding-left: 14px;
-    padding-right: 14px;
-  }
-
-  .card-header {
-    padding-top: 12px;
-    padding-bottom: 12px;
-  }
-
-  .dashboard-actions,
-  .review-nav {
-    width: 100%;
-  }
-
-  .dashboard-focus-panel {
-    padding: 16px;
-  }
-
-  .focus-panel-value {
-    font-size: 24px;
-  }
-
-  .focus-panel-text {
-    font-size: 13px;
-  }
-
-  .kpi-grid {
-    gap: 8px;
-  }
-
-  .kpi-card {
-    min-height: 112px;
-  }
-
-  .kpi-label,
-  .kpi-sub {
-    font-size: 11px;
-  }
-
-  .dashboard-actions .btn,
-  .review-nav .btn {
-    flex: 1;
-    justify-content: center;
-  }
-
-  .review-stage,
-  .review-side-card,
-  .drill-info-card,
-  .board-wrap {
-    padding: 14px;
-  }
-
-  .review-title {
-    font-size: 24px;
-  }
-
-  .review-caption,
-  .review-choice-meta,
-  .drill-toolbar-subtitle {
-    font-size: 11px;
-  }
-
-  .review-choice {
-    padding: 12px;
-  }
-
-  .review-choice-value {
-    font-size: 14px;
-  }
-
-  .review-summary-row {
-    gap: 8px;
-  }
-
-  .review-summary-label,
-  .review-summary-value {
-    font-size: 11px;
-  }
-
-  .drill-toolbar {
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  .drill-toolbar-actions {
-    width: 100%;
-  }
-
-  .drill-toolbar-actions .btn,
-  .drill-toolbar-actions .flip-btn {
-    flex: 1;
-    justify-content: center;
-    min-height: 44px;
-  }
-
-  .drill-layout {
-    gap: 14px;
-  }
-
-  .board-wrap {
-    padding: 12px;
-  }
-
   #drill-board {
     max-width: min(100%, max(260px, calc(100svh - 260px)));
   }
-
-  .board-header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 12px;
-  }
-
-  .drill-feedback {
-    margin-top: 12px;
-    padding: 10px 12px;
-    font-size: 12px;
-  }
-
-  .drill-queue-item {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .queue-date {
-    font-size: 11px;
-  }
-
-  .quality-btns {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .quality-btn {
-    min-height: 48px;
-    display: grid;
-    align-content: center;
-  }
-
-  .drill-info-card {
-    padding: 14px;
-  }
-
-  .drill-stat-row {
-    min-height: 40px;
-  }
-
-  .bar-row {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .bar-label {
-    width: auto;
-  }
-
-  .toast {
-    left: 14px;
-    right: 14px;
-    bottom: 14px;
-  }
-
-  th {
-    padding: 8px 12px;
-    font-size: 10px;
-  }
-
-  td {
-    padding: 9px 12px;
-    font-size: 12px;
-  }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
-}
-
+/* 4) Ultra-small device exceptions */
 @media (max-width: 360px) {
-  .content {
-    padding: 12px;
-  }
-
-  .topbar {
-    padding: 8px 12px;
-  }
-
-  .topbar-actions .btn {
-    min-height: 34px;
-    padding: 6px 8px;
-  }
-
-  .review-title {
-    font-size: 22px;
-  }
-
-  .kpi-grid {
-    grid-template-columns: 1fr;
-  }
-
   .session-step {
     flex-basis: 86vw;
   }
 
-  .review-nav .btn,
-  .dashboard-actions .btn,
-  .next-step-actions .btn,
   .drill-toolbar-actions .btn,
   .drill-toolbar-actions .flip-btn {
-    font-size: 12px;
     min-height: 34px;
     padding: 6px 8px;
-  }
-}
-
-@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
-  .app {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom));
-  }
-
-  .topbar {
-    min-height: 46px;
-    padding: 6px 12px;
-  }
-
-  .topbar-title {
-    font-size: 13px;
-  }
-
-  .topbar-actions .btn {
-    min-height: 30px;
-    padding: 5px 8px;
     font-size: 12px;
-  }
-
-  .content {
-    padding: 10px 12px;
-  }
-
-  .sidebar-nav {
-    padding-top: 4px;
-    padding-bottom: calc(4px + env(safe-area-inset-bottom));
-  }
-
-  .nav-item {
-    min-height: 40px;
-    padding: 6px 4px;
-  }
-
-  .review-stage,
-  .review-side-card,
-  .drill-info-card,
-  .board-wrap,
-  .card-pad,
-  .card-body {
-    padding: 10px;
-  }
-
-  .review-title {
-    font-size: 20px;
-  }
-
-  .review-board-shell,
-  .review-toolbar,
-  .review-choice-grid,
-  .drill-feedback,
-  .quality-section {
-    margin-top: 10px;
-  }
-
-  .drill-toolbar {
-    margin-bottom: 10px;
-    gap: 8px;
-  }
-
-  .drill-toolbar-actions .btn,
-  .drill-toolbar-actions .flip-btn,
-  .review-nav .btn,
-  .dashboard-actions .btn {
-    min-height: 30px;
-    padding: 5px 8px;
-    font-size: 12px;
-  }
-
-  #drill-board {
-    width: min(100%, 320px);
-  }
-
-  .drill-queue-list {
-    max-height: 160px;
   }
 }

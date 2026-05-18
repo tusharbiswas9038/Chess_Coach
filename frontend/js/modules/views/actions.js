@@ -8,17 +8,21 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
   function closeActionsMenu() {
     const container = dom.query('.topbar-actions');
     const toggle = dom.byId('btn-actions-menu');
+    const list = dom.byId('topbar-actions-list');
     if (!container || !toggle) return;
     container.classList.remove('is-open');
+    if (list) list.dataset.open = 'false';
     toggle.setAttribute('aria-expanded', 'false');
   }
 
   function toggleActionsMenu() {
     const container = dom.query('.topbar-actions');
     const toggle = dom.byId('btn-actions-menu');
+    const list = dom.byId('topbar-actions-list');
     if (!container || !toggle) return;
     const nextOpen = !container.classList.contains('is-open');
     container.classList.toggle('is-open', nextOpen);
+    if (list) list.dataset.open = nextOpen ? 'true' : 'false';
     toggle.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
   }
 

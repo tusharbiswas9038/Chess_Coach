@@ -1,6 +1,22 @@
-@import url('./modules/tokens.css');
+/* Minimal residual CSS layer.
+   Main design system: frontend/css/tailwind.input.css -> tailwind.css */
 @import url('./modules/layout.css');
-@import url('./modules/views.css');
-@import url('./modules/components.css');
 @import url('./modules/features.css');
 @import url('./modules/responsive.css');
+
+/* Runtime fallback-only styles (kept minimal). */
+.noscript-panel {
+  min-height: 100dvh;
+  padding: 40px;
+  text-align: center;
+  font-family: sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.load-error {
+  padding: 40px;
+  text-align: center;
+  color: var(--text);
+  font-family: sans-serif;
+}

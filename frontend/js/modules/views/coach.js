@@ -1,4 +1,4 @@
-import { esc } from '../ui.js';
+import { emptyStateMarkup, esc } from '../ui.js';
 import { createDomCache } from '../dom.js';
 import { endpoints } from '../contracts.js';
 
@@ -37,14 +37,13 @@ export function createCoachView({
     const container = dom.byId('coach-messages');
     if (!coachHistory.length && !pending) {
       container.innerHTML = `
-      <div class="coach-empty">
-        <div class="coach-empty-icon">♟</div>
-        <div class="coach-empty-title">No coach conversation yet</div>
-        <div class="coach-empty-copy">
-          Pick a prompt or ask a direct question. The coach will use your current chess data as context.
+        <div class="coach-empty space-y-3">
+          ${emptyStateMarkup('No coach conversation yet', '♟', false)}
+          <div class="coach-empty-copy text-sm text-[var(--muted)]">
+            Pick a prompt or ask a direct question. The coach will use your current chess data as context.
+          </div>
         </div>
-      </div>
-    `;
+      `;
       return;
     }
 
@@ -52,16 +51,16 @@ export function createCoachView({
       coachHistory
         .map(
           (message) => `
-          <div class="coach-message coach-message-${message.role}">
-            <div class="coach-bubble">${esc(message.content)}</div>
+          <div class="coach-message coach-message-${message.role} mb-3 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}">
+            <div class="coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm leading-relaxed">${esc(message.content)}</div>
           </div>
         `
         )
         .join('') +
       (pending
         ? `
-          <div class="coach-message coach-message-assistant coach-message-pending">
-            <div class="coach-bubble">Coach is thinking…</div>
+          <div class="coach-message coach-message-assistant coach-message-pending mb-3 flex justify-start">
+            <div class="coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm">Coach is thinking…</div>
           </div>
         `
         : '');
@@ -149,7 +148,7 @@ export function createCoachView({
     if (promptList && !promptList.dataset.enhanced) {
       EXTRA_PROMPTS.forEach((prompt) => {
         const b = document.createElement('button');
-        b.className = 'coach-prompt';
+        b.className = 'coach-prompt btn btn-ghost w-full justify-start';
         b.type = 'button';
         b.dataset.coachPrompt = prompt;
         b.textContent = prompt.length > 46 ? `${prompt.slice(0, 46)}...` : prompt;

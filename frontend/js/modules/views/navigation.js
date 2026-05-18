@@ -169,10 +169,6 @@ export function createNavigationView({
         document.getElementById('btn-toggle-motion')?.click();
         return;
       }
-      if (event.key.toLowerCase() === 'd') {
-        event.preventDefault();
-        document.getElementById('btn-toggle-density')?.click();
-      }
     }
     if (event.key === '/' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();

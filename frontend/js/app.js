@@ -110,7 +110,7 @@ document.getElementById('btn-view-all-games').addEventListener('click', () => sh
 document.getElementById('btn-start-drills').addEventListener('click', () => showView('drills'));
 
 document
-  .querySelector('.back-btn')
+  .getElementById('btn-back-games')
   .addEventListener('click', () => showView('games'));
 
 gamesView.bindEvents();
@@ -139,7 +139,8 @@ function showView(name) {
 // ── TOAST ──
 function toast(msg, duration = 3000) {
   const el = document.createElement('div');
-  el.className = 'toast';
+  el.className =
+    'fixed bottom-6 right-6 z-[1000] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[13px] text-[var(--text)] shadow-cc-md';
   el.setAttribute('role', 'status');
   el.setAttribute('aria-live', 'polite');
   el.textContent = msg;

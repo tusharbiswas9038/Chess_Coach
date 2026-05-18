@@ -3,6 +3,7 @@ import {
   esc,
   openingToneClass,
   openingToneTextClass,
+  statePanelMarkup,
   tableStateRowMarkup,
   truncate,
 } from '../ui.js';
@@ -194,12 +195,11 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
       return;
     }
     statusEl.hidden = false;
-    statusEl.innerHTML = `
-      <div class="empty empty-compact">
-        <div>${esc(message)}</div>
-        ${showRetry ? '<button class="btn btn-ghost space-top-sm" type="button" data-retry-genome>Retry</button>' : ''}
-      </div>
-    `;
+    statusEl.innerHTML = statePanelMarkup(message, {
+      kind: 'error',
+      compact: true,
+      actions: showRetry ? '<button class="btn btn-ghost mt-2" type="button" data-retry-genome>Retry</button>' : '',
+    });
   }
 
   async function load(force = false) {
@@ -228,8 +228,10 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
       setChartError('chart-openings-white', true);
       setChartError('chart-openings-black', true);
       tbody.innerHTML = `
-        ${tableStateRowMarkup('Unable to load openings.', 6, { kind: 'error' })}
-        <tr><td colspan="6"><div class="empty empty-compact"><button class="btn btn-ghost" type="button" data-retry-openings>Retry</button></div></td></tr>
+        ${tableStateRowMarkup('Unable to load openings.', 6, {
+          kind: 'error',
+          actions: '<button class="btn btn-ghost mt-2" type="button" data-retry-openings>Retry</button>',
+        })}
       `;
       toast?.('Unable to load openings.');
       return;
@@ -272,10 +274,9 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
 
     if (!openingsSummary.length) {
       loadedAtMs = Date.now();
-      tbody.innerHTML = `
-        ${tableStateRowMarkup('No analyzed openings available yet.', 6)}
-        <tr><td colspan="6"><div class="empty empty-compact"><button class="btn btn-ghost" type="button" data-run-analysis-openings>Run Analysis</button></div></td></tr>
-      `;
+      tbody.innerHTML = tableStateRowMarkup('No analyzed openings available yet.', 6, {
+        actions: '<button class="btn btn-ghost mt-2" type="button" data-run-analysis-openings>Run Analysis</button>',
+      });
       return;
     }
     tbody.innerHTML = openingsSummary
@@ -283,19 +284,25 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
       .map((o) => {
         const winPct = o.win_pct.toFixed(0);
         const confidence = confidenceLabel(o.games);
+        const confidenceTone =
+          confidence === 'High'
+            ? 'badge-success'
+            : confidence === 'Medium'
+              ? 'badge-warning'
+              : 'badge-ghost';
         return `
       <tr>
         <td class="cell-code-strong">${esc(o.eco)}</td>
         <td>${truncate(o.name, 40)}</td>
         <td>${colorBadge(o.color)}</td>
-        <td>${o.games} <span class="confidence-badge confidence-${confidence.toLowerCase()}">${confidence}</span></td>
+        <td>${o.games} <span class="badge badge-xs ${confidenceTone} ml-1">${confidence}</span></td>
         <td>${o.wins}</td>
         <td>
-          <div class="bar-row">
-            <span class="bar-label ${openingToneTextClass(Number(winPct))}">${winPct}%</span>
-            <div class="progress-bar progress-bar-flex">
+          <div class="flex items-center gap-2">
+            <span class="min-w-10 text-right text-xs font-medium ${openingToneTextClass(Number(winPct))}">${winPct}%</span>
+            <div class="progress-bar grow">
               <progress
-                class="progress-meter ${openingToneClass(Number(winPct))}"
+                class="progress-meter progress h-2 w-full ${openingToneClass(Number(winPct))}"
                 max="100"
                 value="${winPct}"
               ></progress>

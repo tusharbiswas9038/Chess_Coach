@@ -258,11 +258,11 @@ export function createDashboardView({
     list.innerHTML = steps
       .map(
         (step, idx) => `
-          <div class="next-step-item${idx === 0 ? ' is-primary' : ''}">
-            <div class="next-step-rank">${idx + 1}</div>
-            <div class="next-step-copy">
-              <div class="next-step-title">${esc(step.title)}</div>
-              <div class="next-step-rationale">${esc(step.rationale)}</div>
+          <div class="next-step-item flex items-start gap-3 rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3 transition-colors ${idx === 0 ? 'is-primary border-[var(--primary)]/50 bg-[color-mix(in_srgb,var(--primary)_10%,var(--surface))]' : ''}">
+            <div class="next-step-rank inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-2)] text-xs font-semibold text-[var(--muted)]">${idx + 1}</div>
+            <div class="next-step-copy min-w-0">
+              <div class="next-step-title text-sm font-semibold text-[var(--text)]">${esc(step.title)}</div>
+              <div class="next-step-rationale mt-1 text-xs text-[var(--muted)]">${esc(step.rationale)}</div>
             </div>
           </div>
         `
@@ -450,10 +450,10 @@ export function createDashboardView({
     dom.byId('kpi-grid').innerHTML = Array.from({ length: 5 })
       .map(
         () => `
-      <div class="kpi-card">
-        <div class="skeleton skeleton-line skeleton-line-sm"></div>
-        <div class="skeleton skeleton-line skeleton-line-lg"></div>
-        <div class="skeleton skeleton-line skeleton-line-md"></div>
+      <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+        <div class="skeleton h-3 w-[42%] mb-[10px] rounded-[var(--radius)]"></div>
+        <div class="skeleton h-[30px] w-[56%] mb-[10px] rounded-[var(--radius)]"></div>
+        <div class="skeleton h-3 w-[74%] rounded-[var(--radius)]"></div>
       </div>
     `
       )
@@ -530,48 +530,48 @@ export function createDashboardView({
       streak >= 10 ? 'On Fire' : streak >= 5 ? 'Consistent' : streak >= 2 ? 'Starter' : 'New';
 
     dom.byId('kpi-grid').innerHTML = `
-    <div class="kpi-card">
-      <div class="kpi-label">Games Analyzed</div>
-      <div class="kpi-value kpi-blue">${analyzed.toLocaleString()}</div>
-      <div class="kpi-sub">${total} total, ${
+    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Games Analyzed</div>
+      <div class="kpi-value kpi-blue mt-2 text-2xl font-semibold">${analyzed.toLocaleString()}</div>
+      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">${total} total, ${
   statsData.games.pending
 } pending</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Hanging Piece Rate</div>
-      <div class="kpi-value kpi-bad">${hRate}%</div>
-      <div class="kpi-sub">pieces left en prise</div>
+    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Hanging Piece Rate</div>
+      <div class="kpi-value kpi-bad mt-2 text-2xl font-semibold">${hRate}%</div>
+      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">pieces left en prise</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Blunders / Game</div>
-      <div class="kpi-value kpi-bad">${bpg}</div>
-      <div class="kpi-sub">target: below 3</div>
+    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Blunders / Game</div>
+      <div class="kpi-value kpi-bad mt-2 text-2xl font-semibold">${bpg}</div>
+      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">target: below 3</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Current Win Rate</div>
-      <div class="kpi-value kpi-good">${
+    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Current Win Rate</div>
+      <div class="kpi-value kpi-good mt-2 text-2xl font-semibold">${
   statsData.weekly_stats[0]
     ? statsData.weekly_stats[0].win_pct + '%'
     : '—'
 }</div>
-      <div class="kpi-sub">this week</div>
+      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">this week</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Drill Goal</div>
-      <div class="kpi-value kpi-good" id="kpi-drill-goal-value">${todayDone}/${goalTarget}</div>
-      <div class="kpi-sub">daily target progress</div>
+    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Drill Goal</div>
+      <div class="kpi-value kpi-good mt-2 text-2xl font-semibold" id="kpi-drill-goal-value">${todayDone}/${goalTarget}</div>
+      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">daily target progress</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Streak / Achievement</div>
-      <div class="kpi-value kpi-blue" id="kpi-streak-value">${streak} day${streak === 1 ? '' : 's'}</div>
-      <div class="kpi-sub" id="kpi-streak-sub">${achievement}</div>
+    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Streak / Achievement</div>
+      <div class="kpi-value kpi-blue mt-2 text-2xl font-semibold" id="kpi-streak-value">${streak} day${streak === 1 ? '' : 's'}</div>
+      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]" id="kpi-streak-sub">${achievement}</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Total Mistakes</div>
-      <div class="kpi-value kpi-warn">${statsData.mistake_breakdown
+    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Total Mistakes</div>
+      <div class="kpi-value kpi-warn mt-2 text-2xl font-semibold">${statsData.mistake_breakdown
     .reduce((a, m) => a + m.count, 0)
     .toLocaleString()}</div>
-      <div class="kpi-sub">across all analyzed games</div>
+      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">across all analyzed games</div>
     </div>
   `;
 
@@ -595,12 +595,12 @@ export function createDashboardView({
       <td data-label="Color">${colorBadge(g.color)}</td>
       <td data-label="Result">${resultBadge(g.result)}</td>
       <td data-label="Opponent" class="cell-strong">${esc(g.opponent_rating) || '?'}</td>
-      <td data-label="Opening"><span class="opening-pill">${esc(g.opening_eco) || '?'}</span> ${truncate(
+      <td data-label="Opening"><span class="opening-pill badge badge-outline badge-sm">${esc(g.opening_eco) || '?'}</span> ${truncate(
   g.opening_name,
   30
 )}</td>
       <td data-label="Mistakes"><span class="${mistakeCountClass(g.mistake_count)}">${g.mistake_count}</span></td>
-      <td data-label="Action"><button class="btn btn-ghost btn-table-action" type="button" data-open-game-id="${g.id}">Review</button></td>
+      <td data-label="Action"><button class="btn btn-ghost btn-sm min-h-[44px] whitespace-nowrap px-[10px] text-xs" type="button" data-open-game-id="${g.id}">Review</button></td>
     </tr>
   `
       )
@@ -614,12 +614,13 @@ export function createDashboardView({
     const existingTiltEl = dom.byId('tilt-warning');
     if (tiltDetected && !existingTiltEl) {
       const tiltEl = document.createElement('div');
-      tiltEl.className = 'tilt-warning';
+      tiltEl.className =
+        'mb-5 flex items-center gap-3 rounded-cc border border-[rgba(210,153,34,0.3)] bg-[rgba(210,153,34,0.1)] px-[18px] py-[14px] text-[13px]';
       tiltEl.innerHTML = `
-        <span class="tilt-warning-icon" aria-hidden="true">!</span>
-        <div class="tilt-warning-body">
-          <strong class="tilt-warning-title">Tilt Warning</strong>
-          <div class="tilt-warning-copy">
+        <span class="text-[20px]" aria-hidden="true">!</span>
+        <div>
+          <strong class="text-[var(--warning)]">Tilt Warning</strong>
+          <div class="mt-[2px] text-xs text-[var(--muted)]">
             You've had 2+ consecutive losses today. Your accuracy typically drops 15% in this state.
             Consider taking a break and doing 5 drills instead.
           </div>

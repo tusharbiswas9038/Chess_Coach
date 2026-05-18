@@ -310,7 +310,7 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
   function bindEvents() {
     dom.byId('btn-reload-drills').addEventListener('click', loadDrills);
     dom.query('.flip-btn').addEventListener('click', flipBoard);
-    dom.query('.quality-btns')?.addEventListener('click', (event) => {
+    dom.byId('quality-section')?.addEventListener('click', (event) => {
       const btn = event.target.closest('.quality-btn[data-q]');
       if (!btn) return;
       submitQuality(parseInt(btn.dataset.q, 10));

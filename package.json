@@ -1,0 +1,21 @@
+{
+  "name": "chess-coach",
+  "version": "1.0.0",
+  "scripts": {
+    "css:build": "npx @tailwindcss/cli -i ./frontend/css/tailwind.input.css -o ./frontend/css/tailwind.css --minify",
+    "css:watch": "npx @tailwindcss/cli -i ./frontend/css/tailwind.input.css -o ./frontend/css/tailwind.css --watch",
+    "css:audit:migration": "python3 scripts/frontend_migration_audit.py",
+    "css:validate:migration": "npm run css:build && npm run css:audit:migration",
+    "frontend:gate": "npm run css:validate:migration"
+  },
+  "keywords": [],
+  "author": "",
+  "private": true,
+  "license": "ISC",
+  "description": "Personal Chess Coach frontend CSS build tools",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.0",
+    "daisyui": "^5.5.19",
+    "tailwindcss": "^4.3.0"
+  }
+}

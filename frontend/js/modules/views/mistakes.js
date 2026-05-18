@@ -1,4 +1,4 @@
-import { esc, fmt, mistakeTag, tableStateRowMarkup } from '../ui.js';
+import { esc, fmt, mistakeTag, statePanelMarkup, tableStateRowMarkup } from '../ui.js';
 import { createDomCache } from '../dom.js';
 import { endpoints } from '../contracts.js';
 import { createCache } from '../cache.js';
@@ -50,15 +50,19 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
     if (!panel) {
       panel = document.createElement('div');
       panel.id = 'mistakes-inline-status';
-      panel.className = 'card card-pad';
+      panel.className =
+        'card card-pad mt-3 overflow-hidden rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-cc-soft';
       view.prepend(panel);
     }
     panel.innerHTML = `
-      <div class="empty empty-compact">
-        <div>${esc(message)}</div>
-        ${showRetry ? '<button class="btn btn-ghost space-top-sm" type="button" data-retry-mistakes>Retry</button>' : ''}
-        <button class="btn btn-ghost space-top-sm" type="button" data-run-analysis-mistakes>Run Analysis</button>
-      </div>
+      ${statePanelMarkup(message, {
+        kind: 'error',
+        compact: true,
+        actions: `
+          ${showRetry ? '<button class="btn btn-ghost mt-2" type="button" data-retry-mistakes>Retry</button>' : ''}
+          <button class="btn btn-ghost mt-2" type="button" data-run-analysis-mistakes>Run Analysis</button>
+        `,
+      })}
     `;
   }
 
@@ -184,14 +188,14 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
         ? motifs
           .map(
             (m) => `
-              <div class="coach-context-row">
-                <span>${m.type.replace('_', ' ')} · ${phaseLabel(m.phase)}</span>
-                <strong>${m.count}x</strong>
+              <div class="coach-context-row flex items-center justify-between gap-3 rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs">
+                <span class="text-[var(--text)]">${m.type.replace('_', ' ')} · ${phaseLabel(m.phase)}</span>
+                <strong class="text-[var(--primary)]">${m.count}x</strong>
               </div>
             `
           )
           .join('')
-        : '<div class="empty empty-compact">No recurring motifs in the last 7 days.</div>';
+        : statePanelMarkup('No recurring motifs in the last 7 days.', { compact: true });
       setSectionError('mistakes-card-motifs', false);
     } else {
       setSectionError('mistakes-card-motifs', true);
@@ -276,10 +280,9 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
   `
         )
         .join('') ||
-      `
-        ${tableStateRowMarkup('No critical mistakes available yet.', 6)}
-        <tr><td colspan="6"><div class="empty empty-compact"><button class="btn btn-ghost" type="button" data-run-analysis-mistakes>Run Analysis</button></div></td></tr>
-      `;
+      tableStateRowMarkup('No critical mistakes available yet.', 6, {
+        actions: '<button class="btn btn-ghost mt-2" type="button" data-run-analysis-mistakes>Run Analysis</button>',
+      });
 
     if (hadSectionError) {
       renderInlineStatus('Some mistake insights failed to load.', true);

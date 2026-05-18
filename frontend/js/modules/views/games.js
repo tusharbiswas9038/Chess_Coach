@@ -161,7 +161,7 @@ export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
         </span>
       </td>
       <td data-label="Status">${analysisStatusMarkup(g.analyzed)}</td>
-      <td data-label="Action"><button class="btn btn-ghost btn-table-action" type="button" data-open-game-id="${g.id}">Review</button></td>
+      <td data-label="Action"><button class="btn btn-ghost btn-sm min-h-[44px] whitespace-nowrap px-[10px] text-xs" type="button" data-open-game-id="${g.id}">Review</button></td>
     </tr>
   `
       )

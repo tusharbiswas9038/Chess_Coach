@@ -24,24 +24,24 @@ export function fmt(dateStr) {
 export function resultBadge(r) {
   const safe = esc(r);
   const map = { win: 'badge-win', loss: 'badge-loss', draw: 'badge-draw' };
-  return `<span class="badge ${map[r] || ''}">${safe.toUpperCase()}</span>`;
+  return `<span class="badge badge-sm ${map[r] || ''}">${safe.toUpperCase()}</span>`;
 }
 
 export function colorBadge(c) {
   const safe = esc(c);
-  return `<span class="badge badge-${safe}">${
+  return `<span class="badge badge-sm badge-${safe}">${
     safe.charAt(0).toUpperCase() + safe.slice(1)
   }</span>`;
 }
 
 export function mistakeTag(type) {
-  if (!type) return '<span class="mtag">—</span>';
+  if (!type) return '<span class="mtag badge badge-xs">—</span>';
   const labels = {
     blunder: 'Blunder',
     hanging_piece: 'Hanging Piece',
     mistake: 'Mistake',
   };
-  return `<span class="mtag mtag-${esc(type)}">${
+  return `<span class="mtag badge badge-xs mtag-${esc(type)}">${
     labels[type] || esc(type)
   }</span>`;
 }
@@ -64,19 +64,19 @@ export function setBadgeCount(el, count) {
 }
 
 export function mistakeCountClass(count) {
-  if (count > 10) return 'mistake-count mistake-count-high';
-  if (count > 5) return 'mistake-count mistake-count-medium';
-  return 'mistake-count mistake-count-low';
+  if (count > 10) return 'font-semibold text-[var(--error)]';
+  if (count > 5) return 'font-semibold text-[var(--warning)]';
+  return 'font-semibold text-[var(--primary)]';
 }
 
 export function analysisStatusMarkup(status) {
   if (status === 1) {
-    return '<span class="status-text status-done">Analyzed</span>';
+    return '<span class="text-xs text-[var(--primary)]">Analyzed</span>';
   }
   if (status === 2) {
-    return '<span class="status-text status-error">Error</span>';
+    return '<span class="text-xs text-[var(--error)]">Error</span>';
   }
-  return '<span class="status-text status-pending">Pending</span>';
+  return '<span class="text-xs text-[var(--muted)]">Pending</span>';
 }
 
 export function evalDeltaClass(delta) {
@@ -99,24 +99,50 @@ export function openingToneTextClass(winPct) {
 }
 
 export function emptyStateMarkup(message, icon = '♟', compact = false) {
-  return `<div class="empty${compact ? ' empty-compact' : ''}"><div class="empty-icon">${icon}</div>${esc(message)}</div>`;
+  return `
+    <div class="empty alert alert-neutral border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)]${compact ? ' empty-compact py-2' : ' py-3'}" role="status">
+      <div class="empty-icon text-base leading-none">${icon}</div>
+      <span>${esc(message)}</span>
+    </div>
+  `;
 }
 
 export function errorStateMarkup(message) {
-  return `<div class="empty empty-error"><div class="empty-icon">⚠</div>${esc(message)}</div>`;
+  return `
+    <div class="empty empty-error alert alert-error border border-[rgba(239,68,68,0.35)]" role="alert">
+      <div class="empty-icon text-base leading-none">⚠</div>
+      <span>${esc(message)}</span>
+    </div>
+  `;
 }
 
 export function loadingStateMarkup(message = 'Loading…', compact = false) {
-  return `<div class="empty${compact ? ' empty-compact' : ''}"><div class="empty-icon">⏳</div>${esc(message)}</div>`;
+  return `
+    <div class="empty alert alert-neutral border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)]${compact ? ' empty-compact py-2' : ' py-3'}" role="status" aria-live="polite">
+      <span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+      <span>${esc(message)}</span>
+    </div>
+  `;
+}
+
+export function statePanelMarkup(message, options = {}) {
+  const {
+    kind = 'empty',
+    compact = true,
+    icon = '♟',
+    actions = '',
+  } = options;
+  const content =
+    kind === 'loading'
+      ? loadingStateMarkup(message, compact)
+      : kind === 'error'
+        ? errorStateMarkup(message)
+        : emptyStateMarkup(message, icon, compact);
+  return `${content}${actions || ''}`;
 }
 
 export function tableStateRowMarkup(message, colspan, options = {}) {
-  const { kind = 'empty', icon = '♟' } = options;
-  const content =
-    kind === 'loading'
-      ? loadingStateMarkup(message, true)
-      : kind === 'error'
-        ? errorStateMarkup(message)
-        : emptyStateMarkup(message, icon, true);
-  return `<tr><td colspan="${Number(colspan) || 1}">${content}</td></tr>`;
+  const { kind = 'empty', icon = '♟', actions = '' } = options;
+  const content = statePanelMarkup(message, { kind, icon, compact: true, actions });
+  return `<tr><td class="p-0" colspan="${Number(colspan) || 1}">${content}</td></tr>`;
 }
