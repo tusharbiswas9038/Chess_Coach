@@ -404,7 +404,8 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
     try {
       data = await apiContract(endpoints.gameDetail(gameId), normalize.gameDetail, 'gameDetail');
     } catch (e) {
-      container.innerHTML = errorStateMarkup(`Failed to load game: ${e.message}`);
+      container.innerHTML = errorStateMarkup('Failed to load game details. Please retry.');
+      console.error('Failed to load game detail:', e);
       return;
     }
 

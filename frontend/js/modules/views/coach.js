@@ -130,7 +130,7 @@ export function createCoachView({
     } catch (e) {
       coachHistory.push({
         role: 'assistant',
-        content: `I could not reach the coach model. ${e.message}`,
+        content: 'I could not reach the coach model right now. Please try again.',
       });
       toast('Coach chat failed: ' + e.message);
     } finally {
