@@ -14,6 +14,8 @@ import {
   evalDeltaClass,
   fmt,
   mistakeTag,
+  subtypeChip,
+  subtypeLabel,
   resultBadge,
 } from '../ui.js';
 import { createDomCache } from '../dom.js';
@@ -81,11 +83,35 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
       `Eval change: ${move.eval_delta != null ? move.eval_delta + 'cp' : 'unknown'}.`,
       `Engine recommendation: ${move.best_move_san || move.best_move_uci || 'unknown'}.`,
       mistake
-        ? `Mistake tag: ${mistake.type}, eval loss: ${mistake.eval_loss}cp.`
+        ? `Mistake tag: ${mistake.type}, subtype: ${subtypeLabel(mistake.mistake_subtype)}, impact: ${mistake.practical_impact || 'unknown'}, eval loss: ${mistake.eval_loss}cp.`
         : 'No mistake tag is attached to this move.',
+      mistake?.plan_text ? `Plan note: ${mistake.plan_text}` : '',
       '',
       'Explain what I missed in plain beginner language, then give me one concrete habit for my next game.',
-    ].join('\n');
+    ].filter(Boolean).join('\n');
+  }
+
+  function candidateAlternativesMarkup(raw) {
+    if (!raw) return '';
+    let candidates = [];
+    try {
+      candidates = JSON.parse(raw);
+    } catch {
+      return '';
+    }
+    if (!Array.isArray(candidates) || !candidates.length) return '';
+    return `
+      <div class="detail-row">
+        <span class="detail-label">Candidates:</span>
+        <span class="flex flex-wrap gap-1">
+          ${candidates.slice(0, 3).map((candidate) => `
+            <span class="quality-pill" title="${candidate.eval_cp != null ? `${candidate.eval_cp}cp` : 'candidate'}">
+              ${esc(candidate.san || candidate.uci || '—')}
+            </span>
+          `).join('')}
+        </span>
+      </div>
+    `;
   }
 
   function reviewModeConfig(move) {
@@ -214,8 +240,10 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
     dom.byId('review-position-label').textContent =
       currentMistake?.is_critical ? 'Critical position' : 'Current position';
     dom.byId('review-position-meta').textContent =
-      currentMistake?.type
-        ? `Mistake type: ${currentMistake.type.replace('_', ' ')}`
+      currentMistake?.mistake_subtype
+        ? `${subtypeLabel(currentMistake.mistake_subtype)} · ${currentMistake.practical_impact || 'impact unknown'} impact`
+        : currentMistake?.type
+          ? `Mistake type: ${currentMistake.type.replace('_', ' ')}`
         : 'Review the position before your move';
 
     dom.byId('review-summary-phase').textContent = move.phase || '—';
@@ -231,6 +259,8 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
     <span class="quality-pill">${move.phase || 'phase unknown'}</span>
     <span class="quality-pill">${move.classification || 'unclassified'}</span>
     <span class="${move.is_hanging_piece ? 'eval-pill text-[var(--warning)]' : 'quality-pill'}">${move.is_hanging_piece ? 'hanging piece' : 'piece safe'}</span>
+    ${subtypeChip(currentMistake?.mistake_subtype)}
+    ${currentMistake?.time_pressure_flag ? '<span class="quality-pill text-[var(--warning)]">time pressure</span>' : ''}
   `;
 
     updateReviewSelectionStyles(move);
@@ -273,6 +303,7 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
 }>
               <div class="mistake-item-header">
                 ${mistakeTag(mk.type)}
+                ${subtypeChip(mk.mistake_subtype)}
                 <div class="eval-loss">-${mk.eval_loss}cp</div>
               </div>
               <div class="detail-row">
@@ -285,6 +316,14 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
                 <span class="detail-label">→ Better:</span>
                 <span class="cell-code text-success">${esc(mk.best_move)}</span>
               </div>
+              ${mk.practical_impact || mk.confidence ? `<div class="detail-row">
+                <span class="detail-label">Impact:</span>
+                <span>${esc(mk.practical_impact || '—')}</span>
+                <span class="detail-label">Confidence:</span>
+                <span>${mk.confidence != null ? Math.round(Number(mk.confidence) * 100) + '%' : '—'}</span>
+              </div>` : ''}
+              ${candidateAlternativesMarkup(mk.candidate_alternatives)}
+              ${mk.plan_text ? `<div class="critical-note">${esc(mk.plan_text)}</div>` : ''}
               ${mk.is_critical ? '<div class="critical-note">Critical moment — game turned here</div>' : ''}
             </button>
           `)
@@ -319,7 +358,7 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
 }
                     </td>
                     <td class="${evalDeltaClass(m.eval_delta)}">${delta}</td>
-                    <td><span class="quality-pill mtag-${esc(m.classification) || 'good'}">${
+                    <td><span class="quality-pill mtag-${esc(m.classification) || 'good'}" title="${esc(m.practical_impact ? `${m.practical_impact} impact` : 'Move quality')}">${
   m.classification || '—'
 }</span></td>
                     <td class="cell-phase">${esc(m.phase) || '—'}</td>

@@ -47,6 +47,8 @@ class PlayerModelResponse(BaseModel):
 
 
 class StatsResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     profile: dict[str, Any]
     games: dict[str, int]
     hanging_piece_rate: float

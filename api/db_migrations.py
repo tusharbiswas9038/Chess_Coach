@@ -89,10 +89,53 @@ def _create_player_model_snapshots(conn: sqlite3.Connection) -> None:
     )
 
 
+def _column_names(conn: sqlite3.Connection, table: str) -> set[str]:
+    return {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+
+
+def _add_column_if_missing(
+    conn: sqlite3.Connection,
+    table: str,
+    column: str,
+    definition: str,
+) -> None:
+    if column not in _column_names(conn, table):
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
+def _add_analysis_v2_fields(conn: sqlite3.Connection) -> None:
+    for column, definition in (
+        ("analysis_depth_policy", "TEXT"),
+        ("candidate_alternatives", "TEXT"),
+        ("plan_text", "TEXT"),
+        ("practical_impact", "TEXT"),
+        ("time_pressure_flag", "INTEGER DEFAULT 0"),
+    ):
+        _add_column_if_missing(conn, "moves", column, definition)
+
+    for column, definition in (
+        ("mistake_subtype", "TEXT"),
+        ("confidence", "REAL"),
+        ("practical_impact", "TEXT"),
+        ("time_pressure_flag", "INTEGER DEFAULT 0"),
+        ("candidate_alternatives", "TEXT"),
+        ("plan_text", "TEXT"),
+    ):
+        _add_column_if_missing(conn, "mistakes", column, definition)
+
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_mistakes_subtype_phase_eval_loss
+        ON mistakes(mistake_subtype, phase, eval_loss DESC)
+        """
+    )
+
+
 MIGRATIONS: List[Migration] = [
     ("001_cleanup_orphans_and_reconcile_indexes", _cleanup_orphan_srs_and_reconcile_indexes),
     ("002_optimize_indexes_for_hot_paths", _optimize_indexes_for_hot_paths),
     ("003_create_player_model_snapshots", _create_player_model_snapshots),
+    ("004_analysis_v2_fields", _add_analysis_v2_fields),
 ]
 
 

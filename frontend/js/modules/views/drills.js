@@ -27,47 +27,17 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
   let lastFrom = null;
   let lastTo = null;
   let loaded = false;
-  const DRILL_PROGRESS_KEY = 'drills.progress.v1';
+  let drillSummary = null;
 
-  function todayKey() {
-    return new Date().toISOString().slice(0, 10);
+  function updateDrillBadge() {
+    setBadgeCount(dom.byId('drill-badge'), drillSummary?.due_total ?? drillQueue.length);
   }
 
-  function getDrillProgress() {
-    try {
-      const raw = localStorage.getItem(DRILL_PROGRESS_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
-      return parsed && typeof parsed === 'object' ? parsed : {};
-    } catch {
-      return {};
-    }
-  }
-
-  function setDrillProgress(next) {
-    localStorage.setItem(DRILL_PROGRESS_KEY, JSON.stringify(next || {}));
-  }
-
-  function updateGoalProgress(isCorrect) {
-    const key = todayKey();
-    const data = getDrillProgress();
-    const day = data[key] || { done: 0, correct: 0, wrong: 0, goalDone: false };
-    day.done += 1;
-    if (isCorrect) day.correct += 1;
-    else day.wrong += 1;
-    const goalTarget = Number(data.goalTarget) || 5;
-    day.goalDone = day.done >= goalTarget;
-    data[key] = day;
-
-    const dates = Object.keys(data).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
-    let streak = 0;
-    for (let i = dates.length - 1; i >= 0; i--) {
-      if (!data[dates[i]]?.goalDone) break;
-      streak++;
-    }
-    data.streak = streak;
-    data.lastUpdatedAt = Date.now();
-    setDrillProgress(data);
-    document.dispatchEvent(new CustomEvent('drills:progress-updated', { detail: { streak, day, goalTarget } }));
+  async function refreshDrillSummary() {
+    drillSummary = await apiContract(endpoints.drillsSummary(), normalize.drillsSummary, 'drillsSummary');
+    updateDrillBadge();
+    document.dispatchEvent(new CustomEvent('drills:progress-updated', { detail: drillSummary }));
+    return drillSummary;
   }
 
   function renderBoard() {
@@ -148,7 +118,6 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
     }
 
     sessionDone++;
-    updateGoalProgress(isCorrect);
     updateSessionStats();
     dom.byId('quality-section').hidden = false;
     dom.byId('drill-hint-card').hidden = true;
@@ -171,7 +140,14 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
     if (!item) return;
 
     try {
-      await apiPost(endpoints.drillsResult(), { item_id: item.id, quality: q });
+      const result = await apiPost(endpoints.drillsResult(), { item_id: item.id, quality: q });
+      if (result?.summary) {
+        drillSummary = normalize.drillsSummary(result.summary);
+        updateDrillBadge();
+        document.dispatchEvent(new CustomEvent('drills:progress-updated', { detail: drillSummary }));
+      } else {
+        await refreshDrillSummary();
+      }
     } catch (e) {
       console.error('Failed to submit drill result:', e);
     }
@@ -284,13 +260,18 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
     selectedSq = null;
 
     try {
-      drillQueue = await apiContract(endpoints.drillsDue(15), normalize.drillsDue, 'drillsDue');
+      const [queue, summary] = await Promise.all([
+        apiContract(endpoints.drillsDue(15), normalize.drillsDue, 'drillsDue'),
+        refreshDrillSummary(),
+      ]);
+      drillQueue = queue;
+      drillSummary = summary;
     } catch (e) {
       toast('Failed to load drills: ' + e.message);
       return;
     }
 
-    setBadgeCount(dom.byId('drill-badge'), drillQueue.length);
+    updateDrillBadge();
     loadDrillItem();
   }
 

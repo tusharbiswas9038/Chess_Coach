@@ -34,6 +34,7 @@ export const endpoints = {
   playerModelLatest: () => '/api/product/player-model/latest',
   drillsResult: () => '/api/drills/result',
   drillsDue: (limit = 15) => `/api/drills/due?limit=${limit}`,
+  drillsSummary: () => '/api/drills/summary',
 };
 
 function fail(label, msg) {
@@ -152,5 +153,23 @@ export const normalize = {
 
   drillsDue(payload) {
     return expectArray(payload, 'drillsDue').map((item) => expectObject(item, 'drillsDue.item'));
+  },
+
+  drillsSummary(payload) {
+    const p = expectObject(payload, 'drillsSummary');
+    const today = p.today && typeof p.today === 'object' ? p.today : {};
+    return {
+      due_total: Number(p.due_total || 0),
+      session_limit: Number(p.session_limit || 15),
+      goal_target: Number(p.goal_target || 5),
+      today: {
+        date: String(today.date || ''),
+        done: Number(today.done || 0),
+        correct: Number(today.correct || 0),
+        wrong: Number(today.wrong || 0),
+        goal_done: Boolean(today.goal_done),
+      },
+      streak: Number(p.streak || 0),
+    };
   },
 };

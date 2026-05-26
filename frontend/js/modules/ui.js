@@ -46,6 +46,22 @@ export function mistakeTag(type) {
   }</span>`;
 }
 
+export function subtypeLabel(subtype) {
+  const labels = {
+    tactical_blunder: 'Tactical blunder',
+    missed_tactic: 'Missed tactic',
+    strategic_concession: 'Strategic concession',
+    conversion_miss: 'Conversion miss',
+    opening_inaccuracy: 'Opening inaccuracy',
+  };
+  return labels[subtype] || (subtype ? String(subtype).replaceAll('_', ' ') : '—');
+}
+
+export function subtypeChip(subtype) {
+  if (!subtype) return '';
+  return `<span class="badge badge-xs border border-[rgba(168,85,247,0.3)] bg-[rgba(168,85,247,0.12)] text-[var(--analytics)]">${esc(subtypeLabel(subtype))}</span>`;
+}
+
 export function truncate(str, n) {
   if (!str) return '—';
   const s = String(str);
@@ -54,12 +70,15 @@ export function truncate(str, n) {
 
 export function setBadgeCount(el, count) {
   if (!el) return;
-  if (count > 0) {
-    el.textContent = count;
+  const safeCount = Number(count) || 0;
+  if (safeCount > 0) {
+    el.textContent = safeCount > 99 ? '99+' : String(safeCount);
+    el.title = safeCount > 99 ? `${safeCount.toLocaleString()} due drills` : `${safeCount} due drill${safeCount === 1 ? '' : 's'}`;
     el.hidden = false;
     return;
   }
   el.textContent = '';
+  el.removeAttribute('title');
   el.hidden = true;
 }
 

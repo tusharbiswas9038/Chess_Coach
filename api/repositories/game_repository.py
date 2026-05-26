@@ -1,5 +1,6 @@
 import sqlite3
 import chess
+from datetime import date, timedelta
 from typing import Any, List, Dict, Optional
 
 from api.db import db_conn
@@ -159,10 +160,63 @@ class GameRepository:
         """).fetchall()
 
         drills_due = 0
+        drill_summary = {
+            "due_total": 0,
+            "session_limit": 15,
+            "goal_target": 5,
+            "today": {
+                "date": "",
+                "done": 0,
+                "correct": 0,
+                "wrong": 0,
+                "goal_done": False,
+            },
+            "streak": 0,
+        }
         if drills_ok:
             drills_due = self.conn.execute(
                 "SELECT COUNT(*) FROM srs_items WHERE due_date <= date('now')"
             ).fetchone()[0]
+            today_drills = self.conn.execute(
+                """
+                SELECT
+                    date('now') AS day,
+                    COUNT(*) AS done,
+                    SUM(CASE WHEN last_result IN ('good', 'easy') THEN 1 ELSE 0 END) AS correct,
+                    SUM(CASE WHEN last_result IN ('fail', 'hard') THEN 1 ELSE 0 END) AS wrong
+                FROM srs_items
+                WHERE last_reviewed = date('now')
+                """
+            ).fetchone()
+            review_days = self.conn.execute(
+                """
+                SELECT last_reviewed AS day, COUNT(*) AS done
+                FROM srs_items
+                WHERE last_reviewed IS NOT NULL
+                GROUP BY last_reviewed
+                ORDER BY last_reviewed DESC
+                LIMIT 365
+                """
+            ).fetchall()
+            done_by_day = {r["day"]: int(r["done"] or 0) for r in review_days}
+            streak = 0
+            cursor_day = date.today()
+            while done_by_day.get(cursor_day.isoformat(), 0) >= 5:
+                streak += 1
+                cursor_day -= timedelta(days=1)
+            drill_summary = {
+                "due_total": int(drills_due or 0),
+                "session_limit": 15,
+                "goal_target": 5,
+                "today": {
+                    "date": today_drills["day"] or "",
+                    "done": int(today_drills["done"] or 0),
+                    "correct": int(today_drills["correct"] or 0),
+                    "wrong": int(today_drills["wrong"] or 0),
+                    "goal_done": int(today_drills["done"] or 0) >= 5,
+                },
+                "streak": streak,
+            }
 
         return {
             "profile": row(profile),
@@ -173,6 +227,7 @@ class GameRepository:
             "mistake_breakdown": rows(mistake_breakdown),
             "weekly_stats": rows(weekly_stats),
             "drills_due": drills_due,
+            "drill_summary": drill_summary,
         }
 
     def get_analysis_progress(self) -> Dict[str, Any]:
@@ -211,10 +266,16 @@ class GameRepository:
                 m.game_id,
                 g.date AS game_date,
                 m.type,
+                m.mistake_subtype,
                 m.phase,
                 m.played_move,
                 m.best_move,
-                m.eval_loss
+                m.eval_loss,
+                m.confidence,
+                m.practical_impact,
+                m.time_pressure_flag,
+                m.candidate_alternatives,
+                m.plan_text
             FROM mistakes m
             JOIN games g ON g.id = m.game_id
             WHERE m.is_critical = 1
@@ -234,6 +295,7 @@ class GameRepository:
         return rows(self.conn.execute("""
             SELECT
                 m.type,
+                COALESCE(m.mistake_subtype, m.type) AS mistake_subtype,
                 COALESCE(m.phase, 'unknown') AS phase,
                 COUNT(*) AS count,
                 ROUND(AVG(COALESCE(m.eval_loss, 0)), 1) AS avg_eval_loss
@@ -241,7 +303,7 @@ class GameRepository:
             JOIN games g ON g.id = m.game_id
             WHERE g.date >= datetime('now', '-7 days')
             """ + phase_clause + """
-            GROUP BY m.type, COALESCE(m.phase, 'unknown')
+            GROUP BY m.type, COALESCE(m.mistake_subtype, m.type), COALESCE(m.phase, 'unknown')
             ORDER BY count DESC, avg_eval_loss DESC
             LIMIT ?
         """, params).fetchall())
@@ -384,7 +446,10 @@ class GameRepository:
             params.append(phase)
         blunders = self.conn.execute("""
             SELECT fen, played_move FROM mistakes
-            WHERE type IN ('blunder', 'hanging_piece')
+            WHERE (
+                type IN ('blunder', 'hanging_piece')
+                OR mistake_subtype IN ('tactical_blunder', 'missed_tactic')
+            )
             """ + phase_clause + """
         """, params).fetchall()
 
@@ -403,13 +468,14 @@ class GameRepository:
         recent_mistakes = rows(self.conn.execute("""
             SELECT
                 m.type,
+                COALESCE(m.mistake_subtype, m.type) AS mistake_subtype,
                 m.phase,
                 COUNT(*) AS cnt,
                 ROUND(AVG(COALESCE(m.eval_loss, 0)), 1) AS avg_loss
             FROM mistakes m
             JOIN games g ON g.id = m.game_id
             WHERE g.date >= datetime('now', '-14 days')
-            GROUP BY m.type, m.phase
+            GROUP BY m.type, COALESCE(m.mistake_subtype, m.type), m.phase
             ORDER BY cnt DESC, avg_loss DESC
         """).fetchall())
 

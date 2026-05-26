@@ -62,6 +62,67 @@ def get_due_items(limit: int = 15) -> list[dict]:
     conn.close()
     return [dict(r) for r in rows]
 
+
+def get_drill_summary(goal_target: int = 5) -> dict:
+    """Return server-backed drill progress for consistent desktop/mobile state."""
+    goal_target = max(1, min(int(goal_target or 5), 50))
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+
+    today = date.today().isoformat()
+    due_total = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM srs_items WHERE due_date <= date('now')"
+    ).fetchone()["cnt"] or 0
+
+    today_row = conn.execute(
+        """
+        SELECT
+            COUNT(*) AS done,
+            SUM(CASE WHEN last_result IN ('good', 'easy') THEN 1 ELSE 0 END) AS correct,
+            SUM(CASE WHEN last_result IN ('fail', 'hard') THEN 1 ELSE 0 END) AS wrong
+        FROM srs_items
+        WHERE last_reviewed = ?
+        """,
+        (today,),
+    ).fetchone()
+
+    review_days = conn.execute(
+        """
+        SELECT last_reviewed AS day, COUNT(*) AS done
+        FROM srs_items
+        WHERE last_reviewed IS NOT NULL
+        GROUP BY last_reviewed
+        ORDER BY last_reviewed DESC
+        LIMIT 365
+        """
+    ).fetchall()
+    done_by_day = {r["day"]: int(r["done"] or 0) for r in review_days}
+
+    streak = 0
+    cursor = date.today()
+    while done_by_day.get(cursor.isoformat(), 0) >= goal_target:
+        streak += 1
+        cursor -= timedelta(days=1)
+
+    conn.close()
+    done = int(today_row["done"] or 0)
+    correct = int(today_row["correct"] or 0)
+    wrong = int(today_row["wrong"] or 0)
+    return {
+        "due_total": int(due_total),
+        "session_limit": 15,
+        "goal_target": goal_target,
+        "today": {
+            "date": today,
+            "done": done,
+            "correct": correct,
+            "wrong": wrong,
+            "goal_done": done >= goal_target,
+        },
+        "streak": streak,
+    }
+
 def record_result(item_id: int, quality: int):
     """
     quality: 0=fail(Again), 1=hard, 2=good, 3=easy

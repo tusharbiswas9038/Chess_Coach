@@ -51,7 +51,12 @@ CREATE TABLE moves (
                     )),
     is_hanging_piece INTEGER DEFAULT 0,  -- 1 if player left piece en prise
     tactic_theme    TEXT,              -- "fork","pin","skewer","back_rank", NULL
-    phase           TEXT CHECK(phase IN ('opening','middlegame','endgame'))
+    phase           TEXT CHECK(phase IN ('opening','middlegame','endgame')),
+    analysis_depth_policy TEXT,        -- "light","base","opening_branch","critical"
+    candidate_alternatives TEXT,       -- JSON list of top Stockfish alternatives
+    plan_text       TEXT,              -- deterministic coaching guidance for critical moments
+    practical_impact TEXT,             -- "low","moderate","high","decisive"
+    time_pressure_flag INTEGER DEFAULT 0
 );
 
 CREATE INDEX idx_moves_game_id ON moves(game_id);
@@ -72,7 +77,13 @@ CREATE TABLE mistakes (
     played_move     TEXT NOT NULL,     -- what was played
     best_move       TEXT NOT NULL,     -- what should have been played
     eval_loss       INTEGER,           -- centipawns lost
-    is_critical     INTEGER DEFAULT 0  -- biggest eval swing in game?
+    is_critical     INTEGER DEFAULT 0, -- biggest eval swing in game?
+    mistake_subtype TEXT,              -- v2 subtype: missed_tactic, conversion_miss, etc.
+    confidence      REAL,              -- deterministic classifier confidence 0..1
+    practical_impact TEXT,
+    time_pressure_flag INTEGER DEFAULT 0,
+    candidate_alternatives TEXT,       -- JSON alternatives for critical moment review
+    plan_text       TEXT
 );
 CREATE INDEX idx_mistakes_game_critical_loss ON mistakes(game_id, is_critical, eval_loss DESC);
 
@@ -165,6 +176,7 @@ CREATE INDEX idx_games_opening_eco_color_analyzed ON games(opening_eco, color, a
 CREATE INDEX idx_games_opponent_rating_date ON games(opponent_rating DESC, date DESC);
 CREATE INDEX idx_mistakes_type_phase ON mistakes(type, phase);
 CREATE INDEX idx_mistakes_game_type_eval_loss ON mistakes(game_id, type, eval_loss DESC);
+CREATE INDEX idx_mistakes_subtype_phase_eval_loss ON mistakes(mistake_subtype, phase, eval_loss DESC);
 CREATE INDEX idx_mistakes_game_id ON mistakes(game_id);
 CREATE INDEX idx_mistakes_type ON mistakes(type);
 CREATE INDEX idx_sessions_date ON sessions(date DESC);

@@ -10,6 +10,23 @@
               <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-phase="middlegame">Middlegame</button>
               <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-phase="endgame">Endgame</button>
             </div>
+            <div class="filter-toolbar mt-2 flex flex-wrap items-center justify-between gap-2 rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-2 max-sm:grid max-sm:grid-cols-1" id="mistakes-v2-controls">
+              <div class="games-preset-row flex flex-wrap gap-1" id="mistakes-subtype-tabs">
+                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px] active" type="button" data-subtype="">All Classes</button>
+                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-subtype="tactical_blunder">Tactical</button>
+                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-subtype="missed_tactic">Missed tactic</button>
+                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-subtype="conversion_miss">Conversion</button>
+                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-subtype="opening_inaccuracy">Opening</button>
+              </div>
+              <label class="field-label mb-0 flex items-center gap-2 text-xs text-[var(--muted)]">
+                Sort
+                <select id="mistakes-sort" class="field-input select select-bordered min-h-[40px] w-auto min-w-[160px] text-xs">
+                  <option value="date_desc">Newest first</option>
+                  <option value="loss_desc">Largest eval loss</option>
+                  <option value="confidence_desc">Highest confidence</option>
+                </select>
+              </label>
+            </div>
             <div class="kpi-grid kpi-grid-triple mb-5 grid gap-2 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
               <div class="kpi-card">
                 <div class="kpi-label">Total Blunders</div>

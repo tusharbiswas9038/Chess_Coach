@@ -1,4 +1,4 @@
-import { esc, fmt, mistakeTag, statePanelMarkup, tableStateRowMarkup } from '../ui.js';
+import { esc, fmt, mistakeTag, statePanelMarkup, subtypeChip, subtypeLabel, tableStateRowMarkup } from '../ui.js';
 import { createDomCache } from '../dom.js';
 import { endpoints } from '../contracts.js';
 import { createCache } from '../cache.js';
@@ -9,6 +9,8 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
   const cache = createCache('api');
   let rendered = false;
   let activePhase = '';
+  let activeSubtype = '';
+  let activeSort = 'date_desc';
   const heatmapSquareNodes = new Map();
   let heatmapOrientation = null;
   function setChartMeta(id, text) {
@@ -41,6 +43,28 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
     dom.queryAll('#mistakes-phase-tabs [data-phase]').forEach((btn) => {
       btn.classList.toggle('active', (btn.dataset.phase || '') === activePhase);
     });
+    dom.queryAll('#mistakes-subtype-tabs [data-subtype]').forEach((btn) => {
+      btn.classList.toggle('active', (btn.dataset.subtype || '') === activeSubtype);
+    });
+    const sort = dom.byId('mistakes-sort');
+    if (sort) sort.value = activeSort;
+  }
+
+  function applyCriticalFilters(rows) {
+    let next = rows.slice();
+    if (activeSubtype) {
+      next = next.filter((row) => row.mistake_subtype === activeSubtype);
+    }
+    next.sort((a, b) => {
+      if (activeSort === 'loss_desc') {
+        return Number(b.eval_loss || 0) - Number(a.eval_loss || 0);
+      }
+      if (activeSort === 'confidence_desc') {
+        return Number(b.confidence || 0) - Number(a.confidence || 0);
+      }
+      return String(b.game_date || '').localeCompare(String(a.game_date || ''));
+    });
+    return next;
   }
 
   function renderInlineStatus(message = '', showRetry = false) {
@@ -199,7 +223,7 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
           .map(
             (m) => `
               <div class="coach-context-row flex items-center justify-between gap-3 rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs">
-                <span class="text-[var(--text)]">${m.type.replace('_', ' ')} · ${phaseLabel(m.phase)}</span>
+                <span class="text-[var(--text)]">${esc(subtypeLabel(m.mistake_subtype || m.type))} · ${phaseLabel(m.phase)}</span>
                 <strong class="text-[var(--primary)]">${m.count}x</strong>
               </div>
             `
@@ -275,7 +299,7 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
       return;
     }
     setSectionError('mistakes-card-critical', false);
-    const rows = criticalResult.value || [];
+    const rows = applyCriticalFilters(criticalResult.value || []);
     const visibleRows = rows.slice(0, 60);
     if (criticalMeta) {
       criticalMeta.textContent =
@@ -295,11 +319,19 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
           <span>${fmt(m.game_date)}</span>
         </div>
       </td>
-      <td>${mistakeTag(m.type)}</td>
+      <td>
+        <div class="flex flex-col items-start gap-1">
+          ${mistakeTag(m.type)}
+          ${subtypeChip(m.mistake_subtype)}
+        </div>
+      </td>
       <td class="cell-phase">${m.phase || '—'}</td>
       <td class="cell-code text-error">${esc(m.played_move)}</td>
       <td class="cell-code text-success">${esc(m.best_move)}</td>
-      <td class="cell-strong text-error">−${m.eval_loss}</td>
+      <td>
+        <div class="cell-strong text-error">−${m.eval_loss}</div>
+        <div class="text-[11px] text-[var(--muted)]">${esc(m.practical_impact || 'impact n/a')}${m.confidence != null ? ` · ${Math.round(Number(m.confidence) * 100)}%` : ''}</div>
+      </td>
     </tr>
   `
         )
@@ -324,6 +356,13 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
         load(true);
         return;
       }
+      const subtypeBtn = event.target.closest('[data-subtype]');
+      if (subtypeBtn && subtypeBtn.closest('#mistakes-subtype-tabs')) {
+        activeSubtype = subtypeBtn.dataset.subtype || '';
+        rendered = false;
+        load(true);
+        return;
+      }
       const btn = event.target.closest('[data-retry-mistakes]');
       if (btn) {
         cache.clear();
@@ -333,6 +372,11 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
       const analyzeBtn = event.target.closest('[data-run-analysis-mistakes]');
       if (!analyzeBtn) return;
       document.getElementById('btn-analyze')?.click();
+    });
+    dom.byId('mistakes-sort')?.addEventListener('change', (event) => {
+      activeSort = event.target.value || 'date_desc';
+      rendered = false;
+      load(true);
     });
     document.addEventListener('data:games-updated', () => {
       cache.clear();

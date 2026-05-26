@@ -44,32 +44,24 @@ export function createDashboardView({
   let btnSyncGames; // Define btnSyncGames here
   let weeklyPlanStorageKey = null;
   let nextStepTargets = { primary: 'drills', secondary: 'games' };
-  const DRILL_PROGRESS_KEY = 'drills.progress.v1';
   function setChartMeta(id, text) {
     const el = dom.byId(id);
     if (el) el.textContent = text;
   }
 
-  function getDrillProgress() {
-    try {
-      const raw = localStorage.getItem(DRILL_PROGRESS_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
-      return parsed && typeof parsed === 'object' ? parsed : {};
-    } catch {
-      return {};
-    }
+  function drillSummaryFromStats(summary = null) {
+    return summary || getStatsData()?.drill_summary || {
+      goal_target: 5,
+      today: { done: 0 },
+      streak: 0,
+    };
   }
 
-  function todayKey() {
-    return new Date().toISOString().slice(0, 10);
-  }
-
-  function updateDrillProgressKpi() {
-    const drillProgress = getDrillProgress();
-    const goalTarget = Number(drillProgress.goalTarget) || 5;
-    const todayProgress = drillProgress[todayKey()] || {};
-    const todayDone = Number(todayProgress.done) || 0;
-    const streak = Number(drillProgress.streak) || 0;
+  function updateDrillProgressKpi(summary = null) {
+    const drillSummary = drillSummaryFromStats(summary);
+    const goalTarget = Number(drillSummary.goal_target) || 5;
+    const todayDone = Number(drillSummary.today?.done) || 0;
+    const streak = Number(drillSummary.streak) || 0;
     const achievement =
       streak >= 10 ? 'On Fire' : streak >= 5 ? 'Consistent' : streak >= 2 ? 'Starter' : 'New';
     const goalEl = dom.byId('kpi-drill-goal-value');
@@ -275,10 +267,9 @@ export function createDashboardView({
   }
 
   function renderSessionFlow(statsData, latestSession = null) {
-    const drillProgress = getDrillProgress();
-    const goalTarget = Number(drillProgress.goalTarget) || 5;
-    const todayProgress = drillProgress[todayKey()] || {};
-    const todayDone = Number(todayProgress.done) || 0;
+    const drillSummary = drillSummaryFromStats(statsData?.drill_summary);
+    const goalTarget = Number(drillSummary.goal_target) || 5;
+    const todayDone = Number(drillSummary.today?.done) || 0;
     const dueCount = Number(statsData?.drills_due || 0);
     const recentGames = statsData?.recent_games?.length || 0;
     const tiltDetected = Boolean(latestSession?.tilt_detected);
@@ -527,11 +518,10 @@ export function createDashboardView({
     const analyzed = statsData.games.analyzed;
     const total = statsData.games.total;
 
-    const drillProgress = getDrillProgress();
-    const goalTarget = Number(drillProgress.goalTarget) || 5;
-    const todayProgress = drillProgress[todayKey()] || {};
-    const todayDone = Number(todayProgress.done) || 0;
-    const streak = Number(drillProgress.streak) || 0;
+    const drillSummary = drillSummaryFromStats(statsData.drill_summary);
+    const goalTarget = Number(drillSummary.goal_target) || 5;
+    const todayDone = Number(drillSummary.today?.done) || 0;
+    const streak = Number(drillSummary.streak) || 0;
     const achievement =
       streak >= 10 ? 'On Fire' : streak >= 5 ? 'Consistent' : streak >= 2 ? 'Starter' : 'New';
 
@@ -668,8 +658,15 @@ export function createDashboardView({
       const btn = e.target.closest('button[data-open-game-id]');
       if (btn) onOpenGame(btn.dataset.openGameId);
     });
-    document.addEventListener('drills:progress-updated', () => {
-      updateDrillProgressKpi();
+    document.addEventListener('drills:progress-updated', (event) => {
+      const current = getStatsData();
+      if (current && event.detail) {
+        current.drill_summary = event.detail;
+        current.drills_due = Number(event.detail.due_total || 0);
+        current.due_drills_warning = current.drills_due > 10;
+        setBadgeCount(dom.byId('drill-badge'), current.drills_due);
+      }
+      updateDrillProgressKpi(event.detail);
     });
   }
 

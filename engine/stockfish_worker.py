@@ -4,6 +4,7 @@ import chess.pgn
 import chess.engine
 import sqlite3
 import io
+import json
 import time
 import sys
 from pathlib import Path
@@ -13,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import DB_PATH, STOCKFISH_PATH, STOCKFISH_DEPTH, STOCKFISH_THREADS, STOCKFISH_HASH_MB
 from core.chess_utils import ( # New Import
     classify_move,
+    classify_mistake_v2,
     is_piece_hanging,
     detect_phase,
     INACCURACY_THRESHOLD,
@@ -22,6 +24,8 @@ from core.chess_utils import ( # New Import
 
 DEPTH = STOCKFISH_DEPTH
 BATCH_SIZE = 5
+MIN_ANALYSIS_DEPTH = 8
+MAX_ANALYSIS_DEPTH = 26
 
 
 def normalize_eval(score: chess.engine.Score, turn: chess.Color) -> int:
@@ -34,6 +38,65 @@ def normalize_eval(score: chess.engine.Score, turn: chess.Color) -> int:
         return 10000 if score.mate() > 0 else -10000
     cp = score.score(mate_score=10000)
     return cp if turn == chess.WHITE else -cp
+
+
+def _bounded_depth(depth: int) -> int:
+    return max(MIN_ANALYSIS_DEPTH, min(MAX_ANALYSIS_DEPTH, depth))
+
+
+def select_depth_policy(board: chess.Board, ply: int, phase: str) -> tuple[int, str]:
+    """Use deeper Stockfish only where the position is likely branch-heavy."""
+    legal_moves = board.legal_moves.count()
+    if phase == "opening" and (ply <= 16 or legal_moves >= 28):
+        return _bounded_depth(DEPTH + 2), "opening_branch"
+    if board.is_check() or legal_moves >= 34:
+        return _bounded_depth(DEPTH), "base"
+    return _bounded_depth(DEPTH - 4), "light"
+
+
+def analyze_position(
+    engine: chess.engine.SimpleEngine,
+    board: chess.Board,
+    depth: int,
+    multipv: int = 1,
+) -> tuple[int, str | None, str | None, list[dict]]:
+    info = engine.analyse(board, chess.engine.Limit(depth=depth), multipv=multipv)
+    info_rows = info if isinstance(info, list) else [info]
+    primary = info_rows[0] if info_rows else {}
+    eval_before = normalize_eval(primary["score"].relative, board.turn)
+
+    candidates = []
+    best_move_uci = None
+    best_move_san = None
+    for idx, row in enumerate(info_rows, 1):
+        pv = row.get("pv", [])
+        candidate = pv[0] if pv else None
+        if candidate is None:
+            continue
+        try:
+            san = board.san(candidate)
+        except Exception:
+            san = candidate.uci()
+        score = normalize_eval(row["score"].relative, board.turn)
+        if idx == 1:
+            best_move_uci = candidate.uci()
+            best_move_san = san
+        candidates.append({
+            "rank": idx,
+            "uci": candidate.uci(),
+            "san": san,
+            "eval_cp": score,
+        })
+
+    return eval_before, best_move_uci, best_move_san, candidates
+
+
+def _candidate_json(candidates: list[dict]) -> str | None:
+    return json.dumps(candidates[:3], separators=(",", ":")) if candidates else None
+
+
+def _critical_depth() -> int:
+    return _bounded_depth(DEPTH + 4)
 
 
 
@@ -72,11 +135,17 @@ def analyze_game(
         move = node.move
         fen_before = board.fen()
         move_color = "white" if board.turn == chess.WHITE else "black"
+        phase = detect_phase(ply + 1, board)
+        depth, depth_policy = select_depth_policy(board, ply + 1, phase)
 
         clock_before = int(node.clock()) if node.clock() is not None else None
 
         try:
-            info = engine.analyse(board, chess.engine.Limit(depth=DEPTH))
+            eval_before, best_move_uci, best_move_san, candidates = analyze_position(
+                engine,
+                board,
+                depth,
+            )
         except Exception as e:
             print(f"  [engine error] {game_id} ply {ply}: {e}")
             board.push(move)
@@ -84,14 +153,7 @@ def analyze_game(
             eval_before_by_ply.append(None)
             continue
 
-        eval_before = normalize_eval(info["score"].relative, board.turn)
         eval_before_by_ply.append(eval_before)
-
-        # Best move and its SAN come from the PV line
-        pv = info.get("pv", [])
-        best_uci_move = pv[0] if pv else None
-        best_move_uci = best_uci_move.uci() if best_uci_move else None
-        best_move_san = board.san(best_uci_move) if best_uci_move else None
 
         # Hanging piece check BEFORE pushing the move
         hanging = is_piece_hanging(board, move)
@@ -101,8 +163,6 @@ def analyze_game(
         ply += 1
 
         classification = None
-
-        phase = detect_phase(ply, board)
 
         moves_data.append({
             "game_id": game_id,
@@ -119,11 +179,16 @@ def analyze_game(
             "best_move_uci": best_move_uci,
             "best_move_san": best_move_san,
             "best_move_eval": eval_before,  # eval of the best line = eval_before (engine's view)
-            "depth": DEPTH,
+            "depth": depth,
             "clock_before": clock_before,
             "classification": classification,
             "is_hanging_piece": 1 if (hanging and move_color == player_color_str) else 0,
             "phase": phase,
+            "analysis_depth_policy": depth_policy,
+            "candidate_alternatives": _candidate_json(candidates),
+            "plan_text": None,
+            "practical_impact": None,
+            "time_pressure_flag": 1 if (clock_before is not None and clock_before <= 60) else 0,
         })
 
     if not moves_data:
@@ -140,24 +205,49 @@ def analyze_game(
         if move_row["color"] == player_color_str and delta is not None:
             move_row["classification"] = classify_move(delta)
 
-    # Idempotency: if this game is re-analyzed, replace old analysis rows.
-    conn.execute("DELETE FROM mistakes WHERE game_id=?", (game_id,))
-    conn.execute("DELETE FROM moves WHERE game_id=?", (game_id,))
+    critical_candidates = [
+        (idx, move_row)
+        for idx, move_row in enumerate(moves_data)
+        if move_row["color"] == player_color_str
+        and move_row["eval_delta"] is not None
+        and move_row["eval_delta"] <= -MISTAKE_THRESHOLD
+    ]
+    critical_candidates.sort(key=lambda item: item[1]["eval_delta"])
+    for idx, move_row in critical_candidates[:3]:
+        try:
+            board_before = chess.Board(move_row["fen_before"])
+            (
+                eval_before,
+                best_move_uci,
+                best_move_san,
+                candidates,
+            ) = analyze_position(engine, board_before, _critical_depth(), multipv=3)
+        except Exception as e:
+            print(f"  [critical recheck error] {game_id} ply {move_row['ply']}: {e}")
+            continue
 
-    # Bulk insert moves
-    conn.executemany("""
-        INSERT INTO moves (
-            game_id, ply, move_number, color, san, uci,
-            fen_before, fen_after, eval_before, eval_after, eval_delta,
-            best_move_uci, best_move_san, best_move_eval, depth,
-            clock_before, classification, is_hanging_piece, phase
-        ) VALUES (
-            :game_id, :ply, :move_number, :color, :san, :uci,
-            :fen_before, :fen_after, :eval_before, :eval_after, :eval_delta,
-            :best_move_uci, :best_move_san, :best_move_eval, :depth,
-            :clock_before, :classification, :is_hanging_piece, :phase
-        )
-    """, moves_data)
+        move_row["eval_before"] = eval_before
+        move_row["best_move_uci"] = best_move_uci
+        move_row["best_move_san"] = best_move_san
+        move_row["best_move_eval"] = eval_before
+        move_row["depth"] = _critical_depth()
+        move_row["analysis_depth_policy"] = "critical"
+        move_row["candidate_alternatives"] = _candidate_json(candidates)
+        eval_after = move_row["eval_after"]
+        if eval_after is not None:
+            delta = eval_after - eval_before
+            move_row["eval_delta"] = delta
+            move_row["classification"] = classify_move(delta)
+            eval_before_by_ply[idx] = eval_before
+            if idx > 0:
+                previous = moves_data[idx - 1]
+                previous["eval_after"] = -eval_before
+                previous_current = previous["eval_before"]
+                if previous_current is not None:
+                    previous_delta = previous["eval_after"] - previous_current
+                    previous["eval_delta"] = previous_delta
+                    if previous["color"] == player_color_str:
+                        previous["classification"] = classify_move(previous_delta)
 
     # Build mistakes from player's moves only
     player_moves = [m for m in moves_data if m["color"] == player_color_str]
@@ -183,6 +273,32 @@ def analyze_game(
             else:
                 mtype = "mistake"
 
+            try:
+                board_before = chess.Board(m["fen_before"])
+                played_move = chess.Move.from_uci(m["uci"])
+                v2 = classify_mistake_v2(
+                    board_before,
+                    played_move,
+                    m["best_move_uci"],
+                    delta,
+                    m["phase"],
+                    bool(m["is_hanging_piece"]),
+                    m["eval_before"],
+                    m["clock_before"],
+                )
+            except Exception:
+                v2 = {
+                    "mistake_subtype": "strategic_concession",
+                    "confidence": 0.55,
+                    "practical_impact": "low",
+                    "time_pressure_flag": 0,
+                    "plan_text": "Review this move against the engine recommendation.",
+                }
+
+            m["plan_text"] = v2["plan_text"]
+            m["practical_impact"] = v2["practical_impact"]
+            m["time_pressure_flag"] = v2["time_pressure_flag"]
+
             mistakes_data.append({
                 "game_id": game_id,
                 "type": mtype,
@@ -192,14 +308,47 @@ def analyze_game(
                 "best_move": m["best_move_uci"] if m["best_move_uci"] and m["best_move_uci"] != m["uci"] else "?",
                 "eval_loss": abs(delta),
                 "is_critical": 1 if m["ply"] == critical_ply else 0,
+                "mistake_subtype": v2["mistake_subtype"],
+                "confidence": v2["confidence"],
+                "practical_impact": v2["practical_impact"],
+                "time_pressure_flag": v2["time_pressure_flag"],
+                "candidate_alternatives": m["candidate_alternatives"],
+                "plan_text": v2["plan_text"],
             })
+
+    # Idempotency: if this game is re-analyzed, replace old analysis rows.
+    conn.execute("DELETE FROM mistakes WHERE game_id=?", (game_id,))
+    conn.execute("DELETE FROM moves WHERE game_id=?", (game_id,))
+
+    # Bulk insert moves
+    conn.executemany("""
+        INSERT INTO moves (
+            game_id, ply, move_number, color, san, uci,
+            fen_before, fen_after, eval_before, eval_after, eval_delta,
+            best_move_uci, best_move_san, best_move_eval, depth,
+            clock_before, classification, is_hanging_piece, phase,
+            analysis_depth_policy, candidate_alternatives, plan_text,
+            practical_impact, time_pressure_flag
+        ) VALUES (
+            :game_id, :ply, :move_number, :color, :san, :uci,
+            :fen_before, :fen_after, :eval_before, :eval_after, :eval_delta,
+            :best_move_uci, :best_move_san, :best_move_eval, :depth,
+            :clock_before, :classification, :is_hanging_piece, :phase,
+            :analysis_depth_policy, :candidate_alternatives, :plan_text,
+            :practical_impact, :time_pressure_flag
+        )
+    """, moves_data)
 
     if mistakes_data:
         conn.executemany("""
             INSERT INTO mistakes (
-                game_id, type, phase, fen, played_move, best_move, eval_loss, is_critical
+                game_id, type, phase, fen, played_move, best_move, eval_loss, is_critical,
+                mistake_subtype, confidence, practical_impact, time_pressure_flag,
+                candidate_alternatives, plan_text
             ) VALUES (
-                :game_id, :type, :phase, :fen, :played_move, :best_move, :eval_loss, :is_critical
+                :game_id, :type, :phase, :fen, :played_move, :best_move, :eval_loss, :is_critical,
+                :mistake_subtype, :confidence, :practical_impact, :time_pressure_flag,
+                :candidate_alternatives, :plan_text
             )
         """, mistakes_data)
 
