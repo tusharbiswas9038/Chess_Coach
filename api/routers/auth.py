@@ -48,7 +48,7 @@ def login(request: Request, response: Response, body: LoginRequest):
     if not verify_admin_login(body.username, body.password):
         raise HTTPException(status_code=401, detail="Invalid username or password.")
 
-    token = create_session_token(body.username)
+    token = create_session_token(config.ADMIN_USERNAME)
     response.set_cookie(
         value=token,
         max_age=config.SESSION_TTL_SECONDS,
