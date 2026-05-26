@@ -32,6 +32,15 @@
                 </div>
 
                 <form class="coach-form border-t border-[var(--border)] p-5 max-sm:p-3" id="coach-form">
+                  <label class="field mb-2">
+                    <span class="field-label">Coach mode</span>
+                    <select id="coach-mode" class="field-input select select-bordered w-full">
+                      <option value="quick_answer">Quick answer</option>
+                      <option value="deep_lesson">Deep lesson</option>
+                      <option value="pre_game_prep">Pre-game prep</option>
+                      <option value="post_loss_reset">Post-loss reset</option>
+                    </select>
+                  </label>
                   <label class="field coach-input-field">
                     <span class="field-label">Question</span>
                     <textarea
@@ -83,16 +92,16 @@
                 <div class="coach-panel panel-quiet p-3">
                   <div class="coach-panel-title mb-2 text-[14px] font-bold">Quick Questions</div>
                   <div class="coach-prompt-list grid grid-cols-1 gap-1">
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="What should I study today based on my recent games?" type="button">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-mode="quick_answer" data-coach-prompt="What should I study today based on my recent games?" type="button">
                       What should I study today?
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="What is my biggest recurring weakness and how do I fix it in one week?" type="button">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-mode="deep_lesson" data-coach-prompt="What is my biggest recurring weakness and how do I fix it in one week?" type="button">
                       Biggest recurring weakness
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="Give me a 20 minute warm-up routine before I play rapid chess." type="button">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-mode="pre_game_prep" data-coach-prompt="Give me a 20 minute warm-up routine before I play rapid chess." type="button">
                       20 minute warm-up
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="Which openings are currently hurting my results most?" type="button">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-mode="pre_game_prep" data-coach-prompt="Which openings are currently hurting my results most?" type="button">
                       Opening weaknesses
                     </button>
                   </div>

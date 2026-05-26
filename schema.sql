@@ -113,6 +113,25 @@ CREATE TABLE drill_sessions (
     updated_at  TEXT DEFAULT (datetime('now'))
 );
 
+-- ── COACH QUALITY LOOP ────────────────────────────────────────────
+CREATE TABLE coach_sessions (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at       TEXT DEFAULT (datetime('now')),
+    mode             TEXT NOT NULL DEFAULT 'quick_answer',
+    user_message     TEXT NOT NULL,
+    assistant_reply  TEXT NOT NULL,
+    context_digest   TEXT
+);
+
+CREATE TABLE coach_feedback (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id       INTEGER REFERENCES coach_sessions(id) ON DELETE CASCADE,
+    created_at       TEXT DEFAULT (datetime('now')),
+    rating           INTEGER CHECK(rating BETWEEN 1 AND 5),
+    feedback         TEXT
+);
+CREATE INDEX idx_coach_sessions_created_mode ON coach_sessions(created_at DESC, mode);
+
 -- ── PLAYER PROFILE (single row, upserted) ─────────────────────────
 CREATE TABLE player_profile (
     id                      INTEGER PRIMARY KEY DEFAULT 1,

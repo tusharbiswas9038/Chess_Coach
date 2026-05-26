@@ -13,9 +13,9 @@ export function createCoachView({
   let coachHistory = [];
   let coachBusy = false;
   const EXTRA_PROMPTS = [
-    'Build me a 7-day improvement plan using my current weaknesses.',
-    'Give me opening prep priorities for my next rapid session.',
-    'I just lost two games. Give me a 10-minute reset routine before I play again.',
+    { text: 'Build me a 7-day improvement plan using my current weaknesses.', mode: 'deep_lesson' },
+    { text: 'Give me opening prep priorities for my next rapid session.', mode: 'pre_game_prep' },
+    { text: 'I just lost two games. Give me a 10-minute reset routine before I play again.', mode: 'post_loss_reset' },
   ];
 
   function updateContext() {
@@ -93,8 +93,18 @@ export function createCoachView({
     renderMessages();
   }
 
-  function draftQuestion(text) {
+  function setCoachMode(mode) {
+    const select = dom.byId('coach-mode');
+    if (select && mode) select.value = mode;
+  }
+
+  function getCoachMode() {
+    return dom.byId('coach-mode')?.value || 'quick_answer';
+  }
+
+  function draftQuestion(text, mode = '') {
     showView('coach');
+    setCoachMode(mode);
     const input = dom.byId('coach-input');
     const stats = getStatsData() || {};
     const profile = stats.profile || {};
@@ -132,6 +142,7 @@ export function createCoachView({
       const result = await apiPost(endpoints.coachChat(), {
         message,
         history: apiHistory,
+        mode: getCoachMode(),
       });
       coachHistory.push({
         role: 'assistant',
@@ -155,7 +166,7 @@ export function createCoachView({
     dom.query('.coach-prompt-list')?.addEventListener('click', (event) => {
       const btn = event.target.closest('[data-coach-prompt]');
       if (!btn) return;
-      draftQuestion(btn.dataset.coachPrompt);
+      draftQuestion(btn.dataset.coachPrompt, btn.dataset.coachMode);
     });
     const promptList = dom.query('.coach-prompt-list');
     if (promptList && !promptList.dataset.enhanced) {
@@ -164,8 +175,9 @@ export function createCoachView({
         b.className =
           'coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]';
         b.type = 'button';
-        b.dataset.coachPrompt = prompt;
-        b.textContent = prompt.length > 46 ? `${prompt.slice(0, 46)}...` : prompt;
+        b.dataset.coachPrompt = prompt.text;
+        b.dataset.coachMode = prompt.mode;
+        b.textContent = prompt.text.length > 46 ? `${prompt.text.slice(0, 46)}...` : prompt.text;
         promptList.appendChild(b);
       });
       promptList.dataset.enhanced = '1';

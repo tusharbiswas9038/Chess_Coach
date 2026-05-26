@@ -144,12 +144,45 @@ def _create_drill_sessions(conn: sqlite3.Connection) -> None:
     )
 
 
+def _create_coach_quality_tables(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS coach_sessions (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at       TEXT DEFAULT (datetime('now')),
+            mode             TEXT NOT NULL DEFAULT 'quick_answer',
+            user_message     TEXT NOT NULL,
+            assistant_reply  TEXT NOT NULL,
+            context_digest   TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS coach_feedback (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id       INTEGER REFERENCES coach_sessions(id) ON DELETE CASCADE,
+            created_at       TEXT DEFAULT (datetime('now')),
+            rating           INTEGER CHECK(rating BETWEEN 1 AND 5),
+            feedback         TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_coach_sessions_created_mode
+        ON coach_sessions(created_at DESC, mode)
+        """
+    )
+
+
 MIGRATIONS: List[Migration] = [
     ("001_cleanup_orphans_and_reconcile_indexes", _cleanup_orphan_srs_and_reconcile_indexes),
     ("002_optimize_indexes_for_hot_paths", _optimize_indexes_for_hot_paths),
     ("003_create_player_model_snapshots", _create_player_model_snapshots),
     ("004_analysis_v2_fields", _add_analysis_v2_fields),
     ("005_create_drill_sessions", _create_drill_sessions),
+    ("006_create_coach_quality_tables", _create_coach_quality_tables),
 ]
 
 

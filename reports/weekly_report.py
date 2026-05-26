@@ -56,11 +56,11 @@ def generate_weekly_report() -> str:
     """, (week_ago,)).fetchone()
 
     mistakes = conn.execute("""
-        SELECT m.type, COUNT(*) as cnt
+        SELECT COALESCE(m.mistake_subtype, m.type) AS type, COUNT(*) as cnt
         FROM mistakes m
         JOIN games g ON m.game_id=g.id
         WHERE g.date >= ?
-        GROUP BY m.type ORDER BY cnt DESC
+        GROUP BY COALESCE(m.mistake_subtype, m.type) ORDER BY cnt DESC
     """, (week_ago,)).fetchall()
 
     profile = conn.execute(

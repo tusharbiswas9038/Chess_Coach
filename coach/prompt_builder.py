@@ -3,6 +3,78 @@ import sqlite3
 from config import DB_PATH, CHESS_USERNAME
 
 
+COACH_MODE_POLICIES = {
+    "quick_answer": {
+        "label": "Quick answer",
+        "num_predict": 350,
+        "template": (
+            "Answer in 3 compact sections:\n"
+            "1. DIAGNOSIS: one sentence.\n"
+            "2. DO THIS NOW: 2 concrete actions.\n"
+            "3. NEXT GAME RULE: one memorable rule."
+        ),
+    },
+    "deep_lesson": {
+        "label": "Deep lesson",
+        "num_predict": 650,
+        "template": (
+            "Teach like a patient chess coach. Use this structure:\n"
+            "WHY IT HAPPENS, EXAMPLE FROM MY DATA, TRAINING DRILL, NEXT GAME CHECKLIST.\n"
+            "Keep it practical and avoid vague encouragement."
+        ),
+    },
+    "pre_game_prep": {
+        "label": "Pre-game prep",
+        "num_predict": 450,
+        "template": (
+            "Create a pre-game plan. Use exactly:\n"
+            "OPENING WARNING, TACTICAL CHECK, TIME CONTROL PLAN, 3-GAME FOCUS."
+        ),
+    },
+    "post_loss_reset": {
+        "label": "Post-loss reset",
+        "num_predict": 450,
+        "template": (
+            "Help the player recover after a loss. Use exactly:\n"
+            "RESET, ONE LESSON, ONE DRILL, STOP CONDITION.\n"
+            "Be calm, direct, and avoid emotional over-analysis."
+        ),
+    },
+}
+
+
+def normalize_coach_mode(mode: str | None) -> str:
+    return mode if mode in COACH_MODE_POLICIES else "quick_answer"
+
+
+def build_coach_system_prompt(context: str, mode: str | None = None) -> str:
+    mode_key = normalize_coach_mode(mode)
+    policy = COACH_MODE_POLICIES[mode_key]
+    return f"""You are a personalized chess improvement coach for a self-hosted chess analytics app.
+
+Use only the supplied player context and the user's question. If the data is insufficient, say what is missing.
+Do not invent game details, ratings, openings, or tactics.
+Prefer concrete chess actions over motivational advice.
+Never ask the user to buy anything.
+
+COACH MODE: {policy['label']}
+RESPONSE POLICY:
+{policy['template']}
+
+QUALITY GUARDRAILS:
+- Include at least one specific action the user can do today.
+- Tie advice to a mistake subtype, phase, opening, or drill result when available.
+- Keep variations short; use SAN/UCI only when present in context.
+- End with one measurable next-step.
+
+PLAYER CONTEXT:
+{context}""".strip()
+
+
+def coach_mode_num_predict(mode: str | None = None) -> int:
+    return int(COACH_MODE_POLICIES[normalize_coach_mode(mode)]["num_predict"])
+
+
 def build_player_context() -> str:
     """
     Build a player profile summary string for injecting into chat system prompt.
@@ -98,7 +170,9 @@ def build_game_coaching_prompt(game_id: str) -> str:
         return ""
 
     mistakes = conn.execute("""
-        SELECT type, phase, played_move, best_move, eval_loss, is_critical
+        SELECT type, COALESCE(mistake_subtype, type) AS mistake_subtype,
+               phase, played_move, best_move, eval_loss, is_critical,
+               practical_impact, plan_text
         FROM mistakes
         WHERE game_id=?
         ORDER BY is_critical DESC, eval_loss DESC
@@ -130,9 +204,10 @@ def build_game_coaching_prompt(game_id: str) -> str:
     for i, m in enumerate(mistakes, 1):
         critical_marker = " ← CRITICAL (game turned here)" if m["is_critical"] else ""
         mistakes_text += (
-            f"\n  {i}. {m['type'].replace('_', ' ').upper()} in {m['phase']}"
+            f"\n  {i}. {m['mistake_subtype'].replace('_', ' ').upper()} in {m['phase']}"
             f"\n     Played: {m['played_move']} | Better: {m['best_move']}"
-            f"\n     Lost: {m['eval_loss']}cp{critical_marker}"
+            f"\n     Lost: {m['eval_loss']}cp | impact: {m['practical_impact'] or 'unknown'}{critical_marker}"
+            f"\n     Plan: {m['plan_text'] or 'Review the best move candidate.'}"
         )
 
     if not mistakes_text:

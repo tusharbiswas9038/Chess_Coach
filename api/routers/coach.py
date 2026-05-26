@@ -1,15 +1,19 @@
 import re
-
-from typing import Any, AsyncGenerator # New: Add AsyncGenerator
 import logging
+import sqlite3
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse # New: Import StreamingResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from api.dependencies import COACH_OK # New: import from dependencies
+from api.dependencies import COACH_OK
 from api.jobs_service import enqueue_coach_game_job, enqueue_coach_batch_job
 from api.security import enforce_rate_limit, require_admin_if_configured
-from coach.ollama_client import chat, chat_stream # Updated import
+from api.services.coach_context import build_coach_context
+from coach.ollama_client import chat, chat_stream
+from coach.prompt_builder import normalize_coach_mode
+from config import DB_PATH
 
 router = APIRouter(prefix="/api/coach", tags=["coach"])
 log = logging.getLogger("chess_coach.api.coach.router")
@@ -24,13 +28,13 @@ def normalize_chat_input(text: str) -> str:
 
 
 @router.post("/game/{game_id}")
-def generate_game_coaching(request: Request, game_id: str): # Removed background_tasks
+def generate_game_coaching(request: Request, game_id: str):
     require_admin_if_configured(request)
     enforce_rate_limit(request, bucket="coach-game", limit=10, window_sec=60)
     if not COACH_OK:
         raise HTTPException(501, "Coach module not available yet")
     try:
-        enqueue_coach_game_job(game_id=game_id, logger=log) # Removed background_tasks
+        enqueue_coach_game_job(game_id=game_id, logger=log)
     except RuntimeError as e:
         raise HTTPException(429, str(e))
     return {"status": "generating"}
@@ -39,6 +43,12 @@ def generate_game_coaching(request: Request, game_id: str): # Removed background
 class ChatMessage(BaseModel):
     message: str = Field(..., min_length=1, max_length=1200)
     history: list[dict[str, Any]] = Field(default_factory=list)
+    mode: str = Field(default="quick_answer")
+
+    @field_validator("mode")
+    @classmethod
+    def validate_mode(cls, value: str) -> str:
+        return normalize_coach_mode(value)
 
     @field_validator("history")
     @classmethod
@@ -57,8 +67,23 @@ class ChatMessage(BaseModel):
         return value
 
 
+def save_coach_session(mode: str, message: str, response: str, context_digest: str) -> None:
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.execute(
+            """
+            INSERT INTO coach_sessions (mode, user_message, assistant_reply, context_digest)
+            VALUES (?, ?, ?, ?)
+            """,
+            (mode, message, response, context_digest),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 @router.post("/chat")
-async def coach_chat(request: Request, body: ChatMessage, stream: bool = False): # New: Add stream parameter
+async def coach_chat(request: Request, body: ChatMessage, stream: bool = False):
     require_admin_if_configured(request)
     enforce_rate_limit(request, bucket="coach-chat", limit=30, window_sec=60)
     if not COACH_OK:
@@ -66,21 +91,25 @@ async def coach_chat(request: Request, body: ChatMessage, stream: bool = False):
     
     normalized_message = normalize_chat_input(body.message)
     messages = body.history + [{"role": "user", "content": normalized_message}]
+    context = build_coach_context()
 
     if stream:
-        # If streaming, call chat_stream and return StreamingResponse
         async def generate_stream():
-            async for chunk in chat_stream(messages): # Call chat_stream
+            async for chunk in chat_stream(
+                messages,
+                context=context["text"],
+                mode=body.mode,
+            ):
                 yield chunk
-        return StreamingResponse(generate_stream(), media_type="text/plain") # Adjust media_type if needed
-    else:
-        # If not streaming, call chat and return full reply
-        reply = await chat(messages) # Call chat (non-streaming)
-        return {"reply": reply}
+        return StreamingResponse(generate_stream(), media_type="text/plain")
+
+    reply = await chat(messages, context=context["text"], mode=body.mode)
+    save_coach_session(body.mode, normalized_message, reply, context["digest"])
+    return {"reply": reply, "mode": body.mode}
 
 
 @router.post("/batch")
-def generate_batch_reports(request: Request, limit: int = 10): # Removed background_tasks
+def generate_batch_reports(request: Request, limit: int = 10):
     """Generate coaching reports for the most recent `limit` analyzed games without reports."""
     require_admin_if_configured(request)
     enforce_rate_limit(request, bucket="coach-batch", limit=5, window_sec=60)
@@ -88,7 +117,7 @@ def generate_batch_reports(request: Request, limit: int = 10): # Removed backgro
         raise HTTPException(501, "Coach module not available")
     limit = max(1, min(limit, 50))
     try:
-        enqueue_coach_batch_job(limit=limit, logger=log) # Removed background_tasks
+        enqueue_coach_batch_job(limit=limit, logger=log)
     except RuntimeError as e:
         raise HTTPException(429, str(e))
     return {"status": "started", "queued": "up to " + str(limit) + " games"}
