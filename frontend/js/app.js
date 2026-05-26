@@ -2,6 +2,7 @@ import { api, apiPost, apiContract } from './modules/api.js';
 import { createActionsView } from './modules/views/actions.js';
 import { createNavigationView } from './modules/views/navigation.js';
 import { initChartDefaults } from './modules/charts.js';
+import { clearAllCaches } from './modules/cache.js';
 import { loadSectionTemplate } from './modules/viewLoader.js';
 import { createAuthGate } from './modules/auth.js';
 
@@ -15,6 +16,7 @@ let statsData = null;
 let charts = {};
 
 let navigationView;
+let routedAfterAuth = false;
 const boundViews = new Set();
 const authGate = createAuthGate({ api, apiPost, toast });
 const views = {
@@ -152,11 +154,19 @@ navigationView = createNavigationView({
 getActionsView().bindEvents();
 navigationView.bindEvents();
 navigationView.restoreSidebarPreference();
-navigationView.syncFromRoute();
-authGate.init().then(updateAuthUi);
+authGate.init().then((session) => {
+  updateAuthUi(session);
+  if (!session?.auth_required || session?.authenticated) {
+    routedAfterAuth = true;
+    navigationView.syncFromRoute();
+  }
+});
 
 window.addEventListener('app:auth-changed', (event) => {
   updateAuthUi(event.detail);
+  if (event.detail?.authenticated || !event.detail?.auth_required) {
+    reloadAfterAuth();
+  }
 });
 
 window.addEventListener('app:auth-required', () => {
@@ -178,6 +188,32 @@ function updateAuthUi(session = authGate.getSession()) {
   const logoutBtn = document.getElementById('btn-logout');
   if (logoutBtn) {
     logoutBtn.hidden = !(session?.auth_required && session?.authenticated);
+  }
+}
+
+async function reloadAfterAuth() {
+  clearAllCaches();
+  statsData = null;
+  if (!routedAfterAuth) {
+    routedAfterAuth = true;
+    navigationView.syncFromRoute();
+    return;
+  }
+
+  const currentView = navigationView.getCurrentView?.() || 'dashboard';
+  await navigationView.showView(currentView, { updateRoute: false });
+  if (currentView === 'dashboard') {
+    views.dashboard?.loadStats();
+  } else if (currentView === 'mistakes') {
+    views.mistakes?.load(true);
+  } else if (currentView === 'openings') {
+    views.openings?.load(true);
+  } else if (currentView === 'drills') {
+    views.drills?.loadDrills?.();
+  } else if (currentView === 'games') {
+    views.games?.loadGames?.();
+  } else if (currentView === 'coach') {
+    views.coach?.updateContext?.();
   }
 }
 

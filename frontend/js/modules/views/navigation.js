@@ -278,6 +278,7 @@ export function createNavigationView({
 
   return {
     bindEvents,
+    getCurrentView: () => currentView,
     showView,
     syncFromRoute,
     restoreSidebarPreference,
