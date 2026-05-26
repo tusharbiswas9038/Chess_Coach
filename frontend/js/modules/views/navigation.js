@@ -1,6 +1,7 @@
 import { createDomCache } from '../dom.js';
 
 export function createNavigationView({
+  onBeforeEnter,
   onEnterCoach,
   onEnterDrills,
   onEnterGames,
@@ -23,21 +24,29 @@ export function createNavigationView({
   let sidebarCollapsed = false;
   let sidebarTabletOpen = false;
 
-  function routeForView(name) {
-    return `#/${name}`;
+  function routeForView(name, routeMode = 'path') {
+    return routeMode === 'hash' ? `#/${name}` : `/${name}`;
   }
 
-  function parseRoute(hash) {
+  function parseRoute(hash, pathname = '/') {
+    const fromPath = String(pathname || '/').trim();
+    if (fromPath && fromPath !== '/') {
+      const pathSeg = fromPath.replace(/^\/+/, '').split('/')[0];
+      if (validViews.has(pathSeg)) return pathSeg;
+    }
     const raw = String(hash || '').trim();
     if (!raw || raw === '#') return 'dashboard';
-    const normalized = raw.replace(/^#\/?/, '').split('?')[0];
+    const normalized = raw.replace(/^#\/?/, '').replace(/^\/+/, '').split('?')[0];
     return validViews.has(normalized) ? normalized : 'dashboard';
   }
 
-  function showView(name, options = {}) {
-    const { updateRoute = true } = options;
+  async function showView(name, options = {}) {
+    const { updateRoute = true, routeMode = 'path' } = options;
     const safeName = validViews.has(name) ? name : 'dashboard';
     const previousView = currentView;
+    if (typeof onBeforeEnter === 'function') {
+      await onBeforeEnter(safeName);
+    }
 
     if (previousView) {
       scrollByView.set(previousView, window.scrollY || 0);
@@ -90,8 +99,14 @@ export function createNavigationView({
     const savedScroll = scrollByView.get(safeName);
     window.scrollTo({ top: savedScroll ?? 0, behavior: 'auto' });
 
-    if (updateRoute && window.location.hash !== routeForView(safeName)) {
-      window.location.hash = routeForView(safeName);
+    if (updateRoute) {
+      const nextUrl = routeForView(safeName, routeMode);
+      const currentCombined = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (routeMode === 'hash') {
+        if (window.location.hash !== nextUrl) window.location.hash = nextUrl;
+      } else if (currentCombined !== nextUrl) {
+        window.history.pushState({ view: safeName }, '', nextUrl);
+      }
     }
 
     if (safeName === 'games') onEnterGames();
@@ -102,7 +117,7 @@ export function createNavigationView({
   }
 
   function syncFromRoute() {
-    const nextView = parseRoute(window.location.hash);
+    const nextView = parseRoute(window.location.hash, window.location.pathname);
     showView(nextView, { updateRoute: false });
   }
 
@@ -125,6 +140,7 @@ export function createNavigationView({
       showView(btn.dataset.view);
     });
     window.addEventListener('hashchange', syncFromRoute);
+    window.addEventListener('popstate', syncFromRoute);
 
     const toggleBtn = dom.byId('btn-sidebar-toggle');
     toggleBtn?.addEventListener('click', () => {

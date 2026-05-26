@@ -1,0 +1,175 @@
+            <section class="games-workspace mb-4">
+              <div class="games-workspace-copy workspace-hero">
+                <div class="section-kicker">Study Queue</div>
+                <h2 class="games-workspace-title section-title workspace-hero-title mt-1 text-[var(--text)]">Find the right game to review next.</h2>
+                <p class="games-workspace-summary workspace-hero-summary mt-2 max-w-[58ch] text-[var(--muted)]">
+                  Filter by result, opening, mistakes, and analysis status so the
+                  game list behaves like a study tool instead of a raw archive.
+                </p>
+              </div>
+
+              <div class="games-preset-row mt-2 flex flex-wrap gap-1 max-sm:grid max-sm:grid-cols-2" id="games-preset-row">
+                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" data-preset="recent-losses" type="button">
+                  Recent Losses
+                </button>
+                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" data-preset="high-mistakes" type="button">
+                  High Mistakes
+                </button>
+                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" data-preset="needs-coach" type="button">
+                  Needs Coach Note
+                </button>
+                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" data-preset="strong-opponents" type="button">
+                  Strong Opponents
+                </button>
+              </div>
+
+              <div class="games-filter-panel filter-bar mt-3 p-4 max-sm:p-3">
+                <div class="games-filter-grid grid grid-cols-4 gap-2 max-md:grid-cols-2 max-sm:grid-cols-1">
+                  <label class="field">
+                    <span class="field-label">Search</span>
+                    <input
+                      id="games-search"
+                      class="field-input input input-bordered w-full"
+                      type="search"
+                      placeholder="Opening, ECO, rating, date"
+                    />
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Opening / ECO</span>
+                    <input
+                      id="games-opening"
+                      class="field-input input input-bordered w-full"
+                      type="search"
+                      placeholder="Sicilian, B20, London"
+                    />
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Color</span>
+                    <select id="games-color" class="field-input select select-bordered w-full">
+                      <option value="">All colors</option>
+                      <option value="white">White</option>
+                      <option value="black">Black</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Result</span>
+                    <select id="games-result" class="field-input select select-bordered w-full">
+                      <option value="">All results</option>
+                      <option value="win">Win</option>
+                      <option value="loss">Loss</option>
+                      <option value="draw">Draw</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Status</span>
+                    <select id="games-analyzed" class="field-input select select-bordered w-full">
+                      <option value="">All statuses</option>
+                      <option value="1">Analyzed</option>
+                      <option value="0">Pending</option>
+                      <option value="2">Error</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Coach Note</span>
+                    <select id="games-journal" class="field-input select select-bordered w-full">
+                      <option value="">All games</option>
+                      <option value="0">Missing note</option>
+                      <option value="1">Has note</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Mistakes</span>
+                    <select id="games-min-mistakes" class="field-input select select-bordered w-full">
+                      <option value="0">All games</option>
+                      <option value="1">1+ mistakes</option>
+                      <option value="5">5+ mistakes</option>
+                      <option value="10">10+ mistakes</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Sort</span>
+                    <select id="games-sort" class="field-input select select-bordered w-full">
+                      <option value="date_desc">Newest first</option>
+                      <option value="date_asc">Oldest first</option>
+                      <option value="mistakes_desc">Most mistakes</option>
+                      <option value="opponent_desc">Highest opponent rating</option>
+                      <option value="opponent_asc">Lowest opponent rating</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="games-filter-actions mt-2 flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2 max-sm:items-start max-sm:flex-col">
+                  <div class="meta-label" id="games-filter-summary">All games</div>
+                  <div class="games-filter-buttons flex flex-wrap gap-1 max-sm:grid max-sm:w-full max-sm:grid-cols-2">
+                    <button class="btn btn-ghost btn-sm" id="btn-save-filter-slot-1" type="button">
+                      Save S1
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btn-load-filter-slot-1" type="button">
+                      Load S1
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btn-save-filter-slot-2" type="button">
+                      Save S2
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btn-load-filter-slot-2" type="button">
+                      Load S2
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btn-save-filter-slot-3" type="button">
+                      Save S3
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btn-load-filter-slot-3" type="button">
+                      Load S3
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btn-export-games-csv" type="button">
+                      Export CSV
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btn-copy-games-summary" type="button">
+                      Copy Summary
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btn-clear-games-filters" type="button">
+                      Clear Filters
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div class="card panel-quiet mt-2 overflow-hidden">
+              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2 max-sm:flex-col max-sm:items-start max-sm:gap-1">
+                <div class="card-title">All Games</div>
+                <div class="meta-label" id="games-count-label"></div>
+              </div>
+              <div class="table-shell overflow-x-auto">
+              <table class="table-relaxed">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Color</th>
+                    <th>Result</th>
+                    <th>Opp. Rating</th>
+                    <th>Opening</th>
+                    <th>Mistakes</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="all-games-body"></tbody>
+              </table>
+              </div>
+            </div>
+            <div class="mt-3 flex items-center justify-end gap-1 max-sm:grid max-sm:grid-cols-3 max-sm:items-center">
+              <button class="btn btn-ghost max-sm:w-full max-sm:justify-center" id="btn-prev" type="button">
+                ← Prev
+              </button>
+              <span class="meta-label text-center" id="page-label">Page 1</span>
+              <button class="btn btn-ghost max-sm:w-full max-sm:justify-center" id="btn-next" type="button">
+                Next →
+              </button>
+            </div>
+          

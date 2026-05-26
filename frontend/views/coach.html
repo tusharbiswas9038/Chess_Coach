@@ -1,0 +1,128 @@
+            <section class="coach-workspace wizard-shell">
+              <div class="coach-main panel-primary overflow-hidden">
+                <div class="coach-hero flex items-start justify-between gap-3 border-b border-[var(--border)] bg-[radial-gradient(circle_at_top_right,rgba(63,185,80,0.1),transparent_34%),var(--surface)] p-6 max-sm:flex-col max-sm:items-start max-sm:p-3">
+                  <div class="workspace-hero">
+                    <div class="section-kicker">Skill Level Calibration</div>
+                    <h2 class="coach-title section-title workspace-hero-title mt-1 max-w-[16ch] text-[var(--text)]">Turn your data into a training decision.</h2>
+                    <p class="coach-summary workspace-hero-summary mt-1 max-w-[58ch] text-[var(--muted)]">
+                      Ask about your recent games, recurring mistakes, openings, or
+                      what to study before the next rapid session.
+                    </p>
+                  </div>
+                  <button class="btn btn-ghost max-sm:min-h-[40px] max-sm:w-full max-sm:justify-center" id="btn-coach-clear" type="button">
+                    Clear Chat
+                  </button>
+                </div>
+
+                <div class="coach-messages flex max-h-[58vh] min-h-[390px] flex-col gap-2 overflow-y-auto p-5 max-sm:min-h-[280px] max-sm:max-h-[52vh] max-sm:p-3" id="coach-messages" aria-live="polite">
+                  <div class="coach-empty space-y-3">
+                    <div class="empty alert alert-neutral border border-[var(--border)] bg-[var(--surface-2)] py-4 text-[var(--text)]" role="status">
+                      <div class="empty-icon text-base leading-none">♟</div>
+                      <span>No coach conversation yet</span>
+                    </div>
+                    <div class="coach-empty-copy text-sm text-[var(--muted)]">
+                      Pick a prompt or ask a direct question. The coach will use your current chess data as context.
+                    </div>
+                    <div class="coach-mode-grid" aria-hidden="true">
+                      <div class="coach-mode-chip">Game Review</div>
+                      <div class="coach-mode-chip">Opening Prep</div>
+                      <div class="coach-mode-chip">Training Plan</div>
+                    </div>
+                  </div>
+                </div>
+
+                <form class="coach-form border-t border-[var(--border)] p-5 max-sm:p-3" id="coach-form">
+                  <label class="field coach-input-field">
+                    <span class="field-label">Question</span>
+                    <textarea
+                      id="coach-input"
+                      class="coach-input textarea textarea-bordered min-h-[120px] w-full"
+                      rows="4"
+                      placeholder="Example: What should I fix before my next 10+0 game?"
+                    ></textarea>
+                  </label>
+                  <div class="coach-form-actions mt-2 flex items-center justify-between gap-2 max-sm:flex-col max-sm:items-stretch">
+                    <div class="meta-label" id="coach-status" role="status" aria-live="polite">
+                      Ready
+                    </div>
+                    <button class="btn btn-primary w-full max-w-[240px] tracking-[0.08em] max-sm:max-w-none" id="btn-coach-send" type="submit">
+                      Ask Coach
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <aside class="coach-sidebar grid gap-2">
+                <div class="coach-panel panel-quiet p-3">
+                  <div class="coach-panel-title mb-2 text-[14px] font-bold">Coach Flow</div>
+                  <div class="wizard-stepper stepper-rail">
+                    <div class="coach-step">
+                      <span class="coach-step-index">1</span>
+                      <div>
+                        <div class="text-sm font-bold text-[var(--text)]">Context</div>
+                        <div class="text-xs text-[var(--muted)]">Recent games and current profile</div>
+                      </div>
+                    </div>
+                    <div class="coach-step">
+                      <span class="coach-step-index">2</span>
+                      <div>
+                        <div class="text-sm font-bold text-[var(--text)]">Question</div>
+                        <div class="text-xs text-[var(--muted)]">One focused training decision</div>
+                      </div>
+                    </div>
+                    <div class="coach-step">
+                      <span class="coach-step-index">3</span>
+                      <div>
+                        <div class="text-sm font-bold text-[var(--text)]">Action</div>
+                        <div class="text-xs text-[var(--muted)]">Apply the correction rule</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="coach-panel panel-quiet p-3">
+                  <div class="coach-panel-title mb-2 text-[14px] font-bold">Quick Questions</div>
+                  <div class="coach-prompt-list grid grid-cols-1 gap-1">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="What should I study today based on my recent games?" type="button">
+                      What should I study today?
+                    </button>
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="What is my biggest recurring weakness and how do I fix it in one week?" type="button">
+                      Biggest recurring weakness
+                    </button>
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="Give me a 20 minute warm-up routine before I play rapid chess." type="button">
+                      20 minute warm-up
+                    </button>
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-prompt="Which openings are currently hurting my results most?" type="button">
+                      Opening weaknesses
+                    </button>
+                  </div>
+                </div>
+
+                <div class="coach-panel panel-quiet p-3">
+                  <div class="coach-panel-title mb-2 text-[14px] font-bold">Current Context</div>
+                  <div class="coach-context-list">
+                    <div class="coach-context-row">
+                      <span>Rating</span>
+                      <strong id="coach-context-rating">—</strong>
+                    </div>
+                    <div class="coach-context-row">
+                      <span>Games analyzed</span>
+                      <strong id="coach-context-games">—</strong>
+                    </div>
+                    <div class="coach-context-row">
+                      <span>Hanging rate</span>
+                      <strong id="coach-context-hanging">—</strong>
+                    </div>
+                    <div class="coach-context-row">
+                      <span>Blunders/game</span>
+                      <strong id="coach-context-blunders">—</strong>
+                    </div>
+                    <div class="coach-context-row">
+                      <span>Drills due</span>
+                      <strong id="coach-context-drills">—</strong>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </section>
+          

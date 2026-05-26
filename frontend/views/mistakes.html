@@ -1,0 +1,99 @@
+            <section class="workspace-hero">
+              <div class="section-kicker">Error Intelligence</div>
+              <h2 class="workspace-hero-title">See exactly where games slip away.</h2>
+              <p class="workspace-hero-summary">Track recurring blunders by phase, board square, and tactical motif so each training block fixes one concrete leak.</p>
+            </section>
+
+            <div class="games-preset-row mt-2 flex flex-wrap gap-1 max-sm:grid max-sm:grid-cols-2" id="mistakes-phase-tabs">
+              <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px] active" type="button" data-phase="">All Phases</button>
+              <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-phase="opening">Opening</button>
+              <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-phase="middlegame">Middlegame</button>
+              <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-phase="endgame">Endgame</button>
+            </div>
+            <div class="kpi-grid kpi-grid-triple mb-5 grid gap-2 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
+              <div class="kpi-card">
+                <div class="kpi-label">Total Blunders</div>
+                <div class="kpi-value kpi-bad" id="m-blunders">—</div>
+                <div class="kpi-sub">eval swing &gt; 300cp</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Hanging Pieces</div>
+                <div class="kpi-value kpi-warn" id="m-hanging">—</div>
+                <div class="kpi-sub">left piece en prise</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Mistakes</div>
+                <div class="kpi-value kpi-blue" id="m-mistakes">—</div>
+                <div class="kpi-sub">eval swing 100–200cp</div>
+              </div>
+            </div>
+
+            <div class="charts-row charts-row-triple mb-5 grid gap-2.5 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr] max-sm:gap-2">
+              <div class="chart-card analytics-panel" id="mistakes-card-phase">
+                <div class="chart-head">
+                  <div class="chart-title">By Phase</div>
+                  <div class="chart-meta" id="mistakes-phase-meta">Refreshing…</div>
+                </div>
+                <div class="chart-container chart-container-short max-sm:h-[180px]">
+                  <canvas id="chart-phase"></canvas>
+                </div>
+              </div>
+              <div class="chart-card analytics-panel chart-card-span-2 col-span-2 max-md:col-span-1" id="mistakes-card-trend">
+                <div class="chart-head">
+                  <div class="chart-title">Blunders per Game — Last 20 Games</div>
+                  <div class="chart-meta" id="mistakes-trend-meta">Refreshing…</div>
+                </div>
+                <div class="chart-container chart-container-short max-sm:h-[180px]">
+                  <canvas id="chart-blunder-trend"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div class="card card-pad panel-primary mt-2 overflow-hidden p-3" id="mistakes-card-heatmap">
+              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2 max-sm:flex-col max-sm:items-start max-sm:gap-1">
+                <div class="card-title">Blunder Heatmap</div>
+                <div class="table-meta">Squares where blunders happened most</div>
+              </div>
+              <div class="heatmap-board" id="heatmap-board" aria-label="Blunder heatmap"></div>
+              <div class="heatmap-legend" aria-hidden="true">
+                <span class="heatmap-legend-label">Low</span>
+                <span class="heatmap-legend-swatch heatmap-level-1"></span>
+                <span class="heatmap-legend-swatch heatmap-level-2"></span>
+                <span class="heatmap-legend-swatch heatmap-level-3"></span>
+                <span class="heatmap-legend-swatch heatmap-level-4"></span>
+                <span class="heatmap-legend-swatch heatmap-level-5"></span>
+                <span class="heatmap-legend-label">High</span>
+              </div>
+            </div>
+
+            <div class="card card-pad panel-quiet mt-3 overflow-hidden p-3" id="mistakes-card-motifs">
+              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
+                <div class="card-title">Top 3 Recurring Error Motifs (7 days)</div>
+              </div>
+              <div id="mistakes-motifs-list" class="coach-context-list"></div>
+            </div>
+
+            <div class="card panel-quiet mt-3 overflow-hidden" id="mistakes-card-critical">
+              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2 max-sm:flex-col max-sm:items-start max-sm:gap-1">
+                <div class="card-title">
+                  Recent Critical Mistakes (1 per game)
+                </div>
+                <div class="table-meta" id="mistakes-critical-meta">Latest priority positions</div>
+              </div>
+              <div class="table-shell overflow-x-auto">
+              <table class="table-dense">
+                <thead>
+                  <tr>
+                    <th>Game Date</th>
+                    <th>Type</th>
+                    <th>Phase</th>
+                    <th>Move Played</th>
+                    <th>Should Have Played</th>
+                    <th>Eval Lost (cp)</th>
+                  </tr>
+                </thead>
+                <tbody id="critical-mistakes-body"></tbody>
+              </table>
+              </div>
+            </div>
+          

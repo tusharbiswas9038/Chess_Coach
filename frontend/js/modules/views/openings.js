@@ -24,6 +24,10 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
     white: [],
     black: [],
   };
+  function setChartMeta(id, text) {
+    const el = dom.byId(id);
+    if (el) el.textContent = text;
+  }
 
   function confidenceLabel(games) {
     if (games >= 20) return 'High';
@@ -80,8 +84,8 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
           {
             label: 'Games',
             data: data.map((o) => o.games),
-            backgroundColor: chartPalette.blueSoft,
-            borderColor: chartPalette.blue,
+            backgroundColor: chartPalette.analyticsSoft,
+            borderColor: chartPalette.analytics,
             borderWidth: 1,
             borderRadius: 6,
           },
@@ -146,14 +150,14 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
             {
               label: 'Win %',
               data: winPercentages,
-              borderColor: chartPalette.blue,
-              backgroundColor: chartPalette.blueSoft,
+              borderColor: chartPalette.analytics,
+              backgroundColor: chartPalette.analyticsSoft,
               fill: true,
               tension: 0.36,
               borderWidth: 2,
               pointRadius: 0,
               pointHoverRadius: 4,
-              pointBackgroundColor: chartPalette.blue,
+              pointBackgroundColor: chartPalette.analytics,
             },
           ],
         },
@@ -206,6 +210,8 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
     const staleMs = 120000;
     if (loaded && !force && Date.now() - loadedAtMs < staleMs) return;
     loaded = true;
+    setChartMeta('chart-openings-white-meta', 'Refreshing…');
+    setChartMeta('chart-openings-black-meta', 'Refreshing…');
     setLoadingCharts(true);
     const genomeTitleEl = dom.byId('genome-title');
     const genomeTotalEl = dom.byId('genome-total-games');
@@ -227,6 +233,8 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
       setLoadingCharts(false);
       setChartError('chart-openings-white', true);
       setChartError('chart-openings-black', true);
+      setChartMeta('chart-openings-white-meta', 'Unavailable');
+      setChartMeta('chart-openings-black-meta', 'Unavailable');
       tbody.innerHTML = `
         ${tableStateRowMarkup('Unable to load openings.', 6, {
           kind: 'error',
@@ -258,6 +266,8 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
     renderOpeningChart('chart-openings-black', blackTop);
     setChartError('chart-openings-white', false);
     setChartError('chart-openings-black', false);
+    setChartMeta('chart-openings-white-meta', `Updated • ${whiteTop.length} ECOs`);
+    setChartMeta('chart-openings-black-meta', `Updated • ${blackTop.length} ECOs`);
     setLoadingCharts(false);
 
     // Populate the dropdown for opening selection
@@ -292,7 +302,12 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
               : 'badge-ghost';
         return `
       <tr>
-        <td class="cell-code-strong">${esc(o.eco)}</td>
+        <td>
+          <div class="flex items-center gap-2">
+            <div class="mini-board-thumb w-8 shrink-0" aria-hidden="true">${'<span></span>'.repeat(16)}</div>
+            <span class="cell-code-strong">${esc(o.eco)}</span>
+          </div>
+        </td>
         <td>${truncate(o.name, 40)}</td>
         <td>${colorBadge(o.color)}</td>
         <td>${o.games} <span class="badge badge-xs ${confidenceTone} ml-1">${confidence}</span></td>
@@ -300,12 +315,8 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
         <td>
           <div class="flex items-center gap-2">
             <span class="min-w-10 text-right text-xs font-medium ${openingToneTextClass(Number(winPct))}">${winPct}%</span>
-            <div class="progress-bar grow">
-              <progress
-                class="progress-meter progress h-2 w-full ${openingToneClass(Number(winPct))}"
-                max="100"
-                value="${winPct}"
-              ></progress>
+            <div class="mastery-bar grow">
+              <progress class="progress-meter ${openingToneClass(Number(winPct))}" max="100" value="${winPct}"></progress>
             </div>
           </div>
         </td>

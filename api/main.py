@@ -5,16 +5,24 @@ import uuid
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from api.db import db_conn
 from api.db_migrations import run_pending_migrations
 from api.dependencies import DRILLS_OK, COACH_OK
 from api.job_queue import job_queue
+from api.security import require_admin_if_configured
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 import config
 
-app = FastAPI(title="Chess Coach", version="1.0.0")
+app = FastAPI(
+    title="Chess Coach",
+    version="1.0.0",
+    docs_url=None if config.is_production() else "/docs",
+    redoc_url=None if config.is_production() else "/redoc",
+    openapi_url=None if config.is_production() else "/openapi.json",
+)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -41,9 +49,14 @@ async def shutdown_event():
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.get_cors_origins(),
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-ADMIN-TOKEN", "Authorization"],
+)
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=config.get_allowed_hosts(),
 )
 
 
@@ -61,9 +74,15 @@ async def add_security_headers(request: Request, call_next):
     if content_length:
         try:
             if int(content_length) > config.MAX_REQUEST_BODY_BYTES:
-                raise HTTPException(413, "Request body too large")
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "Request body too large"},
+                )
         except ValueError:
-            raise HTTPException(400, "Invalid Content-Length header")
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Invalid Content-Length header"},
+            )
 
     response: Response = await call_next(request)
     elapsed_ms = (time.perf_counter() - started) * 1000.0
@@ -84,10 +103,23 @@ async def add_security_headers(request: Request, call_next):
     )
     return response
 
-@app.get("/", include_in_schema=False)
-async def serve_dashboard():
+def _serve_index() -> HTMLResponse:
     with open("frontend/index.html", "r") as f:
         return HTMLResponse(content=f.read())
+
+@app.get("/", include_in_schema=False)
+async def serve_dashboard():
+    return _serve_index()
+
+@app.get("/dashboard", include_in_schema=False)
+@app.get("/games", include_in_schema=False)
+@app.get("/game-detail", include_in_schema=False)
+@app.get("/mistakes", include_in_schema=False)
+@app.get("/openings", include_in_schema=False)
+@app.get("/drills", include_in_schema=False)
+@app.get("/coach", include_in_schema=False)
+async def serve_spa_routes():
+    return _serve_index()
 
 
 # ── HEALTH ────────────────────────────────────────────────────────
@@ -107,7 +139,8 @@ def health():
 
 
 @app.get("/api/ready")
-def ready():
+def ready(request: Request):
+    require_admin_if_configured(request)
     try:
         with db_conn() as conn:
             conn.execute("SELECT 1")
@@ -126,7 +159,8 @@ def ready():
 
 
 @app.get("/api/metrics")
-def metrics():
+def metrics(request: Request):
+    require_admin_if_configured(request)
     db_ok = 1
     try:
         with db_conn() as conn:

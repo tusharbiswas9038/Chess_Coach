@@ -1,0 +1,81 @@
+            <section class="workspace-hero">
+              <div class="section-kicker">Opening Intelligence</div>
+              <h2 class="workspace-hero-title">Identify your highest-value opening fixes.</h2>
+              <p class="workspace-hero-summary">Combine win-rate confidence with opening genome signals to pinpoint where preparation turns into mistakes.</p>
+            </section>
+
+            <div class="charts-row charts-row-openings mb-5 grid gap-2 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:[grid-template-columns:1fr] max-sm:gap-2">
+              <div class="chart-card analytics-panel">
+                <div class="chart-head">
+                  <div class="chart-title">Top Openings as White</div>
+                  <div class="chart-meta" id="chart-openings-white-meta">Refreshing…</div>
+                </div>
+                <div class="chart-container chart-container-tall max-sm:h-[210px]">
+                  <canvas id="chart-openings-white"></canvas>
+                </div>
+              </div>
+              <div class="chart-card analytics-panel">
+                <div class="chart-head">
+                  <div class="chart-title">Top Openings as Black</div>
+                  <div class="chart-meta" id="chart-openings-black-meta">Refreshing…</div>
+                </div>
+                <div class="chart-container chart-container-tall max-sm:h-[210px]">
+                  <canvas id="chart-openings-black"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div class="card panel-primary mt-2 overflow-hidden">
+              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
+                <div class="card-title">Opening Genome</div>
+                <button class="btn btn-ghost max-sm:min-h-[40px]" id="btn-refresh-openings" type="button">
+                  Refresh
+                </button>
+              </div>
+              <div class="filters-grid filter-bar m-3 grid grid-cols-2 gap-2 p-3 max-sm:grid-cols-1">
+                <div class="field">
+                  <label class="label" for="select-eco-genome">ECO</label>
+                  <select id="select-eco-genome" class="field-input select select-bordered w-full">
+                    <option value="">-- Select ECO --</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="select-color-genome">Color</label>
+                  <select id="select-color-genome" class="field-input select select-bordered w-full">
+                    <option value="white">White</option>
+                    <option value="black">Black</option>
+                  </select>
+                </div>
+              </div>
+              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2 max-sm:flex-col max-sm:items-start max-sm:gap-1">
+                <div class="card-title" id="genome-title">Select an opening to view its genome</div>
+                <div class="card-subtitle" id="genome-total-games"></div>
+              </div>
+              <div class="chart-container chart-container-short chart-container-genome max-sm:h-[170px]">
+                <canvas id="opening-genome-chart"></canvas>
+              </div>
+              <div class="table-meta card-pad p-3" id="genome-insight">Select an opening to see a coaching insight.</div>
+              <div class="card-pad p-3" id="opening-genome-status" hidden></div>
+            </div>
+
+            <div class="card panel-quiet mt-3 overflow-hidden">
+              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
+                <div class="card-title">Opening Win Rates</div>
+              </div>
+              <div class="table-shell overflow-x-auto">
+              <table class="table-dense">
+                <thead>
+                  <tr>
+                    <th>ECO</th>
+                    <th>Opening</th>
+                    <th>Color</th>
+                    <th>Games</th>
+                    <th>Wins</th>
+                    <th>Win %</th>
+                  </tr>
+                </thead>
+                <tbody id="openings-body"></tbody>
+              </table>
+              </div>
+            </div>
+          

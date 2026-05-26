@@ -1,31 +1,25 @@
-import functools # New import
-import time
-from typing import Any, List, Dict
-from fastapi import APIRouter, Depends, HTTPException
+import functools
+from typing import Any, Dict
+from fastapi import APIRouter, Depends
 
 from api.repositories.game_repository import GameRepository
-from api.dependencies import get_game_repo, DRILLS_OK # New Import
+from api.dependencies import get_game_repo, DRILLS_OK, rate_limit, require_admin # New Import
 from api.routers.product import build_weekly_focus_payload
 
-from api.db import get_db, db_conn
+from api.db import db_conn
+from api.services.cache_service import TTLCache, register_analytics_cache_clearer
+from api.schemas.contracts import DashboardBootstrapResponse, StatsResponse, StatusResponse
 
 router = APIRouter(prefix="/api", tags=["stats"])
-_TTL_CACHE: Dict[str, Dict[str, Any]] = {}
-_TTL_SECONDS = 30
+_TTL_CACHE = TTLCache(ttl_seconds=30)
 
 
 def _ttl_get(key: str):
-    item = _TTL_CACHE.get(key)
-    if not item:
-        return None
-    if (time.time() - item["ts"]) > _TTL_SECONDS:
-        _TTL_CACHE.pop(key, None)
-        return None
-    return item["value"]
+    return _TTL_CACHE.get(key)
 
 
 def _ttl_set(key: str, value: Any):
-    _TTL_CACHE[key] = {"ts": time.time(), "value": value}
+    _TTL_CACHE.set(key, value)
 
 @functools.lru_cache(maxsize=1)
 def _get_cached_stats(drills_ok: bool) -> Dict[str, Any]:
@@ -56,13 +50,19 @@ def clear_stats_cache():
     _TTL_CACHE.clear()
 
 
-@router.get("/stats")
-def get_stats():
+register_analytics_cache_clearer(clear_stats_cache)
+
+
+@router.get("/stats", response_model=StatsResponse)
+def get_stats(_rl: None = Depends(rate_limit("stats-read", 120, 60))):
     return _get_cached_stats(DRILLS_OK)
 
 
-@router.get("/dashboard/bootstrap")
-def dashboard_bootstrap(repo: GameRepository = Depends(get_game_repo)):
+@router.get("/dashboard/bootstrap", response_model=DashboardBootstrapResponse)
+def dashboard_bootstrap(
+    repo: GameRepository = Depends(get_game_repo),
+    _rl: None = Depends(rate_limit("stats-read", 120, 60)),
+):
     key = "dashboard_bootstrap"
     cached = _ttl_get(key)
     if cached is not None:
@@ -80,25 +80,40 @@ def dashboard_bootstrap(repo: GameRepository = Depends(get_game_repo)):
     _ttl_set(key, payload)
     return payload
 
-@router.post("/stats/clear_cache")
-def clear_stats_cache_endpoint():
+@router.post("/stats/clear_cache", response_model=StatusResponse)
+def clear_stats_cache_endpoint(
+    _admin: None = Depends(require_admin),
+    _rl: None = Depends(rate_limit("stats-write", 10, 60)),
+):
     clear_stats_cache()
-    return {"status": "Stats cache cleared"}
+    return {"status": "stats cache cleared"}
 
 
 @router.get("/analysis/progress")
-def analysis_progress(repo: GameRepository = Depends(get_game_repo)):
+def analysis_progress(
+    repo: GameRepository = Depends(get_game_repo),
+    _rl: None = Depends(rate_limit("stats-read", 120, 60)),
+):
     result = repo.get_analysis_progress()
     return dict(result)
 
 
 @router.get("/mistakes/by-phase")
-def mistakes_by_phase(phase: str | None = None, repo: GameRepository = Depends(get_game_repo)):
+def mistakes_by_phase(
+    phase: str | None = None,
+    repo: GameRepository = Depends(get_game_repo),
+    _rl: None = Depends(rate_limit("stats-read", 120, 60)),
+):
     rows = repo.get_mistakes_by_phase(phase=phase)
     return [dict(r) for r in rows]
 
 @router.get("/mistakes/critical")
-def critical_mistakes(limit: int = 20, phase: str | None = None, repo: GameRepository = Depends(get_game_repo)):
+def critical_mistakes(
+    limit: int = 20,
+    phase: str | None = None,
+    repo: GameRepository = Depends(get_game_repo),
+    _rl: None = Depends(rate_limit("stats-read", 120, 60)),
+):
     limit = max(1, min(limit, 100))
     key = f"critical:{limit}:{phase or 'all'}"
     cached = _ttl_get(key)
@@ -109,7 +124,11 @@ def critical_mistakes(limit: int = 20, phase: str | None = None, repo: GameRepos
     return result
 
 @router.get("/stats/blunder_heatmap")
-def blunder_heatmap(phase: str | None = None, repo: GameRepository = Depends(get_game_repo)):
+def blunder_heatmap(
+    phase: str | None = None,
+    repo: GameRepository = Depends(get_game_repo),
+    _rl: None = Depends(rate_limit("stats-read", 120, 60)),
+):
     """
     Returns a heatmap of squares where blunders (and hanging pieces) occurred.
     Maps square name (e.g., 'e4') to count.
@@ -123,7 +142,12 @@ def blunder_heatmap(phase: str | None = None, repo: GameRepository = Depends(get
     return result
 
 @router.get("/mistakes/weekly-motifs")
-def weekly_motifs(limit: int = 3, phase: str | None = None, repo: GameRepository = Depends(get_game_repo)):
+def weekly_motifs(
+    limit: int = 3,
+    phase: str | None = None,
+    repo: GameRepository = Depends(get_game_repo),
+    _rl: None = Depends(rate_limit("stats-read", 120, 60)),
+):
     key = f"weekly_motifs:{limit}:{phase or 'all'}"
     cached = _ttl_get(key)
     if cached is not None:

@@ -1,4 +1,3 @@
-import time
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, Request
@@ -6,29 +5,18 @@ from fastapi import APIRouter, Depends, Request
 from api.dependencies import get_game_repo
 from api.repositories.game_repository import GameRepository
 from api.security import enforce_rate_limit
+from api.services.cache_service import TTLCache, register_analytics_cache_clearer
+from api.schemas.contracts import PlayerModelResponse, WeeklyFocusResponse
 
 router = APIRouter(prefix="/api/product", tags=["product"])
 
-_CACHE: Dict[str, Dict[str, Any]] = {}
-_TTL_SECONDS = 60
+_CACHE = TTLCache(ttl_seconds=60)
 
 
 def clear_product_cache() -> None:
     _CACHE.clear()
 
-
-def _cache_get(key: str):
-    item = _CACHE.get(key)
-    if not item:
-        return None
-    if (time.time() - item["ts"]) > _TTL_SECONDS:
-        _CACHE.pop(key, None)
-        return None
-    return item["value"]
-
-
-def _cache_set(key: str, value: Any):
-    _CACHE[key] = {"ts": time.time(), "value": value}
+register_analytics_cache_clearer(clear_product_cache)
 
 
 def _build_actions(primary: Dict[str, Any] | None, secondary: Dict[str, Any] | None, due_drills: int) -> List[str]:
@@ -78,28 +66,28 @@ def build_weekly_focus_payload(repo: GameRepository) -> Dict[str, Any]:
     }
 
 
-@router.get("/weekly-focus")
+@router.get("/weekly-focus", response_model=WeeklyFocusResponse)
 def weekly_focus(request: Request, repo: GameRepository = Depends(get_game_repo)):
     enforce_rate_limit(request, bucket="product-weekly-focus", limit=60, window_sec=60)
-    cached = _cache_get("weekly_focus")
+    cached = _CACHE.get("weekly_focus")
     if cached is not None:
         return cached
 
     payload = build_weekly_focus_payload(repo)
-    _cache_set("weekly_focus", payload)
+    _CACHE.set("weekly_focus", payload)
     return payload
 
 
-@router.get("/player-model/latest")
+@router.get("/player-model/latest", response_model=PlayerModelResponse)
 def latest_player_model(request: Request):
     enforce_rate_limit(request, bucket="product-player-model", limit=60, window_sec=60)
     from api.services.player_model import get_latest_player_model_snapshot
 
-    cached = _cache_get("player_model_latest")
+    cached = _CACHE.get("player_model_latest")
     if cached is not None:
         return cached
 
     snapshot = get_latest_player_model_snapshot()
     payload = snapshot or {"status": "empty", "message": "No player model snapshot computed yet."}
-    _cache_set("player_model_latest", payload)
+    _CACHE.set("player_model_latest", payload)
     return payload

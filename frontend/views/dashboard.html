@@ -1,0 +1,214 @@
+            <section class="hero-banner mb-5 grid items-center gap-3 p-6 [grid-template-columns:minmax(0,_1fr)_auto] max-md:[grid-template-columns:1fr] max-sm:p-3">
+              <div>
+                <p class="section-kicker">Free Plan</p>
+                <h2 class="section-title mt-1 text-[var(--text)]">Personal chess intelligence workspace</h2>
+                <p class="workspace-hero-summary mt-2">Track form, review critical games, and turn analysis into one focused training block.</p>
+              </div>
+              <div class="grid grid-cols-3 gap-2 max-sm:grid-cols-1">
+                <div class="active-pill justify-center">Analytics</div>
+                <div class="active-pill justify-center">Drills</div>
+                <div class="active-pill justify-center">Coach</div>
+              </div>
+            </section>
+
+            <section class="dashboard-focus mb-5 grid items-stretch gap-3 [grid-template-columns:minmax(0,_1.35fr)_minmax(320px,_0.9fr)] max-md:[grid-template-columns:1fr] max-sm:gap-2">
+              <div class="dashboard-focus-main workspace-hero pb-1 pt-3 max-md:pt-0 max-sm:pb-0">
+                <p class="section-kicker">Today</p>
+                <h1 class="dashboard-title workspace-hero-title mt-1 max-w-[12ch] text-[var(--text)]">Train before you queue.</h1>
+                <p class="dashboard-summary workspace-hero-summary mt-2 max-w-[52ch] text-[15px] text-[var(--muted)]">
+                  Use your own mistakes as the main workspace. Clear the drill queue,
+                  review the latest critical swing, then decide whether to sync or
+                  analyze more games.
+                </p>
+                <div class="dashboard-actions mt-4 grid max-w-[520px] gap-2 [grid-template-columns:repeat(2,minmax(0,1fr))] max-sm:grid-cols-1">
+                  <button class="action-card btn-primary max-sm:w-full max-sm:justify-center" id="btn-start-drills" type="button">
+                    Start Drills
+                  </button>
+                  <button class="action-card max-sm:w-full max-sm:justify-center" id="btn-review-latest" type="button">
+                    Review Latest Game
+                  </button>
+                </div>
+              </div>
+
+              <div class="dashboard-focus-panel insight-panel rounded-[calc(var(--radius-lg)+4px)] p-6 max-sm:p-3">
+                <div class="focus-panel-label text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--muted)]">Current priority</div>
+                <div class="focus-panel-value mt-1 text-[32px] font-bold leading-[1.05]" id="focus-primary-value">—</div>
+                <p class="focus-panel-text mt-1 text-[var(--muted)]" id="focus-primary-text">
+                  Loading your current training target…
+                </p>
+                <div class="next-step-panel mt-3 rounded-cc-lg border border-[rgba(63,185,80,0.22)] bg-[linear-gradient(180deg,rgba(63,185,80,0.08),rgba(63,185,80,0.025)),rgba(15,17,23,0.3)] p-3" id="next-step-panel">
+                  <div class="next-step-header flex items-start justify-between gap-2">
+                    <div>
+                      <div class="focus-actions-title">Next Best Step</div>
+                      <div class="next-step-subtitle" id="next-step-subtitle">
+                        Ranked by urgency and training value.
+                      </div>
+                    </div>
+                    <span class="next-step-badge active-pill" id="next-step-badge">Loading</span>
+                  </div>
+                  <div class="next-step-list mt-2 grid gap-1" id="next-step-list">
+                    <div class="next-step-item">
+                      <div class="next-step-rank">1</div>
+                      <div>
+                        <div class="next-step-title">Loading plan…</div>
+                        <div class="next-step-rationale">Checking your drill queue and latest analysis.</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="next-step-actions mt-2 flex flex-wrap gap-1">
+                    <button class="btn btn-primary" id="btn-next-step-action" type="button">
+                      Start
+                    </button>
+                    <button class="btn btn-ghost" id="btn-next-step-secondary" type="button">
+                      Review
+                    </button>
+                  </div>
+                </div>
+                <div class="focus-metrics mt-2 grid grid-cols-3 gap-1 max-md:grid-cols-1">
+                  <div class="focus-metric">
+                    <span class="focus-metric-label">Drills due</span>
+                    <strong class="focus-metric-value" id="focus-drills-due">—</strong>
+                  </div>
+                  <div class="focus-metric">
+                    <span class="focus-metric-label">Games pending</span>
+                    <strong class="focus-metric-value" id="focus-games-pending">—</strong>
+                  </div>
+                  <div class="focus-metric">
+                    <span class="focus-metric-label">Weekly win rate</span>
+                    <strong class="focus-metric-value" id="focus-weekly-form">—</strong>
+                  </div>
+                </div>
+                <div class="focus-actions mt-2 border-t border-[var(--border)] pt-1">
+                  <div class="focus-actions-title text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">Weekly Actions</div>
+                  <ul class="focus-actions-list mt-1 grid gap-1 pl-2 text-[var(--text)]" id="focus-actions-list">
+                    <li class="text-[14px]">Loading weekly plan…</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            <section class="session-flow-widget panel mb-5 grid items-stretch gap-3 p-5 [grid-template-columns:minmax(220px,_0.6fr)_minmax(0,_1.4fr)] max-md:[grid-template-columns:1fr] max-sm:p-3" aria-labelledby="session-flow-title">
+              <div class="session-flow-copy">
+                <p class="section-kicker">Training Session</p>
+                <h2 id="session-flow-title" class="session-flow-title">Warmup → Review → Drill → Coach</h2>
+                <p class="session-flow-summary">
+                  A short loop that turns today’s data into one focused training block.
+                </p>
+              </div>
+              <div class="session-flow-steps" id="session-flow-steps">
+                <button class="session-step" type="button" data-flow-step="warmup" data-target-view="drills">
+                  <span class="session-step-index">01</span>
+                  <span class="session-step-body">
+                    <strong>Warmup</strong>
+                    <span>5 tactical positions</span>
+                  </span>
+                  <span class="session-step-state" id="session-step-warmup">Ready</span>
+                </button>
+                <button class="session-step" type="button" data-flow-step="review" data-target-view="games">
+                  <span class="session-step-index">02</span>
+                  <span class="session-step-body">
+                    <strong>Review</strong>
+                    <span>Latest critical game</span>
+                  </span>
+                  <span class="session-step-state" id="session-step-review">Queued</span>
+                </button>
+                <button class="session-step" type="button" data-flow-step="drill" data-target-view="drills">
+                  <span class="session-step-index">03</span>
+                  <span class="session-step-body">
+                    <strong>Drill</strong>
+                    <span>Fix the recurring theme</span>
+                  </span>
+                  <span class="session-step-state" id="session-step-drill">Queued</span>
+                </button>
+                <button class="session-step" type="button" data-flow-step="coach" data-target-view="coach">
+                  <span class="session-step-index">04</span>
+                  <span class="session-step-body">
+                    <strong>Coach follow-up</strong>
+                    <span>Ask for one correction rule</span>
+                  </span>
+                  <span class="session-step-state" id="session-step-coach">Optional</span>
+                </button>
+              </div>
+            </section>
+
+            <div class="kpi-grid mb-5 grid gap-2.5 [grid-template-columns:repeat(4,minmax(0,1fr))] max-lg:[grid-template-columns:repeat(2,minmax(0,1fr))] max-sm:[grid-template-columns:1fr]" id="kpi-grid">
+              <!-- filled by JS -->
+            </div>
+
+            <div class="charts-row mb-5 grid gap-2.5 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
+              <div class="chart-card analytics-panel">
+                <div class="chart-head">
+                  <div class="chart-title">Weekly Win Rate %</div>
+                  <div class="chart-meta" id="chart-winrate-meta">Refreshing…</div>
+                </div>
+                <div class="chart-container max-sm:h-[190px]">
+                  <canvas id="chart-winrate"
+                    >Weekly win rate chart — data unavailable without
+                    JavaScript</canvas
+                  >
+                </div>
+              </div>
+              <div class="chart-card analytics-panel">
+                <div class="chart-head">
+                  <div class="chart-title">Mistake Breakdown</div>
+                  <div class="chart-meta" id="chart-mistakes-meta">Refreshing…</div>
+                </div>
+                <div class="chart-container max-sm:h-[190px]">
+                  <canvas id="chart-mistakes"
+                    >Mistake breakdown chart — data unavailable without
+                    JavaScript</canvas
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="card panel-quiet mt-3 overflow-hidden">
+              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
+                <div class="card-title">Recent Games</div>
+                <button class="btn btn-ghost" id="btn-view-all-games" type="button">
+                  View all →
+                </button>
+              </div>
+              <div class="table-shell overflow-x-auto">
+              <table class="table-relaxed">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Color</th>
+                    <th>Result</th>
+                    <th>Opponent</th>
+                    <th>Opening</th>
+                    <th>Mistakes</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-games-body"></tbody>
+              </table>
+              </div>
+            </div>
+
+            <!-- Hanging piece rate bar -->
+            <div class="card card-pad panel-quiet mt-2 overflow-hidden p-4">
+              <div class="hanging-header">
+                <div class="hanging-copy">
+                  <div class="hanging-title">Hanging Piece Rate</div>
+                  <div class="hanging-subtitle">
+                    Your biggest recurring leak right now. Target: below 40%
+                  </div>
+                </div>
+                <div class="kpi-value kpi-bad" id="hanging-pct-big">—</div>
+              </div>
+              <div class="progress-bar">
+                <progress
+                  class="progress-meter progress-meter-bad"
+                  id="hanging-bar"
+                  max="100"
+                  value="0"
+                ></progress>
+              </div>
+              <div class="hanging-scale">
+                <span>0% — Perfect</span>
+                <span>100% — Every game</span>
+              </div>
+            </div>
+          

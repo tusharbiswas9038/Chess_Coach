@@ -1,8 +1,8 @@
 from typing import Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.dependencies import DRILLS_OK # New: import from dependencies
+from api.dependencies import DRILLS_OK, rate_limit, require_admin # New: import from dependencies
 from drills.srs_scheduler import get_due_items, record_result, populate_srs_from_mistakes
 
 
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/drills", tags=["drills"])
 
 
 @router.get("/due")
-def get_due_drills(limit: int = 15):
+def get_due_drills(limit: int = 15, _rl: None = Depends(rate_limit("drills-read", 120, 60))):
     if not DRILLS_OK:
         raise HTTPException(501, "Drills module not available yet")
     return get_due_items(limit=max(1, min(limit, 50)))
@@ -22,7 +22,11 @@ class DrillResult(BaseModel):
 
 
 @router.post("/result")
-def submit_drill_result(result: DrillResult):
+def submit_drill_result(
+    result: DrillResult,
+    _admin: None = Depends(require_admin),
+    _rl: None = Depends(rate_limit("drills-write", 60, 60)),
+):
     if not DRILLS_OK:
         raise HTTPException(501, "Drills module not available yet")
     record_result(result.item_id, result.quality)
@@ -30,7 +34,10 @@ def submit_drill_result(result: DrillResult):
 
 
 @router.post("/populate")
-def populate_drills_from_mistakes():
+def populate_drills_from_mistakes(
+    _admin: None = Depends(require_admin),
+    _rl: None = Depends(rate_limit("drills-write", 10, 60)),
+):
     if not DRILLS_OK:
         raise HTTPException(501, "Drills module not available yet")
     populate_srs_from_mistakes()

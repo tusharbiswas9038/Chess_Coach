@@ -2,6 +2,16 @@
 
 /* 1) Mobile bottom-nav behavior */
 @media (max-width: 640px) {
+  html,
+  body,
+  .app,
+  .main,
+  .content {
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
   :root {
     --sidebar-width: 0px;
   }
@@ -78,23 +88,29 @@
 
 /* 2) Table-to-card transformation rules */
 @media (max-width: 640px) {
-  table {
+  /* Keep wide-table fallback only where row-to-card transform is used. */
+  #view-dashboard table,
+  #view-games table {
     min-width: 640px;
   }
 
-  th {
+  #view-dashboard th,
+  #view-games th {
     position: sticky;
     top: 0;
     z-index: 1;
     white-space: nowrap;
   }
 
-  td {
+  #view-dashboard td,
+  #view-games td {
     white-space: nowrap;
   }
 
   #view-dashboard table,
-  #view-games table {
+  #view-games table,
+  #view-openings table,
+  #view-mistakes table {
     min-width: 0;
   }
 
@@ -121,7 +137,7 @@
     align-items: center;
     border: none;
     gap: 10px;
-    padding: 6px 14px;
+    padding: 8px 12px;
     white-space: normal;
     grid-template-columns: 90px 1fr;
   }
@@ -139,7 +155,7 @@
   #view-dashboard #recent-games-body td[data-label='Action'],
   #view-games #all-games-body td[data-label='Action'] {
     grid-template-columns: 1fr;
-    padding-top: 10px;
+    padding-top: 12px;
   }
 
   #view-dashboard #recent-games-body td[data-label='Action']::before,
@@ -162,6 +178,12 @@
   #view-games #all-games-body td[data-label='Action'] .btn {
     width: 100%;
     justify-content: center;
+  }
+
+  #view-openings td,
+  #view-mistakes td {
+    white-space: normal;
+    word-break: break-word;
   }
 }
 

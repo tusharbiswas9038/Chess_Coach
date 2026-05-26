@@ -11,7 +11,12 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
     const list = dom.byId('topbar-actions-list');
     if (!container || !toggle) return;
     container.classList.remove('is-open');
-    if (list) list.dataset.open = 'false';
+    if (list) {
+      list.dataset.open = 'false';
+      if (window.matchMedia('(max-width: 640px)').matches) {
+        list.style.display = 'none';
+      }
+    }
     toggle.setAttribute('aria-expanded', 'false');
   }
 
@@ -22,7 +27,12 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
     if (!container || !toggle) return;
     const nextOpen = !container.classList.contains('is-open');
     container.classList.toggle('is-open', nextOpen);
-    if (list) list.dataset.open = nextOpen ? 'true' : 'false';
+    if (list) {
+      list.dataset.open = nextOpen ? 'true' : 'false';
+      if (window.matchMedia('(max-width: 640px)').matches) {
+        list.style.display = nextOpen ? 'flex' : 'none';
+      }
+    }
     toggle.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
   }
 
@@ -37,11 +47,13 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
       const result = await waitForJobByPrefix(api, 'sync', { startedAtSec });
       if (result.ok) {
         toast('Sync completed.');
+      } else if (result.timeout) {
+        toast('Sync is still running in background');
+      } else {
+        toast(`Sync job failed: ${result.job?.error || 'unknown error'}`);
       }
-      else if (result.timeout) toast('Sync is still running in background');
-      else toast(`Sync job failed: ${result.job?.error || 'unknown error'}`);
     } catch (e) {
-      toast('Sync failed: ' + e.message);
+      toast(`Sync failed: ${e.message}`);
     } finally {
       btn.disabled = false;
       btn.textContent = 'Sync';
@@ -57,14 +69,19 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
       const startedAtSec = Date.now() / 1000;
       await apiPost(endpoints.jobAnalyze());
       toast('Analysis started. This may take a few minutes.');
-      const result = await waitForJobByPrefix(api, 'analyze', { startedAtSec, timeoutMs: 480000 });
+      const result = await waitForJobByPrefix(api, 'analyze', {
+        startedAtSec,
+        timeoutMs: 480000,
+      });
       if (result.ok) {
         toast('Analysis completed.');
+      } else if (result.timeout) {
+        toast('Analysis is still running in background');
+      } else {
+        toast(`Analysis job failed: ${result.job?.error || 'unknown error'}`);
       }
-      else if (result.timeout) toast('Analysis is still running in background');
-      else toast(`Analysis job failed: ${result.job?.error || 'unknown error'}`);
     } catch (e) {
-      toast('Analyze failed: ' + e.message);
+      toast(`Analyze failed: ${e.message}`);
     } finally {
       btn.disabled = false;
       btn.textContent = 'Analyze';
@@ -81,11 +98,15 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
       await apiPost(endpoints.jobDbMaintenance(), { vacuum: false });
       toast('Database optimization queued.');
       const result = await waitForJobByPrefix(api, 'db-maintenance', { startedAtSec });
-      if (result.ok) toast('Database optimization completed.');
-      else if (result.timeout) toast('DB optimization is still running in background');
-      else toast(`DB optimization failed: ${result.job?.error || 'unknown error'}`);
+      if (result.ok) {
+        toast('Database optimization completed.');
+      } else if (result.timeout) {
+        toast('DB optimization is still running in background');
+      } else {
+        toast(`DB optimization failed: ${result.job?.error || 'unknown error'}`);
+      }
     } catch (e) {
-      toast('DB optimization failed: ' + e.message);
+      toast(`DB optimization failed: ${e.message}`);
     } finally {
       btn.disabled = false;
       btn.textContent = 'DB Optimize';
@@ -107,26 +128,54 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
           }
         } catch (e) {
           clearInterval(poll);
-          toast('Polling failed: ' + e.message);
+          toast(`Polling failed: ${e.message}`);
         }
       }, 5000);
       setTimeout(() => clearInterval(poll), 180000);
     } catch (e) {
-      toast('Failed: ' + e.message);
+      toast(`Failed: ${e.message}`);
     }
   }
 
   function bindEvents() {
-    dom.byId('btn-actions-menu')?.addEventListener('click', toggleActionsMenu);
+    const actionsToggleBtn = dom.byId('btn-actions-menu');
+    const actionsList = dom.byId('topbar-actions-list');
+
+    if (actionsList && window.matchMedia('(max-width: 640px)').matches) {
+      actionsList.style.display = 'none';
+    }
+
+    if (actionsToggleBtn) {
+      const onToggle = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleActionsMenu();
+      };
+      actionsToggleBtn.addEventListener('pointerup', onToggle);
+      actionsToggleBtn.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        onToggle(event);
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      if (!window.matchMedia('(max-width: 640px)').matches) {
+        const actionsListEl = dom.byId('topbar-actions-list');
+        if (actionsListEl) actionsListEl.style.display = '';
+      }
+    });
+
     dom.byId('btn-sync').addEventListener('click', triggerSync);
     dom.byId('btn-analyze').addEventListener('click', triggerAnalyze);
     dom.byId('btn-db-maintenance')?.addEventListener('click', triggerDbMaintenance);
+
     document.addEventListener('click', (event) => {
       const container = dom.query('.topbar-actions');
       if (!container || !container.classList.contains('is-open')) return;
       if (event.target.closest('.topbar-actions')) return;
       closeActionsMenu();
     });
+
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
       closeActionsMenu();

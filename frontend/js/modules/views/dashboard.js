@@ -45,6 +45,10 @@ export function createDashboardView({
   let weeklyPlanStorageKey = null;
   let nextStepTargets = { primary: 'drills', secondary: 'games' };
   const DRILL_PROGRESS_KEY = 'drills.progress.v1';
+  function setChartMeta(id, text) {
+    const el = dom.byId(id);
+    if (el) el.textContent = text;
+  }
 
   function getDrillProgress() {
     try {
@@ -258,7 +262,7 @@ export function createDashboardView({
     list.innerHTML = steps
       .map(
         (step, idx) => `
-          <div class="next-step-item flex items-start gap-3 rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3 transition-colors ${idx === 0 ? 'is-primary border-[var(--blue)]/40 bg-[color-mix(in_srgb,var(--blue)_11%,var(--surface))]' : ''}">
+          <div class="next-step-item flex items-start gap-3 rounded-cc border border-[var(--border)] bg-[var(--surface)] p-3 transition-colors ${idx === 0 ? 'is-primary border-[var(--primary)]/40 bg-[color-mix(in_srgb,var(--primary)_11%,var(--surface))]' : ''}">
             <div class="next-step-rank inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-2)] text-xs font-semibold text-[var(--muted)]">${idx + 1}</div>
             <div class="next-step-copy min-w-0">
               <div class="next-step-title text-sm font-semibold text-[var(--text)]">${esc(step.title)}</div>
@@ -385,14 +389,14 @@ export function createDashboardView({
           {
             label: 'Win %',
             data: weeks.map((w) => w.win_pct),
-            borderColor: chartPalette.primary,
-            backgroundColor: chartPalette.primarySoft,
+            borderColor: chartPalette.analytics,
+            backgroundColor: chartPalette.analyticsSoft,
             fill: true,
             tension: 0.36,
             borderWidth: 2,
             pointRadius: 0,
             pointHoverRadius: 4,
-            pointBackgroundColor: chartPalette.primary,
+            pointBackgroundColor: chartPalette.analytics,
           },
         ],
       },
@@ -426,9 +430,9 @@ export function createDashboardView({
             backgroundColor: [
               chartPalette.errorSoft,
               chartPalette.warningSoft,
-              chartPalette.blueSoft,
+              chartPalette.analyticsSoft,
             ],
-            borderColor: [chartPalette.error, chartPalette.warning, chartPalette.blue],
+            borderColor: [chartPalette.error, chartPalette.warning, chartPalette.analytics],
             borderWidth: 1,
           },
         ],
@@ -447,10 +451,12 @@ export function createDashboardView({
   }
 
   async function loadStats() {
+    setChartMeta('chart-winrate-meta', 'Refreshing…');
+    setChartMeta('chart-mistakes-meta', 'Refreshing…');
     dom.byId('kpi-grid').innerHTML = Array.from({ length: 5 })
       .map(
         () => `
-      <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div class="kpi-card p-4">
         <div class="skeleton h-3 w-[42%] mb-[10px] rounded-[var(--radius)]"></div>
         <div class="skeleton h-[30px] w-[56%] mb-[10px] rounded-[var(--radius)]"></div>
         <div class="skeleton h-3 w-[74%] rounded-[var(--radius)]"></div>
@@ -530,24 +536,28 @@ export function createDashboardView({
       streak >= 10 ? 'On Fire' : streak >= 5 ? 'Consistent' : streak >= 2 ? 'Starter' : 'New';
 
     dom.byId('kpi-grid').innerHTML = `
-    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div class="kpi-card p-4">
+      <div class="mb-2 text-lg text-[var(--analytics)]">▣</div>
       <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Games Analyzed</div>
       <div class="kpi-value kpi-blue mt-2 text-2xl font-semibold">${analyzed.toLocaleString()}</div>
       <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">${total} total, ${
   statsData.games.pending
 } pending</div>
     </div>
-    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div class="kpi-card p-4">
+      <div class="mb-2 text-lg text-[var(--error)]">!</div>
       <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Hanging Piece Rate</div>
       <div class="kpi-value kpi-bad mt-2 text-2xl font-semibold">${hRate}%</div>
       <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">pieces left en prise</div>
     </div>
-    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div class="kpi-card p-4">
+      <div class="mb-2 text-lg text-[var(--warning)]">△</div>
       <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Blunders / Game</div>
       <div class="kpi-value kpi-bad mt-2 text-2xl font-semibold">${bpg}</div>
       <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">target: below 3</div>
     </div>
-    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div class="kpi-card p-4">
+      <div class="mb-2 text-lg text-[var(--primary)]">↗</div>
       <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Current Win Rate</div>
       <div class="kpi-value kpi-good mt-2 text-2xl font-semibold">${
   statsData.weekly_stats[0]
@@ -556,17 +566,20 @@ export function createDashboardView({
 }</div>
       <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">this week</div>
     </div>
-    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div class="kpi-card p-4">
+      <div class="mb-2 text-lg text-[var(--primary)]">✓</div>
       <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Drill Goal</div>
       <div class="kpi-value kpi-good mt-2 text-2xl font-semibold" id="kpi-drill-goal-value">${todayDone}/${goalTarget}</div>
       <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">daily target progress</div>
     </div>
-    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div class="kpi-card p-4">
+      <div class="mb-2 text-lg text-[var(--analytics)]">◆</div>
       <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Streak / Achievement</div>
       <div class="kpi-value kpi-blue mt-2 text-2xl font-semibold" id="kpi-streak-value">${streak} day${streak === 1 ? '' : 's'}</div>
       <div class="kpi-sub mt-1 text-xs text-[var(--muted)]" id="kpi-streak-sub">${achievement}</div>
     </div>
-    <div class="kpi-card rounded-cc border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div class="kpi-card p-4">
+      <div class="mb-2 text-lg text-[var(--warning)]">◍</div>
       <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Total Mistakes</div>
       <div class="kpi-value kpi-warn mt-2 text-2xl font-semibold">${statsData.mistake_breakdown
     .reduce((a, m) => a + m.count, 0)
@@ -585,6 +598,8 @@ export function createDashboardView({
       tbody.innerHTML = tableStateRowMarkup('No recent games available', 7);
       renderWinRateChart(statsData);
       renderMistakeBreakdownChart(statsData);
+      setChartMeta('chart-winrate-meta', 'Updated now');
+      setChartMeta('chart-mistakes-meta', 'Updated now');
       return;
     }
     tbody.innerHTML = statsData.recent_games
@@ -608,6 +623,8 @@ export function createDashboardView({
 
     renderWinRateChart(statsData);
     renderMistakeBreakdownChart(statsData);
+    setChartMeta('chart-winrate-meta', 'Updated now');
+    setChartMeta('chart-mistakes-meta', 'Updated now');
   }
 
   function renderTiltWarning(tiltDetected) {

@@ -1,4 +1,4 @@
-import re # New: Import re for sanitization
+import re
 
 from typing import Any, AsyncGenerator # New: Add AsyncGenerator
 import logging
@@ -8,25 +8,24 @@ from pydantic import BaseModel, Field, field_validator
 
 from api.dependencies import COACH_OK # New: import from dependencies
 from api.jobs_service import enqueue_coach_game_job, enqueue_coach_batch_job
-from api.security import enforce_rate_limit
+from api.security import enforce_rate_limit, require_admin_if_configured
 from coach.ollama_client import chat, chat_stream # Updated import
 
 router = APIRouter(prefix="/api/coach", tags=["coach"])
 log = logging.getLogger("chess_coach.api.coach.router")
 
 
-def sanitize_chat_input(text: str) -> str:
-    """Basic sanitization to remove potentially harmful characters and commands."""
-    # Remove characters that could be used for injection
-    text = re.sub(r'[\n\r\t`]', ' ', text) # Replace newlines, tabs, backticks
-    text = re.sub(r'\[.*?\]', '', text)    # Remove anything in square brackets
-    text = re.sub(r'\<.*?\>', '', text)    # Remove anything in angle brackets
-    text = text.replace('{', '').replace('}', '') # Remove curly braces
-    return text.strip()
+def normalize_chat_input(text: str) -> str:
+    """
+    Normalize whitespace for model consistency.
+    NOTE: This is not a security boundary; validation and rate limits are the primary controls.
+    """
+    return re.sub(r"\s+", " ", text).strip()
 
 
 @router.post("/game/{game_id}")
 def generate_game_coaching(request: Request, game_id: str): # Removed background_tasks
+    require_admin_if_configured(request)
     enforce_rate_limit(request, bucket="coach-game", limit=10, window_sec=60)
     if not COACH_OK:
         raise HTTPException(501, "Coach module not available yet")
@@ -60,12 +59,13 @@ class ChatMessage(BaseModel):
 
 @router.post("/chat")
 async def coach_chat(request: Request, body: ChatMessage, stream: bool = False): # New: Add stream parameter
+    require_admin_if_configured(request)
     enforce_rate_limit(request, bucket="coach-chat", limit=30, window_sec=60)
     if not COACH_OK:
         raise HTTPException(501, "Coach module not available yet")
     
-    sanitized_message = sanitize_chat_input(body.message) # Sanitize user input
-    messages = body.history + [{"role": "user", "content": sanitized_message}] # Use sanitized message
+    normalized_message = normalize_chat_input(body.message)
+    messages = body.history + [{"role": "user", "content": normalized_message}]
 
     if stream:
         # If streaming, call chat_stream and return StreamingResponse
@@ -82,6 +82,7 @@ async def coach_chat(request: Request, body: ChatMessage, stream: bool = False):
 @router.post("/batch")
 def generate_batch_reports(request: Request, limit: int = 10): # Removed background_tasks
     """Generate coaching reports for the most recent `limit` analyzed games without reports."""
+    require_admin_if_configured(request)
     enforce_rate_limit(request, bucket="coach-batch", limit=5, window_sec=60)
     if not COACH_OK:
         raise HTTPException(501, "Coach module not available")

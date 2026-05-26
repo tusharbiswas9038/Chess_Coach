@@ -1,7 +1,6 @@
 import logging
 from api.job_queue import job_queue # New import
-from api.routers.stats import clear_stats_cache # New import
-from api.routers.product import clear_product_cache
+from api.services.cache_service import clear_analytics_caches
 
 from sync.fetch_games import sync_all
 from engine.stockfish_worker import run_analysis_worker
@@ -14,11 +13,6 @@ from api.services.player_model import compute_and_store_player_model_snapshot
 log = logging.getLogger("chess_coach.api.jobs")
 
 ANALYTICS_INVALIDATION_SCOPES = ["analytics", "dashboard", "games", "openings", "mistakes", "training"]
-
-
-def clear_analytics_caches() -> None:
-    clear_stats_cache()
-    clear_product_cache()
 
 
 def _completion_payload(source: str) -> dict:

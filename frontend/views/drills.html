@@ -1,0 +1,141 @@
+            <section class="hero-banner mb-4 flex items-start justify-between gap-3 p-4 max-md:flex-col max-md:items-stretch max-sm:gap-[10px]">
+              <div class="drill-toolbar-copy min-w-0">
+                <div class="section-kicker">Training Track</div>
+                <div class="drill-toolbar-title mt-1 text-[20px] font-bold text-[var(--text)]">Daily Drills</div>
+                <div class="drill-toolbar-subtitle mt-1 text-[13px] text-[var(--muted)]">
+                  Positions from your own mistakes — spaced repetition
+                </div>
+              </div>
+              <div class="drill-toolbar-actions flex flex-wrap justify-end gap-1 max-md:justify-start max-sm:w-full">
+                <button class="flip-btn inline-flex items-center max-sm:flex-1 max-sm:justify-center max-sm:min-h-[44px]" type="button" aria-label="Flip drill board orientation">⟳ Flip Board</button>
+                <button class="btn btn-ghost max-sm:flex-1 max-sm:justify-center max-sm:min-h-[44px]" id="btn-reload-drills" type="button">
+                  Reload Queue
+                </button>
+              </div>
+            </section>
+
+            <div class="drill-layout grid items-start gap-3 [grid-template-columns:minmax(280px,560px)_minmax(0,1fr)] max-md:[grid-template-columns:1fr] max-sm:gap-[14px]">
+              <!-- BOARD -->
+              <div class="board-wrap panel-primary mx-auto w-full max-w-[600px] p-5 max-sm:p-3">
+                <div class="board-header mb-2 flex items-center justify-between gap-1 max-sm:flex-col max-sm:items-start">
+                  <div class="board-title" id="drill-turn-label">
+                    Find the best move
+                  </div>
+                  <div id="drill-counter" class="meta-label"></div>
+                </div>
+                <div id="drill-board"></div>
+                <div id="drill-feedback" class="drill-feedback" role="status" aria-live="polite"></div>
+
+                <!-- Quality buttons — shown after answer -->
+                <div id="quality-section" class="mt-2" hidden>
+                  <div class="mb-1 text-[13px] text-[var(--muted)]">
+                    How hard was this? (affects next review date)
+                  </div>
+                  <div class="mt-2 grid grid-cols-4 gap-1 max-sm:grid-cols-2">
+                    <button class="quality-btn" data-q="0" type="button">
+                      Again<br /><span class="quality-sub">Blackout</span>
+                    </button>
+                    <button class="quality-btn" data-q="1" type="button">
+                      Hard<br /><span class="quality-sub">Wrong</span>
+                    </button>
+                    <button class="quality-btn" data-q="2" type="button">
+                      Good<br /><span class="quality-sub">Correct</span>
+                    </button>
+                    <button class="quality-btn" data-q="3" type="button">
+                      Easy<br /><span class="quality-sub">Instant</span>
+                    </button>
+                  </div>
+                  <div class="drill-progress-text" id="drill-progress-text"></div>
+                </div>
+
+                <!-- Empty state -->
+                <div id="drill-empty" class="drill-empty" hidden>
+                  <div class="drill-empty-emoji">🎉</div>
+                  <div class="drill-empty-title">
+                    All drills done for today!
+                  </div>
+                  <div class="drill-empty-subtitle">
+                    Come back tomorrow for your next batch.
+                  </div>
+                </div>
+              </div>
+
+              <!-- SIDEBAR -->
+              <div class="drill-sidebar flex flex-col gap-2">
+                <div class="drill-info-card panel-quiet p-3">
+                  <div class="drill-card-title mb-2 text-[13px] font-semibold">Session Stats</div>
+                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-[13px]">
+                    <span class="drill-stat-label text-[var(--muted)]">Due today</span>
+                    <span id="ds-due" class="drill-stat-value font-bold">—</span>
+                  </div>
+                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-[13px]">
+                    <span class="drill-stat-label text-[var(--muted)]">Completed</span>
+                    <span id="ds-done" class="drill-stat-value drill-stat-value-success font-bold">0</span>
+                  </div>
+                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-[13px]">
+                    <span class="drill-stat-label text-[var(--muted)]">Correct</span>
+                    <span id="ds-correct" class="drill-stat-value drill-stat-value-success font-bold">0</span>
+                  </div>
+                  <div class="drill-stat-row flex items-center justify-between py-2 text-[13px]">
+                    <span class="drill-stat-label text-[var(--muted)]">Wrong</span>
+                    <span id="ds-wrong" class="drill-stat-value drill-stat-value-error font-bold">0</span>
+                  </div>
+                  <div class="mt-1">
+                    <div class="progress-bar progress-bar-tall">
+                      <progress
+                        class="progress-meter"
+                        id="session-progress-bar"
+                        max="100"
+                        value="0"
+                      ></progress>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="drill-info-card panel-quiet p-3">
+                  <div class="drill-card-title mb-2 text-[13px] font-semibold">Training Flow</div>
+                  <div class="stepper-rail">
+                    <div class="coach-step">
+                      <span class="coach-step-index">1</span>
+                      <div>
+                        <div class="text-sm font-bold text-[var(--text)]">Solve</div>
+                        <div class="text-xs text-[var(--muted)]">Find the first move</div>
+                      </div>
+                    </div>
+                    <div class="coach-step">
+                      <span class="coach-step-index">2</span>
+                      <div>
+                        <div class="text-sm font-bold text-[var(--text)]">Grade</div>
+                        <div class="text-xs text-[var(--muted)]">Choose difficulty</div>
+                      </div>
+                    </div>
+                    <div class="coach-step">
+                      <span class="coach-step-index">3</span>
+                      <div>
+                        <div class="text-sm font-bold text-[var(--text)]">Repeat</div>
+                        <div class="text-xs text-[var(--muted)]">Build retention</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="drill-info-card panel-quiet p-3">
+                  <div class="drill-card-title mb-2 text-[13px] font-semibold">Queue</div>
+                  <div class="drill-queue-list flex max-h-[300px] flex-col gap-[6px] overflow-y-auto" id="drill-queue-list"></div>
+                </div>
+
+                <div class="drill-info-card panel-quiet p-3">
+                  <div class="drill-card-title mb-1">Session Focus</div>
+                  <div class="meta-label">Solve first move quickly, then verify one tactical threat before you commit.</div>
+                </div>
+
+                <div class="drill-info-card analytics-panel p-3" id="drill-hint-card" hidden>
+                  <div class="drill-card-title mb-1">Position Info</div>
+                  <div id="drill-theme-label" class="meta-label">—</div>
+                  <button class="btn btn-ghost btn-block mt-1" id="btn-show-hint" type="button">
+                    Show Best Move
+                  </button>
+                </div>
+              </div>
+            </div>
+          

@@ -1,19 +1,19 @@
 /* ── GAME DETAIL ── */
 
 #review-board {
-  width: min(100%, 520px);
+  width: min(100%, 640px);
   aspect-ratio: 1;
   margin: 0 auto;
-  border-radius: 10px;
+  border-radius: var(--radius);
   overflow: hidden;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-soft);
+  border: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent 18%);
+  box-shadow: var(--shadow-md);
 }
 
 .review-choice {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent 12%);
   color: var(--text);
   text-align: left;
   padding: 14px;
@@ -25,13 +25,14 @@
 }
 
 .review-choice:hover:not(:disabled) {
-  border-color: var(--blue);
+  border-color: var(--primary);
   transform: translateY(-1px);
 }
 
 .review-choice.active {
-  border-color: var(--primary);
-  background: var(--primary-dim);
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: color-mix(in srgb, var(--primary) 13%, var(--surface-2));
+  box-shadow: var(--shadow-glow);
 }
 
 .review-choice:disabled {
@@ -105,7 +106,7 @@
 
 /* ── MISTAKE DETAIL PANEL ── */
 .mistake-item {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--surface-2) 90%, transparent 10%);
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 1px);
   padding: 14px;
@@ -125,8 +126,9 @@
 }
 
 .mistake-item.active {
-  border-color: var(--primary);
-  background: var(--primary-dim);
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: color-mix(in srgb, var(--primary) 13%, var(--surface-2));
+  box-shadow: var(--shadow-glow);
 }
 
 .mistake-item.is-critical {
@@ -188,14 +190,14 @@
 }
 
 #drill-board {
-  width: min(100%, 440px);
+  width: min(100%, 520px);
   aspect-ratio: 1;
-  border-radius: 10px;
+  border-radius: var(--radius);
   overflow: hidden;
   position: relative;
   margin: 0 auto;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-soft);
+  border: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent 18%);
+  box-shadow: var(--shadow-md);
 }
 
 .board-grid {
@@ -219,11 +221,11 @@
 }
 
 .sq.light {
-  background: #f0d9b5;
+  background: #d8dee9;
 }
 
 .sq.dark {
-  background: #b58863;
+  background: #667085;
 }
 
 .sq.selected {

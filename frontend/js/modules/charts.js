@@ -1,9 +1,11 @@
 const palette = {
-  text: '#e6edf3',
+  text: '#f0f6fc',
   muted: '#8b949e',
   grid: 'rgba(255,255,255,0.06)',
   primary: '#3fb950',
   primarySoft: 'rgba(63,185,80,0.22)',
+  analytics: '#a855f7',
+  analyticsSoft: 'rgba(168,85,247,0.2)',
   blue: '#58a6ff',
   blueSoft: 'rgba(88,166,255,0.24)',
   warning: '#d29922',
@@ -23,7 +25,7 @@ function comma(value) {
 export function initChartDefaults() {
   if (typeof Chart === 'undefined') return;
   Chart.defaults.color = palette.text;
-  Chart.defaults.font.family = 'Inter, sans-serif';
+  Chart.defaults.font.family = 'Manrope, sans-serif';
   Chart.defaults.font.size = 12;
   Chart.defaults.font.weight = '500';
   Chart.defaults.maintainAspectRatio = false;

@@ -11,6 +11,10 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
   let activePhase = '';
   const heatmapSquareNodes = new Map();
   let heatmapOrientation = null;
+  function setChartMeta(id, text) {
+    const el = dom.byId(id);
+    if (el) el.textContent = text;
+  }
 
   function setLoadingSections(isLoading) {
     ['mistakes-card-phase', 'mistakes-card-trend', 'mistakes-card-heatmap', 'mistakes-card-critical', 'mistakes-card-motifs']
@@ -125,6 +129,8 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
     rendered = true;
     renderInlineStatus('');
     renderPhaseTabs();
+    setChartMeta('mistakes-phase-meta', 'Refreshing…');
+    setChartMeta('mistakes-trend-meta', 'Refreshing…');
     setLoadingSections(true);
     let hadSectionError = false;
 
@@ -167,8 +173,8 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
           datasets: [
             {
               data: phaseData.map((p) => p.count),
-              backgroundColor: [chartPalette.primarySoft, chartPalette.blueSoft, chartPalette.warningSoft],
-              borderColor: [chartPalette.primary, chartPalette.blue, chartPalette.warning],
+              backgroundColor: [chartPalette.primarySoft, chartPalette.analyticsSoft, chartPalette.warningSoft],
+              borderColor: [chartPalette.primary, chartPalette.analytics, chartPalette.warning],
               borderWidth: 1,
             },
           ],
@@ -176,10 +182,12 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
         options: doughnutOptions(),
       });
       setSectionError('mistakes-card-phase', false);
+      setChartMeta('mistakes-phase-meta', `${phaseData.length || 0} buckets`);
     } else {
       console.error('Phase chart failed:', phaseResult.reason);
       toast('Unable to load phase breakdown.');
       setSectionError('mistakes-card-phase', true);
+      setChartMeta('mistakes-phase-meta', 'Unavailable');
       hadSectionError = true;
     }
 
@@ -252,6 +260,7 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
       options: baseCartesianOptions(),
     });
     setSectionError('mistakes-card-trend', false);
+    setChartMeta('mistakes-trend-meta', `${recent.length || 0} games`);
 
     if (criticalResult.status !== 'fulfilled') {
       console.error('Critical mistakes fetch failed:', criticalResult.reason);
@@ -280,7 +289,12 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
         .map(
           (m) => `
     <tr>
-      <td>${fmt(m.game_date)}</td>
+      <td>
+        <div class="flex items-center gap-2">
+          <div class="mini-board-thumb w-8 shrink-0" aria-hidden="true">${'<span></span>'.repeat(16)}</div>
+          <span>${fmt(m.game_date)}</span>
+        </div>
+      </td>
       <td>${mistakeTag(m.type)}</td>
       <td class="cell-phase">${m.phase || '—'}</td>
       <td class="cell-code text-error">${esc(m.played_move)}</td>
