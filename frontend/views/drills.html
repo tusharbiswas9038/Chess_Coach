@@ -11,6 +11,9 @@
                 <button class="btn btn-ghost max-sm:flex-1 max-sm:justify-center max-sm:min-h-[44px]" id="btn-reload-drills" type="button">
                   Reload Queue
                 </button>
+                <button class="btn btn-ghost max-sm:flex-1 max-sm:justify-center max-sm:min-h-[44px]" id="btn-generate-puzzles" type="button">
+                  Generate Puzzles
+                </button>
               </div>
             </section>
 
@@ -62,6 +65,35 @@
 
               <!-- SIDEBAR -->
               <div class="drill-sidebar flex flex-col gap-2">
+                <div class="drill-info-card panel-quiet p-3">
+                  <div class="drill-card-title mb-2 text-[13px] font-semibold">Queue Mode</div>
+                  <label class="field mb-2">
+                    <span class="field-label">Mode</span>
+                    <select id="drill-queue-mode" class="field-input select select-bordered w-full">
+                      <option value="adaptive">Adaptive weakness-first</option>
+                      <option value="retry">Retry failed/hard</option>
+                      <option value="motif">Specific motif</option>
+                    </select>
+                  </label>
+                  <label class="field mb-0">
+                    <span class="field-label">Motif filter</span>
+                    <select id="drill-motif-filter" class="field-input select select-bordered w-full">
+                      <option value="">All motifs</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="drill-info-card analytics-panel p-3">
+                  <div class="drill-card-title mb-2 text-[13px] font-semibold">Puzzle Bank</div>
+                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-[13px]">
+                    <span class="drill-stat-label text-[var(--muted)]">Generated puzzles</span>
+                    <span id="drill-puzzle-total" class="drill-stat-value font-bold">—</span>
+                  </div>
+                  <div class="meta-label mt-2" id="drill-puzzle-breakdown">Generate puzzles to unlock motif queues.</div>
+                  <div class="mt-2 flex flex-wrap gap-1" id="drill-motif-chips"></div>
+                  <div class="meta-label mt-2" id="drill-puzzle-status" role="status" aria-live="polite"></div>
+                </div>
+
                 <div class="drill-info-card panel-quiet p-3">
                   <div class="drill-card-title mb-2 text-[13px] font-semibold">Session Stats</div>
                   <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-[13px]">
@@ -130,7 +162,12 @@
 
                 <div class="drill-info-card panel-quiet p-3">
                   <div class="drill-card-title mb-1">Session Focus</div>
-                  <div class="meta-label">Solve first move quickly, then verify one tactical threat before you commit.</div>
+                  <div class="meta-label" id="drill-session-focus">Solve first move quickly, then verify one tactical threat before you commit.</div>
+                </div>
+
+                <div class="drill-info-card analytics-panel p-3" id="drill-session-summary" hidden>
+                  <div class="drill-card-title mb-1">Session Summary</div>
+                  <div class="meta-label" id="drill-session-summary-copy">—</div>
                 </div>
 
                 <div class="drill-info-card analytics-panel p-3" id="drill-hint-card" hidden>

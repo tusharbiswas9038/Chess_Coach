@@ -33,8 +33,11 @@ export const endpoints = {
   jobDbMaintenance: () => '/api/jobs/db-maintenance',
   playerModelLatest: () => '/api/product/player-model/latest',
   drillsResult: () => '/api/drills/result',
-  drillsDue: (limit = 15, refresh = false) => `/api/drills/due?limit=${limit}${refresh ? '&refresh=true' : ''}`,
+  drillsDue: (limit = 15, refresh = false, mode = 'adaptive', motif = '') =>
+    `/api/drills/due?limit=${limit}${refresh ? '&refresh=true' : ''}&mode=${encodeURIComponent(mode)}${motif ? `&motif=${encodeURIComponent(motif)}` : ''}`,
   drillsSummary: () => '/api/drills/summary',
+  drillsGeneratePuzzles: () => '/api/drills/generate-puzzles',
+  drillsPuzzleSummary: () => '/api/drills/puzzles/summary',
 };
 
 function fail(label, msg) {
@@ -170,6 +173,16 @@ export const normalize = {
         goal_done: Boolean(today.goal_done),
       },
       streak: Number(p.streak || 0),
+    };
+  },
+
+  drillsPuzzleSummary(payload) {
+    const p = expectObject(payload, 'drillsPuzzleSummary');
+    return {
+      total: Number(p.total || 0),
+      difficulty: p.difficulty && typeof p.difficulty === 'object' ? p.difficulty : {},
+      motifs: Array.isArray(p.motifs) ? p.motifs.map((item) => expectObject(item, 'drillsPuzzleSummary.motif')) : [],
+      phases: Array.isArray(p.phases) ? p.phases.map((item) => expectObject(item, 'drillsPuzzleSummary.phase')) : [],
     };
   },
 };

@@ -176,6 +176,40 @@ def _create_coach_quality_tables(conn: sqlite3.Connection) -> None:
     )
 
 
+def _create_puzzle_ecosystem(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS puzzles (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            signature      TEXT NOT NULL UNIQUE,
+            fen            TEXT NOT NULL,
+            best_move      TEXT NOT NULL,
+            motif          TEXT,
+            phase          TEXT,
+            difficulty     TEXT NOT NULL DEFAULT 'medium',
+            source_count   INTEGER NOT NULL DEFAULT 1,
+            created_at     TEXT DEFAULT (datetime('now')),
+            updated_at     TEXT DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS puzzle_sources (
+            puzzle_id      INTEGER NOT NULL REFERENCES puzzles(id) ON DELETE CASCADE,
+            mistake_id     INTEGER NOT NULL REFERENCES mistakes(id) ON DELETE CASCADE,
+            PRIMARY KEY (puzzle_id, mistake_id)
+        )
+        """
+    )
+    if "puzzle_id" not in _column_names(conn, "srs_items"):
+        conn.execute("ALTER TABLE srs_items ADD COLUMN puzzle_id INTEGER REFERENCES puzzles(id) ON DELETE SET NULL")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_puzzles_motif_difficulty ON puzzles(motif, difficulty)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_puzzles_phase_motif ON puzzles(phase, motif)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_srs_due_puzzle ON srs_items(due_date, puzzle_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_srs_last_result_due ON srs_items(last_result, due_date)")
+
+
 MIGRATIONS: List[Migration] = [
     ("001_cleanup_orphans_and_reconcile_indexes", _cleanup_orphan_srs_and_reconcile_indexes),
     ("002_optimize_indexes_for_hot_paths", _optimize_indexes_for_hot_paths),
@@ -183,6 +217,7 @@ MIGRATIONS: List[Migration] = [
     ("004_analysis_v2_fields", _add_analysis_v2_fields),
     ("005_create_drill_sessions", _create_drill_sessions),
     ("006_create_coach_quality_tables", _create_coach_quality_tables),
+    ("007_create_puzzle_ecosystem", _create_puzzle_ecosystem),
 ]
 
 

@@ -11,7 +11,9 @@ This document explains how the current FastAPI backend is organized, how API sec
 | Session auth | `api/auth_service.py`, `api/routers/auth.py` | First-party login, signed HTTP-only cookie sessions, password-hash verification, auth status endpoints. |
 | Security helpers | `api/security.py` | Session/admin-token check, rate limiting, SQLite-backed rate-limit events, debug helpers for rate-limit inspection/clearing. |
 | Shared dependencies | `api/dependencies.py` | FastAPI dependencies for `GameRepository`, `require_admin`, and `rate_limit(...)`. |
-| Job queue | `api/job_queue.py`, `api/jobs_service.py` | Background queue and enqueue helpers for sync, analysis, reports, sessions, player model, and maintenance. |
+| Job queue | `api/job_queue.py`, `api/jobs_service.py`, `api/services/job_enqueue_helpers.py` | Background queue and enqueue helpers for sync, analysis, reports, sessions, player model, puzzle generation, and maintenance. |
+| Coach context | `api/services/coach_context.py`, `coach/prompt_builder.py` | Retrieval-enhanced coaching context, coach mode prompt policies, and response guardrails. |
+| Drill/puzzle engine | `drills/srs_scheduler.py` | SRS scheduling, daily drill sessions, adaptive queues, puzzle generation from mistakes, and drill summaries. |
 
 ## 2. API Router Map
 
@@ -22,8 +24,8 @@ This document explains how the current FastAPI backend is organized, how API sec
 | `api/routers/openings.py` | `/api/openings` | Opening summaries and opening genome data. |
 | `api/routers/jobs.py` | `/api/jobs` | Starts sync, analysis, journal, session, player-model, weekly-report, and DB-maintenance jobs. |
 | `api/routers/sessions.py` | `/api/sessions` | Session reads and session compute job. |
-| `api/routers/drills.py` | `/api/drills` | Due drills, drill result submission, populate SRS from mistakes. |
-| `api/routers/coach.py` | `/api/coach` | AI coach chat, game coaching generation, batch report generation. |
+| `api/routers/drills.py` | `/api/drills` | Due drills, adaptive/retry/motif queues, drill result submission, puzzle generation, puzzle-bank summary, populate SRS from mistakes. |
+| `api/routers/coach.py` | `/api/coach` | Mode-aware AI coach chat, retrieval-enhanced context, game coaching generation, batch report generation. |
 | `api/routers/reports.py` | `/api/reports` | Weekly report generation. |
 | `api/routers/product.py` | `/api/product` | Weekly focus and latest player-model snapshot. |
 | `api/routers/debug.py` | `/api/debug/*` | Debug DB/rate-limit inspection when `ENABLE_DEBUG_ROUTES=true`. |
@@ -33,7 +35,7 @@ The SPA is served from `frontend/index.html` by `api/main.py` for `/`, `/dashboa
 
 ## 3. Security Model
 
-This is a self-hosted, single-user-first app. It does not currently have user accounts or browser login sessions.
+This is a self-hosted, single-user-first app with first-party admin login sessions. It is not a multi-user SaaS auth system.
 
 Security relies on:
 
@@ -99,6 +101,7 @@ Current protected endpoint categories:
 - Drill mutation: `/api/drills/result`, `/api/drills/populate`.
 - Stats cache mutation: `/api/stats/clear_cache`.
 - Coach AI endpoints: `/api/coach/game/{game_id}`, `/api/coach/chat`, `/api/coach/batch`.
+- Puzzle generation: `/api/drills/generate-puzzles`.
 - Operational endpoints: `/api/ready`, `/api/metrics`.
 - Debug endpoints: `/api/debug/*` when enabled.
 
@@ -133,7 +136,7 @@ Current common buckets:
 - `stats-read`: analytics reads, 120/minute.
 - `stats-write`: cache clearing, 10/minute.
 - `drills-read`: due drills, 120/minute.
-- `drills-write`: drill mutation, 10-60/minute depending on endpoint.
+- `drills-write`: drill mutation and puzzle generation, 5-60/minute depending on endpoint.
 - `reports-write`: weekly report generation, 5/minute.
 
 ## 6. CORS, Hosts, and CSP
@@ -193,6 +196,38 @@ Rules:
 - Keep rate limits low for AI generation endpoints.
 - Do not store or return raw secrets, system prompts, stack traces, or local filesystem paths.
 
+### Coach Chat Modes
+
+`POST /api/coach/chat` accepts:
+
+```json
+{
+  "message": "What should I study today?",
+  "history": [],
+  "mode": "quick_answer"
+}
+```
+
+Supported modes are normalized server-side in `coach/prompt_builder.py`:
+
+| Mode | Purpose | Output policy |
+| --- | --- | --- |
+| `quick_answer` | Fast practical answer | Diagnosis, two actions, one next-game rule. |
+| `deep_lesson` | Longer teaching answer | Why it happens, example from data, drill, checklist. |
+| `pre_game_prep` | Before playing | Opening warning, tactical check, time-control plan, 3-game focus. |
+| `post_loss_reset` | After losses | Reset, one lesson, one drill, stop condition. |
+
+Coach context is assembled in `api/services/coach_context.py` from local DB data:
+
+- latest player profile/model snapshot
+- recent critical mistakes
+- Phase 3 mistake subtypes and practical impact
+- recurring motifs
+- opening weak nodes
+- drill outcomes
+
+The prompt explicitly tells the model not to invent game details and to use only supplied context. `coach_sessions` stores user message, assistant reply, mode, and context digest for local quality review. `coach_feedback` exists for future rating/feedback collection.
+
 ## 9. Background Jobs
 
 Job routes live in `api/routers/jobs.py`; queue implementation lives in `api/job_queue.py`.
@@ -204,7 +239,33 @@ Current pattern:
 - Request returns quickly with status such as `{"status": "started"}`.
 - Frontend polls `/api/jobs/status`.
 
+Current queued job prefixes include:
+
+- `sync-*`
+- `analyze-*`
+- `coach-game-*`
+- `coach-batch-*`
+- `journals-*`
+- `sessions-*`
+- `player-model`
+- `weekly-report`
+- `db-maintenance-*`
+- `puzzles-*`
+
 Future job endpoints should follow this pattern. Do not run Stockfish/Ollama/game sync directly inside a request handler.
+
+### Puzzle Generation Job
+
+`POST /api/drills/generate-puzzles` is admin-protected and rate-limited. It enqueues a `puzzles-*` job that:
+
+- reads analyzed mistakes
+- dedupes positions by stable FEN signature + best move
+- creates/updates `puzzles`
+- links puzzle-to-mistake records in `puzzle_sources`
+- links `srs_items.puzzle_id`
+- invalidates analytics/dashboard/training frontend caches
+
+The frontend Drills page waits for the `puzzles-*` job via `/api/jobs/status`, then refreshes the puzzle bank summary automatically.
 
 ## 10. Operational Endpoints
 
@@ -223,10 +284,53 @@ Session integration:
 - `frontend/js/modules/api.js` sends same-origin cookies with API requests.
 - `frontend/js/modules/contracts.js` defines `/api/auth/session`, `/api/auth/login`, and `/api/auth/logout`.
 - The topbar Sign Out action is shown only when auth is required and the session is authenticated.
+- `frontend/js/app.js` waits for auth initialization before loading protected data. After login it clears frontend caches and reloads the active view.
+- `frontend/js/modules/jobs.js` provides `waitForJobByPrefix(...)` for job completion polling and cache invalidation events.
+- `frontend/js/modules/views/drills.js` uses `/api/drills/due`, `/api/drills/summary`, `/api/drills/puzzles/summary`, and `/api/drills/generate-puzzles`.
 
 Do not hardcode the real admin token into frontend JavaScript.
 
-## 12. Known Security Limitations
+## 12. Drill and Puzzle APIs
+
+Drill endpoints are in `api/routers/drills.py`.
+
+| Endpoint | Method | Auth | Purpose |
+| --- | --- | --- | --- |
+| `/api/drills/due?limit=15&mode=adaptive` | GET | Session required by global API auth | Returns the active daily queue. Normal loads resume today’s queue. |
+| `/api/drills/due?refresh=true` | GET | Session required by global API auth | Rebuilds today’s queue from due items. |
+| `/api/drills/summary` | GET | Session required by global API auth | Returns due count, today’s drill progress, streak, and goal status. |
+| `/api/drills/puzzles/summary` | GET | Session required by global API auth | Returns puzzle-bank totals, difficulty counts, motif options, and phase counts. |
+| `/api/drills/result` | POST | Admin/session required | Records SRS result and returns updated summary. |
+| `/api/drills/populate` | POST | Admin/session required | Creates SRS rows from mistakes if missing. |
+| `/api/drills/generate-puzzles` | POST | Admin/session required | Queues puzzle generation from mistakes. |
+
+Queue modes:
+
+- `adaptive`: prioritizes recent hard/failed motifs, then overdue/harder items.
+- `retry`: selects only items previously marked `fail` or `hard`.
+- `motif`: filters by a selected motif from `/api/drills/puzzles/summary`.
+
+Puzzle generation is rule-based and does not require Ollama. It depends on analyzed mistakes and Phase 3 fields when available.
+
+## 13. Database Tables Added For Recent Features
+
+Recent additive migrations are managed in `api/db_migrations.py`.
+
+| Migration | Adds |
+| --- | --- |
+| `004_analysis_v2_fields` | `moves.analysis_depth_policy`, `moves.candidate_alternatives`, `moves.plan_text`, `moves.practical_impact`, `moves.time_pressure_flag`; `mistakes.mistake_subtype`, `mistakes.confidence`, `mistakes.practical_impact`, `mistakes.time_pressure_flag`, `mistakes.candidate_alternatives`, `mistakes.plan_text`; `idx_mistakes_subtype_phase_eval_loss`. |
+| `005_create_drill_sessions` | `drill_sessions` table for server-backed daily queue persistence. |
+| `006_create_coach_quality_tables` | `coach_sessions`, `coach_feedback`, `idx_coach_sessions_created_mode`. |
+| `007_create_puzzle_ecosystem` | `puzzles`, `puzzle_sources`, `srs_items.puzzle_id`, puzzle/SRS indexes. |
+
+Schema design notes:
+
+- `drill_sessions.item_ids` stores the ordered daily queue as JSON so hard refresh resumes the same session.
+- `puzzles.signature` dedupes by stable FEN + best move.
+- `puzzle_sources` preserves which mistakes produced a puzzle.
+- `srs_items` remains the scheduling authority; `puzzles` is the reusable training content layer.
+
+## 14. Known Security Limitations
 
 Current limitations to keep visible:
 
@@ -235,8 +339,10 @@ Current limitations to keep visible:
 - SQLite rate limiting is good for self-hosted use but not a distributed multi-instance deployment.
 - CSP still allows the current Chart.js CDN and configured domain; remove unused external sources if dependencies are fully local.
 - `ALLOWED_HOSTS` and `CORS_ORIGINS` must be set correctly for each deployment.
+- Coach sessions store prompts/replies locally. Treat `data/chess.db` as sensitive because it contains personal game data and AI chat content.
+- Puzzle/drill endpoints expose derived game mistakes to authenticated users. Do not make them public.
 
-## 13. Before Production Checklist
+## 15. Before Production Checklist
 
 1. Set `APP_ENV=production`.
 2. Generate and set strong `APP_SECRET_KEY`.
@@ -249,3 +355,7 @@ Current limitations to keep visible:
 9. Run behind HTTPS.
 10. Confirm protected endpoints reject unauthenticated requests.
 11. Confirm `/api/auth/login`, `/api/auth/session`, and `/api/auth/logout` work through the browser UI.
+12. Confirm login reloads protected dashboard stats without manual refresh.
+13. Confirm `/api/jobs/status` is protected.
+14. Confirm `/api/drills/generate-puzzles` is protected and job status updates in the UI.
+15. Back up `data/chess.db`; it now contains coach sessions, generated puzzles, and drill state.

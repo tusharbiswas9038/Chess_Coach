@@ -91,6 +91,7 @@ CREATE INDEX idx_mistakes_game_critical_loss ON mistakes(game_id, is_critical, e
 CREATE TABLE srs_items (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     mistake_id      INTEGER REFERENCES mistakes(id) ON DELETE CASCADE,
+    puzzle_id       INTEGER REFERENCES puzzles(id) ON DELETE SET NULL,
     fen             TEXT NOT NULL,
     correct_move    TEXT NOT NULL,     -- UCI
     theme           TEXT,
@@ -104,6 +105,30 @@ CREATE TABLE srs_items (
 );
 
 CREATE INDEX idx_srs_due ON srs_items(due_date);
+CREATE INDEX idx_srs_due_puzzle ON srs_items(due_date, puzzle_id);
+CREATE INDEX idx_srs_last_result_due ON srs_items(last_result, due_date);
+
+-- ── PUZZLES GENERATED FROM OWN MISTAKES ──────────────────────────
+CREATE TABLE puzzles (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    signature      TEXT NOT NULL UNIQUE,
+    fen            TEXT NOT NULL,
+    best_move      TEXT NOT NULL,
+    motif          TEXT,
+    phase          TEXT,
+    difficulty     TEXT NOT NULL DEFAULT 'medium',
+    source_count   INTEGER NOT NULL DEFAULT 1,
+    created_at     TEXT DEFAULT (datetime('now')),
+    updated_at     TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE puzzle_sources (
+    puzzle_id      INTEGER NOT NULL REFERENCES puzzles(id) ON DELETE CASCADE,
+    mistake_id     INTEGER NOT NULL REFERENCES mistakes(id) ON DELETE CASCADE,
+    PRIMARY KEY (puzzle_id, mistake_id)
+);
+CREATE INDEX idx_puzzles_motif_difficulty ON puzzles(motif, difficulty);
+CREATE INDEX idx_puzzles_phase_motif ON puzzles(phase, motif);
 
 -- ── DAILY DRILL SESSIONS ─────────────────────────────────────────
 CREATE TABLE drill_sessions (
