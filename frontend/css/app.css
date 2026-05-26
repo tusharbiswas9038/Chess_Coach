@@ -20,3 +20,48 @@
   color: var(--text);
   font-family: sans-serif;
 }
+
+/* Auth gate is security-critical UI: keep core blocking styles outside generated utilities. */
+#auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(63, 185, 80, 0.16), transparent 30%),
+    radial-gradient(circle at 82% 12%, rgba(168, 85, 247, 0.12), transparent 28%),
+    #0f1117;
+  color: var(--text);
+  pointer-events: auto;
+}
+
+#auth-gate[hidden] {
+  display: none !important;
+}
+
+#auth-form {
+  width: min(100%, 430px);
+  border: 1px solid rgba(240, 246, 252, 0.1);
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0)),
+    linear-gradient(135deg, #161b22, #0f1117);
+  box-shadow:
+    0 32px 90px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(63, 185, 80, 0.08);
+}
+
+body.auth-locked {
+  overflow: hidden;
+}
+
+body.auth-locked .app-shell {
+  pointer-events: none;
+  user-select: none;
+  filter: blur(10px) saturate(0.7);
+  opacity: 0;
+}

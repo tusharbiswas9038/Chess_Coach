@@ -83,12 +83,3 @@ body.sidebar-collapsed .rating-badge > div {
     scroll-behavior: auto !important;
   }
 }
-
-body.pref-reduce-motion *,
-body.pref-reduce-motion *::before,
-body.pref-reduce-motion *::after {
-  animation-duration: 1ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 1ms !important;
-  scroll-behavior: auto !important;
-}

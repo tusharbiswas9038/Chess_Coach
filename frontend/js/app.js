@@ -2,7 +2,6 @@ import { api, apiPost, apiContract } from './modules/api.js';
 import { createActionsView } from './modules/views/actions.js';
 import { createNavigationView } from './modules/views/navigation.js';
 import { initChartDefaults } from './modules/charts.js';
-import { createPreferences } from './modules/preferences.js';
 import { loadSectionTemplate } from './modules/viewLoader.js';
 import { createAuthGate } from './modules/auth.js';
 
@@ -17,7 +16,6 @@ let charts = {};
 
 let navigationView;
 const boundViews = new Set();
-const preferences = createPreferences({ toast });
 const authGate = createAuthGate({ api, apiPost, toast });
 const views = {
   actions: null,
@@ -155,8 +153,6 @@ getActionsView().bindEvents();
 navigationView.bindEvents();
 navigationView.restoreSidebarPreference();
 navigationView.syncFromRoute();
-preferences.bindEvents();
-preferences.init();
 authGate.init().then(updateAuthUi);
 
 window.addEventListener('app:auth-changed', (event) => {

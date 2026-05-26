@@ -92,6 +92,20 @@ async def add_security_headers(request: Request, call_next):
                 content={"detail": "Origin is not allowed."},
             )
 
+    public_api_paths = {"/api/health"}
+    if (
+        request.url.path.startswith("/api/")
+        and not request.url.path.startswith("/api/auth/")
+        and request.url.path not in public_api_paths
+    ):
+        try:
+            require_admin_if_configured(request)
+        except HTTPException as exc:
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail},
+            )
+
     response: Response = await call_next(request)
     elapsed_ms = (time.perf_counter() - started) * 1000.0
     response.headers["X-Request-ID"] = request_id

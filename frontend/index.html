@@ -35,6 +35,41 @@
       </div>
     </noscript>
 
+    <div
+      id="auth-gate"
+      aria-modal="true"
+      role="dialog"
+    >
+      <form
+        id="auth-form"
+        class="w-full max-w-[420px] rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(135deg,rgba(22,27,34,0.98),rgba(15,17,23,0.98))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+      >
+        <div class="mb-5">
+          <div class="mb-2 inline-flex rounded-full border border-[rgba(63,185,80,0.25)] bg-[rgba(63,185,80,0.08)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">
+            Private workspace
+          </div>
+          <h1 class="text-2xl font-bold tracking-[-0.03em] text-[var(--text)]">
+            Sign in to Chess Coach
+          </h1>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+            Use your configured admin account. Your session is stored in a secure HTTP-only cookie.
+          </p>
+        </div>
+        <label class="mb-3 block">
+          <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Username</span>
+          <input id="auth-username" class="field-input w-full" autocomplete="username" value="admin" required />
+        </label>
+        <label class="mb-4 block">
+          <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Password</span>
+          <input id="auth-password" class="field-input w-full" type="password" autocomplete="current-password" required />
+        </label>
+        <button id="auth-submit" class="btn btn-primary w-full justify-center" type="submit">
+          Sign in
+        </button>
+        <p id="auth-error" class="mt-3 min-h-5 text-sm text-[var(--error)]" role="alert"></p>
+      </form>
+    </div>
+
     <div class="app app-shell flex min-h-dvh max-sm:pb-[calc(64px+env(safe-area-inset-bottom))]">
       <!-- ── SIDEBAR ── -->
       <aside class="sidebar fixed inset-y-0 left-0 z-[100] flex h-dvh flex-col border-r border-[var(--border)] shadow-cc-soft max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:z-[120] max-sm:h-auto max-sm:w-full max-sm:border-r-0 max-sm:border-t" id="sidebar" aria-label="Navigation">
@@ -164,7 +199,7 @@
 
       <!-- ── MAIN ── -->
       <main class="main flex min-h-dvh flex-1 flex-col max-sm:ml-0">
-        <header class="topbar sticky top-0 z-50 flex min-h-4 items-center justify-between gap-2 border-b border-[var(--border)] px-5 shadow-cc-soft backdrop-blur max-sm:min-h-[56px] max-sm:px-3">
+        <header class="topbar sticky top-0 z-50 flex min-h-4 items-center justify-between gap-2 px-5 max-sm:min-h-[56px] max-sm:px-3">
           <div class="topbar-main flex min-w-0 items-center gap-2">
             <button
               class="btn btn-ghost topbar-sidebar-toggle max-sm:hidden"
@@ -235,9 +270,6 @@
               </button>
               <button class="btn btn-ghost max-sm:w-full max-sm:justify-start" id="btn-db-maintenance" type="button">
                 DB Optimize
-              </button>
-              <button class="btn btn-ghost max-sm:w-full max-sm:justify-start" id="btn-toggle-motion" type="button" aria-pressed="false">
-                Reduce Motion
               </button>
               <button class="btn btn-ghost max-sm:w-full max-sm:justify-start" id="btn-logout" type="button" hidden>
                 Sign Out

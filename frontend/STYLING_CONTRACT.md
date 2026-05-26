@@ -10,7 +10,7 @@
   - Chess UI shells (`board-stage`, `engine-panel`, `engine-eval-bar`, `mini-board-thumb`, `mastery-bar`)
   - Most layout, spacing, typography, and responsive behavior (`max-sm`, `max-md`, etc.)
 - **Custom runtime CSS (`frontend/css/app.css` imports)**:
-  - `layout.css`: behavior/state hooks only (sidebar collapsed, reduced motion behavior)
+  - `layout.css`: behavior/state hooks only (sidebar collapsed, focus and OS reduced-motion behavior)
   - `features.css`: chess-domain visuals and interaction semantics only
   - `responsive.css`: residual responsive exceptions only
 - **Removed legacy stubs**:

@@ -3,14 +3,29 @@ import { endpoints } from './contracts.js';
 
 export function createAuthGate({ api, apiPost, toast }) {
   let session = { authenticated: false, auth_required: false };
+  let formBound = false;
 
-  function renderLogin() {
+  function bindLoginForm(overlay) {
+    if (formBound) return;
+    overlay.querySelector('#auth-form')?.addEventListener('submit', submitLogin);
+    formBound = true;
+  }
+
+  function setAppLocked(locked) {
+    document.body.classList.toggle('auth-locked', locked);
+    const app = document.querySelector('.app-shell');
+    if (!app) return;
+    app.toggleAttribute('inert', locked);
+    app.setAttribute('aria-hidden', locked ? 'true' : 'false');
+  }
+
+  function ensureLoginOverlay() {
     let overlay = document.getElementById('auth-gate');
     if (!overlay) {
       overlay = document.createElement('div');
       overlay.id = 'auth-gate';
       overlay.className =
-        'fixed inset-0 z-[3000] flex items-center justify-center bg-[rgba(15,17,23,0.92)] px-4 backdrop-blur-xl';
+        'auth-gate';
       overlay.innerHTML = `
         <form id="auth-form" class="w-full max-w-[420px] rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(135deg,rgba(22,27,34,0.98),rgba(15,17,23,0.98))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
           <div class="mb-5">
@@ -31,14 +46,21 @@ export function createAuthGate({ api, apiPost, toast }) {
         </form>
       `;
       document.body.appendChild(overlay);
-      overlay.querySelector('#auth-form')?.addEventListener('submit', submitLogin);
     }
+    bindLoginForm(overlay);
+    return overlay;
+  }
+
+  function renderLogin() {
+    const overlay = ensureLoginOverlay();
+    setAppLocked(true);
     overlay.hidden = false;
     overlay.querySelector('#auth-password')?.focus();
   }
 
   function hideLogin() {
-    const overlay = document.getElementById('auth-gate');
+    const overlay = ensureLoginOverlay();
+    setAppLocked(false);
     if (overlay) overlay.hidden = true;
   }
 
@@ -74,7 +96,7 @@ export function createAuthGate({ api, apiPost, toast }) {
     try {
       session = await api(endpoints.authSession());
     } catch {
-      session = { authenticated: false, auth_required: false };
+      session = { authenticated: false, auth_required: true };
     }
     if (session.auth_required && !session.authenticated) {
       renderLogin();

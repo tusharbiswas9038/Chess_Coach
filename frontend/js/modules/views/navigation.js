@@ -180,11 +180,6 @@ export function createNavigationView({
         showView(view);
         return;
       }
-      if (event.key.toLowerCase() === 'm') {
-        event.preventDefault();
-        document.getElementById('btn-toggle-motion')?.click();
-        return;
-      }
     }
     if (event.key === '/' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();
