@@ -1,0 +1,35 @@
+# Copy to: /etc/systemd/system/chess-coach-api.service
+#
+# Production notes:
+# - Prefer --host 127.0.0.1 when serving through Nginx/Caddy/Apache HTTPS.
+# - Use --host 0.0.0.0 only for direct LAN exposure with a firewall.
+# - Keep .env owned/readable by chess_coach only.
+
+[Unit]
+Description=Chess Coach API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=chess_coach
+Group=chess_coach
+WorkingDirectory=/home/chess_coach/chess-coach
+EnvironmentFile=/home/chess_coach/chess-coach/.env
+Environment=PYTHONPATH=/home/chess_coach/chess-coach
+ExecStart=/home/chess_coach/chess-coach/.venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 8000 --proxy-headers
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=/home/chess_coach/chess-coach/data /home/chess_coach/chess-coach/logs /home/chess_coach/chess-coach/reports
+UMask=0027
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

@@ -4,11 +4,15 @@ This runbook closes the current runtime/ops plan for the self-hosted Chess Coach
 
 ## 1. Runtime Model
 
-The app is a FastAPI service served by Uvicorn.
+The app runs as two systemd services:
+
+- `chess-coach-api.service`: FastAPI/Uvicorn app, frontend static files, protected API, in-process job queue.
+- `chess-coach-scheduler.service`: APScheduler process for nightly sync/analyze/SRS/session/player-model/report tasks.
 
 Current runtime facts from the codebase:
 
 - App entry point: `api.main:app`
+- Scheduler entry point: `scheduler/jobs.py`
 - Frontend: served from `frontend/index.html` and `frontend/*`
 - Database: `data/chess.db`
 - SQLite mode: WAL via `api/db.py`
@@ -20,15 +24,33 @@ Current runtime facts from the codebase:
 - Background jobs: single in-process queue in `api/job_queue.py`
 - External local dependencies: Stockfish at `STOCKFISH_PATH`, Ollama at `OLLAMA_URL`
 
-Important operational constraint: queued jobs are not durable across service restarts. If the process restarts while sync, analysis, coach reports, or puzzle generation are queued/running, re-run that job manually.
+Important operational constraints:
+
+- API queued jobs are not durable across service restarts. If the API process restarts while sync, analysis, coach reports, or puzzle generation are queued/running, re-run that job manually.
+- The scheduler is a separate process that writes to the same SQLite DB. Do not run more than one scheduler instance.
+- Avoid triggering manual heavy sync/analyze jobs while scheduled jobs are running unless `/api/jobs/status` is idle.
 
 ## 2. Final Systemd Hardening Checklist
 
-No systemd unit is stored in this repository. If deploying with systemd, use a unit equivalent to this:
+Sanitized example units are versioned in:
+
+- `deploy/systemd/chess-coach-api.service.example`
+- `deploy/systemd/chess-coach-scheduler.service.example`
+
+Your current two-service structure is correct. The main changes recommended from the live units you shared are:
+
+- Add `Group=chess_coach`.
+- Add `EnvironmentFile=/home/chess_coach/chess-coach/.env` so production config is explicit.
+- Use `network-online.target` instead of only `network.target`.
+- Prefer `Restart=on-failure` instead of `Restart=always`.
+- Prefer API binding to `127.0.0.1:8000` behind a reverse proxy; use `0.0.0.0` only if directly exposed behind firewall rules.
+- Add systemd hardening: `NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=full`, explicit `ReadWritePaths`, `UMask=0027`, `LimitNOFILE`.
+
+API unit:
 
 ```ini
 [Unit]
-Description=Chess Coach FastAPI service
+Description=Chess Coach API
 After=network-online.target
 Wants=network-online.target
 
@@ -38,9 +60,44 @@ User=chess_coach
 Group=chess_coach
 WorkingDirectory=/home/chess_coach/chess-coach
 EnvironmentFile=/home/chess_coach/chess-coach/.env
+Environment=PYTHONPATH=/home/chess_coach/chess-coach
 ExecStart=/home/chess_coach/chess-coach/.venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 8000 --proxy-headers
 Restart=on-failure
 RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=/home/chess_coach/chess-coach/data /home/chess_coach/chess-coach/logs /home/chess_coach/chess-coach/reports
+UMask=0027
+
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Scheduler unit:
+
+```ini
+[Unit]
+Description=Chess Coach Scheduler
+After=network-online.target chess-coach-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=chess_coach
+Group=chess_coach
+WorkingDirectory=/home/chess_coach/chess-coach
+EnvironmentFile=/home/chess_coach/chess-coach/.env
+Environment=PYTHONPATH=/home/chess_coach/chess-coach
+ExecStart=/home/chess_coach/chess-coach/.venv/bin/python scheduler/jobs.py
+Restart=on-failure
+RestartSec=10
 TimeoutStopSec=30
 KillSignal=SIGTERM
 
@@ -61,6 +118,7 @@ Checklist:
 
 - Run as `chess_coach`, not `root`.
 - Bind Uvicorn to `127.0.0.1:8000` when behind Nginx/Caddy.
+- Keep only one `chess-coach-scheduler.service` instance enabled.
 - Use HTTPS at the reverse proxy.
 - Keep `.env` readable only by the service user.
 - Ensure `data/`, `logs/`, and `reports/` are writable by `chess_coach`.
@@ -73,11 +131,16 @@ Checklist:
 Useful commands:
 
 ```bash
+sudo cp deploy/systemd/chess-coach-api.service.example /etc/systemd/system/chess-coach-api.service
+sudo cp deploy/systemd/chess-coach-scheduler.service.example /etc/systemd/system/chess-coach-scheduler.service
 sudo systemctl daemon-reload
-sudo systemctl enable chess-coach
-sudo systemctl restart chess-coach
-sudo systemctl status chess-coach --no-pager
+sudo systemctl enable chess-coach-api chess-coach-scheduler
+sudo systemctl restart chess-coach-api chess-coach-scheduler
+sudo systemctl status chess-coach-api --no-pager
+sudo systemctl status chess-coach-scheduler --no-pager
 ```
+
+If the API is not behind a local reverse proxy, change the API unit host from `127.0.0.1` back to `0.0.0.0` and protect port `8000` with firewall rules. For internet-facing production, the preferred deployment is still Uvicorn on `127.0.0.1` behind HTTPS reverse proxy.
 
 ## 3. Production Runtime Checklist
 
@@ -143,16 +206,18 @@ Current logging behavior:
 Primary log source under systemd:
 
 ```bash
-sudo journalctl -u chess-coach -n 200 --no-pager
-sudo journalctl -u chess-coach -f
+sudo journalctl -u chess-coach-api -n 200 --no-pager
+sudo journalctl -u chess-coach-scheduler -n 200 --no-pager
+sudo journalctl -u chess-coach-api -f
 ```
 
 High-signal searches:
 
 ```bash
-sudo journalctl -u chess-coach --since "1 hour ago" --no-pager | grep -E "ERROR|failed|exception|Traceback"
-sudo journalctl -u chess-coach --since "1 hour ago" --no-pager | grep -E "startup|shutdown|migrations_applied|JobQueue"
-sudo journalctl -u chess-coach --since "1 hour ago" --no-pager | grep -E "status=5|status=4"
+sudo journalctl -u chess-coach-api --since "1 hour ago" --no-pager | grep -E "ERROR|failed|exception|Traceback"
+sudo journalctl -u chess-coach-api --since "1 hour ago" --no-pager | grep -E "startup|shutdown|migrations_applied|JobQueue"
+sudo journalctl -u chess-coach-api --since "1 hour ago" --no-pager | grep -E "status=5|status=4"
+sudo journalctl -u chess-coach-scheduler --since "24 hours ago" --no-pager | grep -E "ERROR|failed|exception|Traceback|sync|analyze|weekly|player model"
 ```
 
 What to watch:
@@ -260,7 +325,7 @@ Expected:
 Stop the service:
 
 ```bash
-sudo systemctl stop chess-coach
+sudo systemctl stop chess-coach-scheduler chess-coach-api
 ```
 
 Preserve current DB before replacing:
@@ -282,7 +347,7 @@ rm -f data/chess.db-wal data/chess.db-shm
 Start and verify:
 
 ```bash
-sudo systemctl start chess-coach
+sudo systemctl start chess-coach-api chess-coach-scheduler
 curl -fsS https://your.domain.example/api/health
 curl -fsS -H "X-ADMIN-TOKEN: $ADMIN_TOKEN" https://your.domain.example/api/ready
 ```
@@ -338,8 +403,9 @@ Before deploy:
 Deploy:
 
 ```bash
-sudo systemctl restart chess-coach
-sudo journalctl -u chess-coach -n 100 --no-pager
+sudo systemctl restart chess-coach-api chess-coach-scheduler
+sudo journalctl -u chess-coach-api -n 100 --no-pager
+sudo journalctl -u chess-coach-scheduler -n 100 --no-pager
 ```
 
 Post-deploy:
@@ -358,8 +424,8 @@ Post-deploy:
 Service down:
 
 ```bash
-sudo systemctl status chess-coach --no-pager
-sudo journalctl -u chess-coach -n 200 --no-pager
+sudo systemctl status chess-coach-api --no-pager
+sudo journalctl -u chess-coach-api -n 200 --no-pager
 curl -fsS https://your.domain.example/api/health
 ```
 
@@ -367,7 +433,15 @@ Jobs stuck:
 
 ```bash
 curl -fsS -H "X-ADMIN-TOKEN: $ADMIN_TOKEN" https://your.domain.example/api/jobs/status
-sudo systemctl restart chess-coach
+sudo systemctl restart chess-coach-api
+```
+
+Scheduler issue:
+
+```bash
+sudo systemctl status chess-coach-scheduler --no-pager
+sudo journalctl -u chess-coach-scheduler -n 200 --no-pager
+sudo systemctl restart chess-coach-scheduler
 ```
 
 DB issue:
@@ -405,4 +479,4 @@ sudo chown -R chess_coach:chess_coach /home/chess_coach/chess-coach/data /home/c
 - SQLite is correct for this single-user deployment, but long writes can still block concurrent work.
 - Ollama and Stockfish are local CPU-heavy dependencies; job runtime depends on hardware.
 - Coach sessions and generated puzzles increase DB sensitivity and backup importance.
-- No systemd unit is versioned in this repo yet; keep the production unit backed up separately or add a sanitized sample later.
+- Systemd examples are sanitized; keep `/etc/systemd/system/*.service` aligned after local path or binding changes.

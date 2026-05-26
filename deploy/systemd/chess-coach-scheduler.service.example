@@ -1,0 +1,35 @@
+# Copy to: /etc/systemd/system/chess-coach-scheduler.service
+#
+# Production notes:
+# - This runs scheduled sync/analyze/report/drill maintenance jobs.
+# - Keep it as a single process to avoid duplicate scheduled writes.
+# - Avoid manual heavy jobs during scheduler windows unless you have checked job status first.
+
+[Unit]
+Description=Chess Coach Scheduler
+After=network-online.target chess-coach-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=chess_coach
+Group=chess_coach
+WorkingDirectory=/home/chess_coach/chess-coach
+EnvironmentFile=/home/chess_coach/chess-coach/.env
+Environment=PYTHONPATH=/home/chess_coach/chess-coach
+ExecStart=/home/chess_coach/chess-coach/.venv/bin/python scheduler/jobs.py
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=/home/chess_coach/chess-coach/data /home/chess_coach/chess-coach/logs /home/chess_coach/chess-coach/reports
+UMask=0027
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
