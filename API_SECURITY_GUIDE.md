@@ -8,7 +8,8 @@ This document explains how the current FastAPI backend is organized, how API sec
 | --- | --- | --- |
 | App setup | `api/main.py` | Creates the FastAPI app, mounts frontend static files, registers routers, adds CORS, trusted-host, request-size, logging, and security headers. |
 | Runtime config | `config.py` | Reads `.env`, validates production settings, defines CORS origins, allowed hosts, CSP, queue/request limits, and rate-limit backend. |
-| Security helpers | `api/security.py` | Admin-token check, rate limiting, SQLite-backed rate-limit events, debug helpers for rate-limit inspection/clearing. |
+| Session auth | `api/auth_service.py`, `api/routers/auth.py` | First-party login, signed HTTP-only cookie sessions, password-hash verification, auth status endpoints. |
+| Security helpers | `api/security.py` | Session/admin-token check, rate limiting, SQLite-backed rate-limit events, debug helpers for rate-limit inspection/clearing. |
 | Shared dependencies | `api/dependencies.py` | FastAPI dependencies for `GameRepository`, `require_admin`, and `rate_limit(...)`. |
 | Job queue | `api/job_queue.py`, `api/jobs_service.py` | Background queue and enqueue helpers for sync, analysis, reports, sessions, player model, and maintenance. |
 
@@ -26,6 +27,7 @@ This document explains how the current FastAPI backend is organized, how API sec
 | `api/routers/reports.py` | `/api/reports` | Weekly report generation. |
 | `api/routers/product.py` | `/api/product` | Weekly focus and latest player-model snapshot. |
 | `api/routers/debug.py` | `/api/debug/*` | Debug DB/rate-limit inspection when `ENABLE_DEBUG_ROUTES=true`. |
+| `api/routers/auth.py` | `/api/auth` | Login, logout, and current session status. |
 
 The SPA is served from `frontend/index.html` by `api/main.py` for `/`, `/dashboard`, `/games`, `/game-detail`, `/mistakes`, `/openings`, `/drills`, and `/coach`.
 
@@ -36,10 +38,12 @@ This is a self-hosted, single-user-first app. It does not currently have user ac
 Security relies on:
 
 - Network boundary: run behind HTTPS/reverse proxy in production.
-- Admin token: protected endpoints require `X-ADMIN-TOKEN` when `ADMIN_TOKEN` is configured.
+- First-party session: `/api/auth/login` creates a signed HTTP-only cookie session.
+- Admin token fallback: protected endpoints also accept `X-ADMIN-TOKEN` when `ADMIN_TOKEN` is configured.
 - Rate limits: expensive and mutating endpoints are bucket-limited by client IP.
 - CORS allowlist: only configured origins can call the API from browsers.
 - Trusted host allowlist: only configured hostnames are accepted.
+- CSRF mitigation: unsafe methods reject unexpected browser `Origin` headers; session cookies use `SameSite=Lax`.
 - CSP/security headers: responses include CSP, frame denial, MIME sniff protection, referrer policy, and HSTS in production.
 - Request body size limit: large requests are rejected before route handling.
 
@@ -51,6 +55,10 @@ Set these in `.env` before running with `APP_ENV=production`:
 APP_ENV=production
 APP_SECRET_KEY=<long-random-secret-24+-chars>
 ADMIN_TOKEN=<long-random-token-24+-chars>
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD_HASH=<pbkdf2_sha256-password-hash>
+SESSION_COOKIE_NAME=chess_coach_session
+SESSION_TTL_SECONDS=43200
 ALLOWED_HOSTS=your.domain.example
 CORS_ORIGINS=https://your.domain.example
 ENABLE_DEBUG_ROUTES=false
@@ -59,9 +67,24 @@ RATE_LIMIT_BACKEND=sqlite
 
 Use `openssl rand -hex 32` to generate `APP_SECRET_KEY` and `ADMIN_TOKEN`.
 
+Generate `ADMIN_PASSWORD_HASH` with:
+
+```bash
+python3 -c "from api.auth_service import create_password_hash; import getpass; print(create_password_hash(getpass.getpass('Admin password: ')))"
+```
+
 ## 4. Admin Protection Rules
 
-`ADMIN_TOKEN` is optional in development and required in production. When set, protected endpoints must receive:
+Protected endpoints accept either a valid first-party session cookie or the legacy admin-token header.
+
+Session flow:
+
+- `GET /api/auth/session` returns `{ authenticated, auth_required, username, expires_at }`.
+- `POST /api/auth/login` accepts `{ username, password }`, verifies `ADMIN_PASSWORD_HASH`, and sets an HTTP-only session cookie.
+- `POST /api/auth/logout` clears the session cookie.
+- The frontend login overlay uses these endpoints and never stores the password or token in JavaScript.
+
+`ADMIN_TOKEN` remains available for scripts, reverse proxies, and operational calls. When used directly, protected endpoints must receive:
 
 ```http
 X-ADMIN-TOKEN: <ADMIN_TOKEN>
@@ -79,7 +102,7 @@ Current protected endpoint categories:
 - Operational endpoints: `/api/ready`, `/api/metrics`.
 - Debug endpoints: `/api/debug/*` when enabled.
 
-Important: the current vanilla JS frontend does not implement a login/session flow. If `ADMIN_TOKEN` is set and the browser calls protected endpoints directly, those calls need a trusted reverse proxy to inject `X-ADMIN-TOKEN`, or a future first-party auth/session implementation.
+If `ADMIN_PASSWORD_HASH` is not set but `ADMIN_TOKEN` is set, login temporarily accepts the admin token as the password. This is only a migration fallback; production should use `ADMIN_PASSWORD_HASH`.
 
 ## 5. Rate Limiting
 
@@ -125,7 +148,7 @@ Production rules:
 
 - Use HTTPS origins only in `CORS_ORIGINS`.
 - Do not use wildcard CORS for this app.
-- Keep `allow_credentials=False` unless a real browser session/auth design is added.
+- Keep browser calls same-origin for the session flow. If the frontend and API are split across origins later, revisit CORS credentials, SameSite cookie behavior, and CSRF protections together.
 - If adding a new CDN/script/font/image domain, update CSP deliberately and document why.
 
 ## 7. Endpoint Safety Checklist
@@ -194,12 +217,12 @@ Future job endpoints should follow this pattern. Do not run Stockfish/Ollama/gam
 
 The frontend is a vanilla JS SPA served by FastAPI. API contract constants and request wrappers are in the frontend JS modules.
 
-Security implication:
+Session integration:
 
-- Development can run without `ADMIN_TOKEN`.
-- Production requires `ADMIN_TOKEN`, so protected frontend actions need a deployment strategy:
-  - reverse proxy injects `X-ADMIN-TOKEN` for trusted local/private access, or
-  - add proper login/session/auth in the app before exposing it publicly.
+- `frontend/js/modules/auth.js` owns the login overlay and logout flow.
+- `frontend/js/modules/api.js` sends same-origin cookies with API requests.
+- `frontend/js/modules/contracts.js` defines `/api/auth/session`, `/api/auth/login`, and `/api/auth/logout`.
+- The topbar Sign Out action is shown only when auth is required and the session is authenticated.
 
 Do not hardcode the real admin token into frontend JavaScript.
 
@@ -207,8 +230,8 @@ Do not hardcode the real admin token into frontend JavaScript.
 
 Current limitations to keep visible:
 
-- No multi-user authentication or authorization model.
-- Admin token is header-based, not a browser session.
+- No multi-user authentication or role model.
+- Sessions are signed cookies, not server-side revocable sessions. Rotate `APP_SECRET_KEY` to invalidate all sessions.
 - SQLite rate limiting is good for self-hosted use but not a distributed multi-instance deployment.
 - CSP still allows the current Chart.js CDN and configured domain; remove unused external sources if dependencies are fully local.
 - `ALLOWED_HOSTS` and `CORS_ORIGINS` must be set correctly for each deployment.
@@ -218,10 +241,11 @@ Current limitations to keep visible:
 1. Set `APP_ENV=production`.
 2. Generate and set strong `APP_SECRET_KEY`.
 3. Generate and set strong `ADMIN_TOKEN`.
-4. Set `ALLOWED_HOSTS` to exact production hostname(s).
-5. Set `CORS_ORIGINS` to exact HTTPS origin(s).
-6. Keep `ENABLE_DEBUG_ROUTES=false`.
-7. Keep Ollama bound to localhost/private network.
-8. Run behind HTTPS.
-9. Confirm protected endpoints require `X-ADMIN-TOKEN`.
-10. Confirm frontend protected actions work through the chosen auth/proxy strategy.
+4. Generate and set `ADMIN_PASSWORD_HASH`.
+5. Set `ALLOWED_HOSTS` to exact production hostname(s).
+6. Set `CORS_ORIGINS` to exact HTTPS origin(s).
+7. Keep `ENABLE_DEBUG_ROUTES=false`.
+8. Keep Ollama bound to localhost/private network.
+9. Run behind HTTPS.
+10. Confirm protected endpoints reject unauthenticated requests.
+11. Confirm `/api/auth/login`, `/api/auth/session`, and `/api/auth/logout` work through the browser UI.

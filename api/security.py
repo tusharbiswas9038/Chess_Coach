@@ -6,6 +6,7 @@ from typing import Deque, Dict
 import sqlite3
 
 from fastapi import HTTPException, Request
+from api.auth_service import auth_required, validate_session_token
 import config
 
 
@@ -198,9 +199,19 @@ def clear_rate_limit_events(*, key_prefix: str | None = None) -> dict:
 
 
 def require_admin_if_configured(request: Request) -> None:
-    # Self-hosted friendly: only enforced when ADMIN_TOKEN is explicitly set.
-    if not config.ADMIN_TOKEN:
+    # Self-hosted friendly: only enforced when auth is configured or production is active.
+    if not auth_required():
         return
+
+    session = validate_session_token(request.cookies.get(config.SESSION_COOKIE_NAME))
+    if session:
+        return
+
     presented = request.headers.get("X-ADMIN-TOKEN", "")
-    if not hmac.compare_digest(presented, config.ADMIN_TOKEN):
+    if config.ADMIN_TOKEN and hmac.compare_digest(presented, config.ADMIN_TOKEN):
+        return
+
+    if not config.ADMIN_TOKEN and not config.ADMIN_PASSWORD_HASH:
+        raise HTTPException(status_code=503, detail="Authentication is not configured.")
+    else:
         raise HTTPException(status_code=403, detail="Admin token required.")

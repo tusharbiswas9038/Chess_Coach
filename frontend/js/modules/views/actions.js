@@ -2,7 +2,7 @@ import { createDomCache } from '../dom.js';
 import { endpoints } from '../contracts.js';
 import { waitForJobByPrefix } from '../jobs.js';
 
-export function createActionsView({ api, apiPost, onReportReady, toast }) {
+export function createActionsView({ api, apiPost, onLogout, onReportReady, toast }) {
   const dom = createDomCache();
 
   function closeActionsMenu() {
@@ -168,6 +168,10 @@ export function createActionsView({ api, apiPost, onReportReady, toast }) {
     dom.byId('btn-sync').addEventListener('click', triggerSync);
     dom.byId('btn-analyze').addEventListener('click', triggerAnalyze);
     dom.byId('btn-db-maintenance')?.addEventListener('click', triggerDbMaintenance);
+    dom.byId('btn-logout')?.addEventListener('click', async () => {
+      closeActionsMenu();
+      await onLogout?.();
+    });
 
     document.addEventListener('click', (event) => {
       const container = dom.query('.topbar-actions');

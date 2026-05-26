@@ -84,6 +84,14 @@ async def add_security_headers(request: Request, call_next):
                 content={"detail": "Invalid Content-Length header"},
             )
 
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        origin = request.headers.get("origin")
+        if origin and origin not in config.get_cors_origins():
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Origin is not allowed."},
+            )
+
     response: Response = await call_next(request)
     elapsed_ms = (time.perf_counter() - started) * 1000.0
     response.headers["X-Request-ID"] = request_id
@@ -186,6 +194,9 @@ def metrics(request: Request):
 
 from api.routers.sessions import router as sessions_router
 app.include_router(sessions_router, prefix="/api/sessions")
+
+from api.routers.auth import router as auth_router
+app.include_router(auth_router)
 
 from api.routers.games import router as games_router
 app.include_router(games_router, prefix="/api/games")

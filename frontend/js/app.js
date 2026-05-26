@@ -4,6 +4,7 @@ import { createNavigationView } from './modules/views/navigation.js';
 import { initChartDefaults } from './modules/charts.js';
 import { createPreferences } from './modules/preferences.js';
 import { loadSectionTemplate } from './modules/viewLoader.js';
+import { createAuthGate } from './modules/auth.js';
 
 if (typeof Chart === 'undefined') {
   document.body.innerHTML =
@@ -17,6 +18,7 @@ let charts = {};
 let navigationView;
 const boundViews = new Set();
 const preferences = createPreferences({ toast });
+const authGate = createAuthGate({ api, apiPost, toast });
 const views = {
   actions: null,
   dashboard: null,
@@ -34,6 +36,7 @@ function getActionsView() {
       api,
       apiContract,
       apiPost,
+      onLogout: () => authGate.logout(),
       onReportReady: loadGameDetail,
       toast,
     });
@@ -154,6 +157,15 @@ navigationView.restoreSidebarPreference();
 navigationView.syncFromRoute();
 preferences.bindEvents();
 preferences.init();
+authGate.init().then(updateAuthUi);
+
+window.addEventListener('app:auth-changed', (event) => {
+  updateAuthUi(event.detail);
+});
+
+window.addEventListener('app:auth-required', () => {
+  authGate.requireLogin();
+});
 
 document.addEventListener('app:data-invalidated', (event) => {
   const scopes = event.detail?.scopes || [];
@@ -164,6 +176,13 @@ document.addEventListener('app:data-invalidated', (event) => {
 
 function showView(name) {
   navigationView.showView(name);
+}
+
+function updateAuthUi(session = authGate.getSession()) {
+  const logoutBtn = document.getElementById('btn-logout');
+  if (logoutBtn) {
+    logoutBtn.hidden = !(session?.auth_required && session?.authenticated);
+  }
 }
 
 // ── TOAST ──

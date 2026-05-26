@@ -1,8 +1,25 @@
 const API = '';
 
+async function parseError(response) {
+  try {
+    const payload = await response.json();
+    return payload?.detail || `${response.status} ${response.statusText}`;
+  } catch {
+    return `${response.status} ${response.statusText}`;
+  }
+}
+
+async function assertOk(response) {
+  if (response.ok) return;
+  if (response.status === 401 || response.status === 403) {
+    window.dispatchEvent(new CustomEvent('app:auth-required'));
+  }
+  throw new Error(await parseError(response));
+}
+
 export async function api(path) {
-  const r = await fetch(API + path);
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  const r = await fetch(API + path, { credentials: 'same-origin' });
+  await assertOk(r);
   return r.json();
 }
 
@@ -20,8 +37,9 @@ export async function apiPost(path, body = {}) {
   const r = await fetch(API + path, {
     method: 'POST',
     headers,
+    credentials: 'same-origin',
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  await assertOk(r);
   return r.json();
 }

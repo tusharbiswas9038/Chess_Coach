@@ -1,4 +1,7 @@
 export const endpoints = {
+  authSession: () => '/api/auth/session',
+  authLogin: () => '/api/auth/login',
+  authLogout: () => '/api/auth/logout',
   dashboardBootstrap: () => '/api/dashboard/bootstrap',
   stats: () => '/api/stats',
   weeklyFocus: () => '/api/product/weekly-focus',

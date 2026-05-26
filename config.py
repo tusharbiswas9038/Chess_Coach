@@ -9,6 +9,10 @@ APP_SECRET_KEY = os.getenv("APP_SECRET_KEY", "super-secret-key") # TODO: Change 
 APP_ENV = os.getenv("APP_ENV", "development") # 'development', 'production', 'testing'
 ENABLE_DEBUG_ROUTES = os.getenv("ENABLE_DEBUG_ROUTES", "false").lower() == "true"
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH", "")
+SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "chess_coach_session")
+SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", str(12 * 60 * 60)))
 ALLOWED_HOSTS_RAW = os.getenv("ALLOWED_HOSTS", "")
 CORS_ORIGINS_RAW = os.getenv("CORS_ORIGINS", "")
 
@@ -61,6 +65,8 @@ def validate_startup_config() -> None:
         raise RuntimeError("OLLAMA_URL must use http or https.")
     if RATE_LIMIT_BACKEND not in {"sqlite", "memory"}:
         raise RuntimeError("RATE_LIMIT_BACKEND must be 'sqlite' or 'memory'.")
+    if SESSION_TTL_SECONDS < 300:
+        raise RuntimeError("SESSION_TTL_SECONDS must be at least 300 seconds.")
 
 
 def get_cors_origins() -> list[str]:
