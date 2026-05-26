@@ -105,6 +105,14 @@ CREATE TABLE srs_items (
 
 CREATE INDEX idx_srs_due ON srs_items(due_date);
 
+-- ── DAILY DRILL SESSIONS ─────────────────────────────────────────
+CREATE TABLE drill_sessions (
+    date        TEXT PRIMARY KEY,
+    item_ids    TEXT NOT NULL,        -- JSON ordered SRS item IDs for the day
+    created_at  TEXT DEFAULT (datetime('now')),
+    updated_at  TEXT DEFAULT (datetime('now'))
+);
+
 -- ── PLAYER PROFILE (single row, upserted) ─────────────────────────
 CREATE TABLE player_profile (
     id                      INTEGER PRIMARY KEY DEFAULT 1,

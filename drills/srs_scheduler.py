@@ -1,4 +1,5 @@
 # drills/srs_scheduler.py
+import json
 import sqlite3
 from datetime import date, timedelta
 import sys
@@ -40,17 +41,34 @@ def sm2_update(
 
     return new_interval, new_ease, new_reps
 
-def get_due_items(limit: int = 15) -> list[dict]:
-    """Return SRS items due today, ordered by most overdue first."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    today = date.today().isoformat()
-
-    rows = conn.execute("""
+def _fetch_drill_items(conn: sqlite3.Connection, item_ids: list[int], today: str) -> list[dict]:
+    if not item_ids:
+        return []
+    placeholders = ",".join("?" for _ in item_ids)
+    rows = conn.execute(f"""
         SELECT s.id, s.fen, s.correct_move, s.theme,
                s.interval_days, s.ease_factor, s.repetitions,
-               s.due_date, m.type as mistake_type, g.date as game_date
+               s.due_date, s.last_reviewed, s.last_result,
+               m.type as mistake_type, g.date as game_date
+        FROM srs_items s
+        JOIN mistakes m ON s.mistake_id = m.id
+        JOIN games g ON m.game_id = g.id
+        WHERE s.id IN ({placeholders})
+    """, item_ids).fetchall()
+    by_id = {int(r["id"]): dict(r) for r in rows}
+    ordered = []
+    for item_id in item_ids:
+        row = by_id.get(int(item_id))
+        if not row:
+            continue
+        row["completed_today"] = 1 if row.get("last_reviewed") == today else 0
+        ordered.append(row)
+    return ordered
+
+
+def _due_item_ids(conn: sqlite3.Connection, limit: int, today: str) -> list[int]:
+    rows = conn.execute("""
+        SELECT s.id
         FROM srs_items s
         JOIN mistakes m ON s.mistake_id = m.id
         JOIN games g ON m.game_id = g.id
@@ -58,9 +76,52 @@ def get_due_items(limit: int = 15) -> list[dict]:
         ORDER BY s.due_date ASC, s.ease_factor ASC
         LIMIT ?
     """, (today, limit)).fetchall()
+    return [int(r["id"]) for r in rows]
 
+
+def get_due_items(limit: int = 15, refresh: bool = False) -> list[dict]:
+    """Return today's server-backed drill session.
+
+    A normal page load resumes the same daily queue. Explicit reload rebuilds
+    the queue from currently due SRS items.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    today = date.today().isoformat()
+    limit = max(1, min(int(limit or 15), 50))
+
+    session = conn.execute(
+        "SELECT item_ids FROM drill_sessions WHERE date=?",
+        (today,),
+    ).fetchone()
+
+    item_ids: list[int]
+    if session and not refresh:
+        try:
+            item_ids = [int(item_id) for item_id in json.loads(session["item_ids"])]
+        except (TypeError, ValueError, json.JSONDecodeError):
+            item_ids = []
+    else:
+        item_ids = []
+
+    if not item_ids:
+        item_ids = _due_item_ids(conn, limit, today)
+        conn.execute(
+            """
+            INSERT INTO drill_sessions (date, item_ids, updated_at)
+            VALUES (?, ?, datetime('now'))
+            ON CONFLICT(date) DO UPDATE SET
+                item_ids=excluded.item_ids,
+                updated_at=excluded.updated_at
+            """,
+            (today, json.dumps(item_ids, separators=(",", ":"))),
+        )
+        conn.commit()
+
+    items = _fetch_drill_items(conn, item_ids, today)
     conn.close()
-    return [dict(r) for r in rows]
+    return items
 
 
 def get_drill_summary(goal_target: int = 5) -> dict:

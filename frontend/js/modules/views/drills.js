@@ -141,6 +141,8 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
 
     try {
       const result = await apiPost(endpoints.drillsResult(), { item_id: item.id, quality: q });
+      item.completed_today = 1;
+      item.last_result = { 0: 'fail', 1: 'hard', 2: 'good', 3: 'easy' }[q] || item.last_result;
       if (result?.summary) {
         drillSummary = normalize.drillsSummary(result.summary);
         updateDrillBadge();
@@ -159,6 +161,8 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
   function loadDrillItem() {
     const total = drillQueue.length;
     dom.byId('ds-due').textContent = total;
+    const totalDueEl = dom.byId('ds-total-due');
+    if (totalDueEl) totalDueEl.textContent = drillSummary?.due_total ?? total;
     dom.byId('drill-counter').textContent = `${Math.min(
       drillIdx + 1,
       total
@@ -251,21 +255,27 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
         : '';
   }
 
-  async function loadDrills() {
+  function restoreSessionProgress(queue) {
+    sessionDone = queue.filter((item) => Number(item.completed_today) === 1).length;
+    sessionCorrect = queue.filter((item) => ['good', 'easy'].includes(item.last_result)).length;
+    sessionWrong = queue.filter((item) => ['fail', 'hard'].includes(item.last_result)).length;
+    sessionCorrectStreak = 0;
+    const nextIndex = queue.findIndex((item) => Number(item.completed_today) !== 1);
+    drillIdx = nextIndex >= 0 ? nextIndex : queue.length;
+  }
+
+  async function loadDrills(refreshQueue = false) {
     loaded = true;
-    drillIdx = 0;
-    sessionDone = 0;
-    sessionCorrect = 0;
-    sessionWrong = 0;
     selectedSq = null;
 
     try {
       const [queue, summary] = await Promise.all([
-        apiContract(endpoints.drillsDue(15), normalize.drillsDue, 'drillsDue'),
+        apiContract(endpoints.drillsDue(15, refreshQueue), normalize.drillsDue, 'drillsDue'),
         refreshDrillSummary(),
       ]);
       drillQueue = queue;
       drillSummary = summary;
+      restoreSessionProgress(queue);
     } catch (e) {
       toast('Failed to load drills: ' + e.message);
       return;
@@ -289,7 +299,7 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
   }
 
   function bindEvents() {
-    dom.byId('btn-reload-drills').addEventListener('click', loadDrills);
+    dom.byId('btn-reload-drills').addEventListener('click', () => loadDrills(true));
     dom.query('.flip-btn').addEventListener('click', flipBoard);
     dom.byId('quality-section')?.addEventListener('click', (event) => {
       const btn = event.target.closest('.quality-btn[data-q]');

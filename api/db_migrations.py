@@ -131,11 +131,25 @@ def _add_analysis_v2_fields(conn: sqlite3.Connection) -> None:
     )
 
 
+def _create_drill_sessions(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS drill_sessions (
+            date        TEXT PRIMARY KEY,
+            item_ids    TEXT NOT NULL,
+            created_at  TEXT DEFAULT (datetime('now')),
+            updated_at  TEXT DEFAULT (datetime('now'))
+        )
+        """
+    )
+
+
 MIGRATIONS: List[Migration] = [
     ("001_cleanup_orphans_and_reconcile_indexes", _cleanup_orphan_srs_and_reconcile_indexes),
     ("002_optimize_indexes_for_hot_paths", _optimize_indexes_for_hot_paths),
     ("003_create_player_model_snapshots", _create_player_model_snapshots),
     ("004_analysis_v2_fields", _add_analysis_v2_fields),
+    ("005_create_drill_sessions", _create_drill_sessions),
 ]
 
 

@@ -33,7 +33,7 @@ export const endpoints = {
   jobDbMaintenance: () => '/api/jobs/db-maintenance',
   playerModelLatest: () => '/api/product/player-model/latest',
   drillsResult: () => '/api/drills/result',
-  drillsDue: (limit = 15) => `/api/drills/due?limit=${limit}`,
+  drillsDue: (limit = 15, refresh = false) => `/api/drills/due?limit=${limit}${refresh ? '&refresh=true' : ''}`,
   drillsSummary: () => '/api/drills/summary',
 };
 

@@ -16,10 +16,14 @@ router = APIRouter(prefix="/api/drills", tags=["drills"])
 
 
 @router.get("/due")
-def get_due_drills(limit: int = 15, _rl: None = Depends(rate_limit("drills-read", 120, 60))):
+def get_due_drills(
+    limit: int = 15,
+    refresh: bool = False,
+    _rl: None = Depends(rate_limit("drills-read", 120, 60)),
+):
     if not DRILLS_OK:
         raise HTTPException(501, "Drills module not available yet")
-    return get_due_items(limit=max(1, min(limit, 50)))
+    return get_due_items(limit=max(1, min(limit, 50)), refresh=refresh)
 
 
 @router.get("/summary")
