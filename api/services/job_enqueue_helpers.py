@@ -9,6 +9,7 @@ from reports.weekly_report import generate_weekly_report # Local import
 from scripts.db_maintenance import run_maintenance
 from api.dependencies import COACH_OK # New Import from dependencies
 from api.services.player_model import compute_and_store_player_model_snapshot
+from api.services.analytics import compute_and_store_analytics_snapshot
 
 log = logging.getLogger("chess_coach.api.jobs")
 
@@ -64,6 +65,7 @@ def _enqueue_db_maintenance(vacuum: bool = False) -> None:
 def sync_all_and_clear_cache(full: bool) -> None:
     sync_all(full)
     compute_and_store_player_model_snapshot(source="sync")
+    compute_and_store_analytics_snapshot(source="sync")
     clear_analytics_caches()
     log.info("Cleared analytics caches after sync job.")
     return _completion_payload("sync")
@@ -71,6 +73,7 @@ def sync_all_and_clear_cache(full: bool) -> None:
 def run_analysis_worker_and_clear_cache() -> None:
     run_analysis_worker()
     compute_and_store_player_model_snapshot(source="analysis")
+    compute_and_store_analytics_snapshot(source="analysis")
     clear_analytics_caches()
     log.info("Cleared analytics caches after analysis job.")
     return _completion_payload("analyze")
@@ -83,6 +86,7 @@ def compute_sessions_and_clear_cache() -> None:
 
 def compute_player_model_and_clear_cache() -> None:
     compute_and_store_player_model_snapshot(source="manual")
+    compute_and_store_analytics_snapshot(source="manual")
     clear_analytics_caches()
     log.info("Cleared analytics caches after player model job.")
     return _completion_payload("player-model")

@@ -43,3 +43,24 @@ export async function apiPost(path, body = {}) {
   await assertOk(r);
   return r.json();
 }
+
+export async function apiPut(path, body = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  const r = await fetch(API + path, {
+    method: 'PUT',
+    headers,
+    credentials: 'same-origin',
+    body: JSON.stringify(body),
+  });
+  await assertOk(r);
+  return r.json();
+}
+
+export async function apiDelete(path) {
+  const r = await fetch(API + path, {
+    method: 'DELETE',
+    credentials: 'same-origin',
+  });
+  await assertOk(r);
+  return r.json();
+}

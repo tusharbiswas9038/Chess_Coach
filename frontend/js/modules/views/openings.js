@@ -12,7 +12,7 @@ import { endpoints, normalize } from '../contracts.js';
 import { createCache } from '../cache.js';
 import { baseCartesianOptions, chartPalette } from '../charts.js';
 
-export function createOpeningsView({ api, apiContract, charts, destroyChart, toast }) {
+export function createOpeningsView({ api, apiContract, apiDelete, apiPost, apiPut, charts, destroyChart, toast }) {
   const dom = createDomCache();
   const cache = createCache('api');
   let loaded = false;
@@ -24,6 +24,17 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
     white: [],
     black: [],
   };
+
+  function prepColorFilter() {
+    const value = dom.byId('repertoire-color-filter')?.value || '';
+    return value === 'white' || value === 'black' ? value : '';
+  }
+
+  function setPanelState(id, message, kind = 'loading') {
+    const el = dom.byId(id);
+    if (!el) return;
+    el.innerHTML = statePanelMarkup(message, { kind, compact: true });
+  }
   function setChartMeta(id, text) {
     const el = dom.byId(id);
     if (el) el.textContent = text;
@@ -71,6 +82,172 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
     const card = dom.byId(canvasId)?.closest('.chart-card');
     if (!card) return;
     card.classList.toggle('has-error', !!hasError);
+  }
+
+  function renderRepertoire(lines) {
+    const el = dom.byId('repertoire-list');
+    if (!el) return;
+    if (!lines.length) {
+      el.innerHTML = statePanelMarkup('No repertoire lines saved yet. Add one opening line you actually play.', {
+        actions: '<button class="btn btn-ghost" type="button" data-focus-repertoire-form>Add first line</button>',
+      });
+      return;
+    }
+    el.innerHTML = lines
+      .map((line) => {
+        const missed = Number(line.missed_count || 0);
+        const trained = Number(line.training_count || 0);
+        return `
+          <article class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-3 shadow-soft transition hover:-translate-y-0.5 hover:border-[rgba(63,185,80,0.28)]">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="mb-1 flex flex-wrap items-center gap-2">
+                  ${colorBadge(line.color)}
+                  <span class="badge badge-xs badge-ghost">${esc(line.eco || 'Custom')}</span>
+                  <span class="badge badge-xs border border-[rgba(168,85,247,0.28)] bg-[rgba(168,85,247,0.12)] text-[var(--analytics)]">P${Number(line.priority || 3)}</span>
+                </div>
+                <h3 class="text-sm font-semibold text-[var(--text)]">${truncate(line.name, 56)}</h3>
+              </div>
+              <button class="btn btn-ghost btn-xs" type="button" data-repertoire-delete="${Number(line.id)}">Remove</button>
+            </div>
+            <p class="mt-2 text-xs leading-relaxed text-[var(--muted)]">${truncate(line.line_moves, 160)}</p>
+            ${line.notes ? `<p class="mt-2 rounded-xl bg-[rgba(255,255,255,0.03)] px-3 py-2 text-xs text-[var(--text-soft)]">${truncate(line.notes, 160)}</p>` : ''}
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+              <span>${trained} recall${trained === 1 ? '' : 's'}</span>
+              <span>•</span>
+              <span>${missed} miss${missed === 1 ? '' : 'es'}</span>
+              <span>•</span>
+              <span>${line.last_trained_at ? `Last trained ${esc(line.last_trained_at)}` : 'Not trained yet'}</span>
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+  }
+
+  function renderWeakNodes(nodes) {
+    const el = dom.byId('opening-weak-nodes');
+    if (!el) return;
+    if (!nodes.length) {
+      el.innerHTML = statePanelMarkup('No weak opening node has enough data yet. Analyze more games to improve signal.', {
+        icon: '♙',
+      });
+      return;
+    }
+    el.innerHTML = nodes
+      .slice(0, 6)
+      .map((node) => `
+        <article class="rounded-2xl border border-[rgba(245,158,11,0.22)] bg-[rgba(245,158,11,0.06)] p-3">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="mb-1 flex flex-wrap items-center gap-2">
+                ${colorBadge(node.color)}
+                <span class="badge badge-xs badge-warning">${esc(node.eco || 'ECO')}</span>
+                <span class="badge badge-xs badge-ghost">Ply ${Number(node.ply || 0)}</span>
+              </div>
+              <div class="text-sm font-semibold text-[var(--text)]">${truncate(node.name, 48)}</div>
+            </div>
+            <button class="btn btn-ghost btn-xs" type="button"
+              data-add-weak-node
+              data-color="${esc(node.color)}"
+              data-eco="${esc(node.eco || '')}"
+              data-name="${esc(node.name || '')}"
+              data-note="${esc(node.reason || '')}">
+              Save line
+            </button>
+          </div>
+          <p class="mt-2 text-xs leading-relaxed text-[var(--text-soft)]">${esc(node.reason)}</p>
+          <div class="mt-3 grid grid-cols-3 gap-2 text-xs max-sm:grid-cols-1">
+            <div class="rounded-xl bg-[rgba(255,255,255,0.035)] p-2">
+              <div class="text-[var(--muted)]">Win rate</div>
+              <div class="font-semibold ${openingToneTextClass(Number(node.win_pct || 0))}">${Number(node.win_pct || 0).toFixed(1)}%</div>
+            </div>
+            <div class="rounded-xl bg-[rgba(255,255,255,0.035)] p-2">
+              <div class="text-[var(--muted)]">Drop</div>
+              <div class="font-semibold text-warning">${Number(node.drop_pct || 0).toFixed(1)}%</div>
+            </div>
+            <div class="rounded-xl bg-[rgba(255,255,255,0.035)] p-2">
+              <div class="text-[var(--muted)]">Issues</div>
+              <div class="font-semibold text-error">${Number(node.issue_rate || 0).toFixed(1)}%</div>
+            </div>
+          </div>
+        </article>
+      `)
+      .join('');
+  }
+
+  function renderOpeningTraining(training) {
+    const el = dom.byId('opening-training-list');
+    if (!el) return;
+    const lines = training?.lines || [];
+    if (!lines.length) {
+      el.innerHTML = statePanelMarkup('Add repertoire lines to unlock opening recall training.', {
+        actions: '<button class="btn btn-ghost" type="button" data-focus-repertoire-form>Add line</button>',
+      });
+      return;
+    }
+    const focus = training.focus
+      ? `<div class="rounded-2xl border border-[rgba(168,85,247,0.24)] bg-[rgba(168,85,247,0.08)] p-3 text-xs text-[var(--text-soft)]">
+          Focus today: ${esc(training.focus.eco || 'Opening')} at ply ${Number(training.focus.ply || 0)} · ${esc(training.focus.reason || 'Review this branch.')}
+        </div>`
+      : '';
+    el.innerHTML =
+      focus +
+      lines
+        .slice(0, 5)
+        .map((line) => `
+          <article class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-sm font-semibold text-[var(--text)]">${truncate(line.name, 44)}</div>
+                <div class="mt-1 text-xs text-[var(--muted)]">${esc(line.eco || 'Custom')} · ${esc(line.color)} · P${Number(line.priority || 3)}</div>
+              </div>
+            </div>
+            <p class="mt-2 text-xs leading-relaxed text-[var(--text-soft)]">${truncate(line.line_moves, 140)}</p>
+            <div class="mt-3 grid grid-cols-3 gap-2">
+              <button class="btn btn-ghost btn-xs" type="button" data-training-result="remembered" data-line-id="${Number(line.id)}">Remembered</button>
+              <button class="btn btn-ghost btn-xs" type="button" data-training-result="missed" data-line-id="${Number(line.id)}">Missed</button>
+              <button class="btn btn-ghost btn-xs" type="button" data-training-result="skipped" data-line-id="${Number(line.id)}">Skip</button>
+            </div>
+          </article>
+        `)
+        .join('');
+  }
+
+  async function loadOpeningPrep(force = false) {
+    if (force) cache.clear();
+    const color = prepColorFilter();
+    setPanelState('repertoire-list', 'Loading repertoire...', 'loading');
+    setPanelState('opening-weak-nodes', 'Scanning weak nodes...', 'loading');
+    setPanelState('opening-training-list', 'Preparing training queue...', 'loading');
+    try {
+      const [lines, weakNodes, training] = await Promise.all([
+        cache.getOrSet(
+          `openings:repertoire:${color || 'all'}`,
+          () => apiContract(endpoints.openingRepertoire(color), normalize.openingRepertoire, 'openingRepertoire'),
+          force ? 0 : 60000
+        ),
+        cache.getOrSet(
+          `openings:weak-nodes:${color || 'all'}`,
+          () => apiContract(endpoints.openingWeakNodes(12, color), normalize.openingWeakNodes, 'openingWeakNodes'),
+          force ? 0 : 60000
+        ),
+        cache.getOrSet(
+          `openings:training:${color || 'all'}`,
+          () => apiContract(endpoints.openingTraining(color, 8), normalize.openingTraining, 'openingTraining'),
+          force ? 0 : 60000
+        ),
+      ]);
+      renderRepertoire(lines);
+      renderWeakNodes(weakNodes);
+      renderOpeningTraining(training);
+    } catch (e) {
+      console.error('Opening prep failed:', e);
+      setPanelState('repertoire-list', 'Unable to load opening preparation data.', 'error');
+      setPanelState('opening-weak-nodes', 'Unable to scan weak opening nodes.', 'error');
+      setPanelState('opening-training-list', 'Unable to load opening training.', 'error');
+      toast?.('Unable to load opening preparation.');
+    }
   }
 
   function renderOpeningChart(canvasId, data) {
@@ -220,6 +397,7 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
     const insightEl = dom.byId('genome-insight');
     if (insightEl) insightEl.textContent = 'Loading genome insight...';
     setGenomeStatus('');
+    loadOpeningPrep(force);
     const tbody = dom.byId('openings-body');
     tbody.innerHTML = tableStateRowMarkup('Loading openings...', 6, { kind: 'loading' });
     let summary;
@@ -341,6 +519,95 @@ export function createOpeningsView({ api, apiContract, charts, destroyChart, toa
     dom.byId('select-color-genome')?.addEventListener('change', (e) => {
       selectedColor = e.target.value;
       renderOpeningGenomeChart();
+    });
+    dom.byId('repertoire-color-filter')?.addEventListener('change', () => {
+      loadOpeningPrep(true);
+    });
+    dom.byId('repertoire-form')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!apiPost) return;
+      const payload = {
+        color: dom.byId('repertoire-color')?.value || 'white',
+        eco: dom.byId('repertoire-eco')?.value || null,
+        name: dom.byId('repertoire-name')?.value || '',
+        line_moves: dom.byId('repertoire-line')?.value || '',
+        notes: dom.byId('repertoire-notes')?.value || null,
+        priority: Number(dom.byId('repertoire-priority')?.value || 3),
+      };
+      try {
+        await apiPost(endpoints.openingRepertoire(), payload);
+        event.target.reset();
+        const priority = dom.byId('repertoire-priority');
+        if (priority) priority.value = '3';
+        cache.clear();
+        await loadOpeningPrep(true);
+        toast?.('Repertoire line saved.');
+      } catch (e) {
+        console.error('Create repertoire line failed:', e);
+        toast?.(e.message || 'Unable to save repertoire line.');
+      }
+    });
+    dom.byId('repertoire-list')?.addEventListener('click', async (event) => {
+      const focusBtn = event.target.closest('[data-focus-repertoire-form]');
+      if (focusBtn) {
+        dom.byId('repertoire-name')?.focus();
+        return;
+      }
+      const deleteBtn = event.target.closest('[data-repertoire-delete]');
+      if (!deleteBtn || !apiDelete) return;
+      const lineId = Number(deleteBtn.dataset.repertoireDelete || 0);
+      if (!lineId) return;
+      try {
+        await apiDelete(endpoints.openingRepertoireItem(lineId));
+        cache.clear();
+        await loadOpeningPrep(true);
+        toast?.('Repertoire line removed.');
+      } catch (e) {
+        console.error('Delete repertoire line failed:', e);
+        toast?.(e.message || 'Unable to remove repertoire line.');
+      }
+    });
+    dom.byId('opening-weak-nodes')?.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-add-weak-node]');
+      if (!btn) return;
+      const color = dom.byId('repertoire-color');
+      const eco = dom.byId('repertoire-eco');
+      const name = dom.byId('repertoire-name');
+      const notes = dom.byId('repertoire-notes');
+      const line = dom.byId('repertoire-line');
+      if (color) color.value = btn.dataset.color || 'white';
+      if (eco) eco.value = btn.dataset.eco || '';
+      if (name) name.value = `${btn.dataset.eco || 'Opening'} repair line`;
+      if (notes) notes.value = `${btn.dataset.name || ''}: ${btn.dataset.note || 'Review this weak node.'}`.trim();
+      if (line) {
+        line.placeholder = 'Add the exact repair line you want to memorize';
+        line.focus();
+      }
+    });
+    dom.byId('opening-training-list')?.addEventListener('click', async (event) => {
+      const focusBtn = event.target.closest('[data-focus-repertoire-form]');
+      if (focusBtn) {
+        dom.byId('repertoire-name')?.focus();
+        return;
+      }
+      const resultBtn = event.target.closest('[data-training-result]');
+      if (!resultBtn || !apiPost) return;
+      const lineId = Number(resultBtn.dataset.lineId || 0);
+      const result = resultBtn.dataset.trainingResult;
+      if (!lineId || !result) return;
+      try {
+        await apiPost(endpoints.openingTrainingResult(), { line_id: lineId, result });
+        cache.clear();
+        await loadOpeningPrep(true);
+        toast?.(`Opening recall marked: ${result}.`);
+      } catch (e) {
+        console.error('Opening training result failed:', e);
+        toast?.(e.message || 'Unable to record opening training.');
+      }
+    });
+    dom.byId('btn-refresh-opening-training')?.addEventListener('click', () => {
+      cache.clear();
+      loadOpeningPrep(true);
     });
     dom.byId('openings-body')?.addEventListener('click', (event) => {
       const btn = event.target.closest('[data-retry-openings]');

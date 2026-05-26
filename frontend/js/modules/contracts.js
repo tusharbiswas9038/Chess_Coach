@@ -24,6 +24,14 @@ export const endpoints = {
   openingGenome: (eco, color) =>
     `/api/openings/genome?eco=${encodeURIComponent(eco)}&color=${encodeURIComponent(color)}`,
   openingsSummary: (limit = 300) => `/api/openings/summary?limit=${limit}`,
+  openingWeakNodes: (limit = 12, color = '') =>
+    `/api/openings/weak-nodes?limit=${limit}${color ? `&color=${encodeURIComponent(color)}` : ''}`,
+  openingRepertoire: (color = '') =>
+    color ? `/api/openings/repertoire?color=${encodeURIComponent(color)}` : '/api/openings/repertoire',
+  openingRepertoireItem: (lineId) => `/api/openings/repertoire/${encodeURIComponent(lineId)}`,
+  openingTraining: (color = '', limit = 8) =>
+    `/api/openings/training?limit=${limit}${color ? `&color=${encodeURIComponent(color)}` : ''}`,
+  openingTrainingResult: () => '/api/openings/training/result',
   coachChat: () => '/api/coach/chat',
   coachGame: (gameId) => `/api/coach/game/${gameId}`,
   jobStatus: () => '/api/jobs/status',
@@ -32,6 +40,7 @@ export const endpoints = {
   jobPlayerModel: () => '/api/jobs/player-model',
   jobDbMaintenance: () => '/api/jobs/db-maintenance',
   playerModelLatest: () => '/api/product/player-model/latest',
+  insightsLatest: () => '/api/product/insights/latest',
   drillsResult: () => '/api/drills/result',
   drillsDue: (limit = 15, refresh = false, mode = 'adaptive', motif = '') =>
     `/api/drills/due?limit=${limit}${refresh ? '&refresh=true' : ''}&mode=${encodeURIComponent(mode)}${motif ? `&motif=${encodeURIComponent(motif)}` : ''}`,
@@ -123,6 +132,27 @@ export const normalize = {
     return items.map((item) => expectObject(item, 'openingsSummary.item'));
   },
 
+  openingWeakNodes(payload) {
+    const items = expectArray(payload, 'openingWeakNodes');
+    return items.map((item) => expectObject(item, 'openingWeakNodes.item'));
+  },
+
+  openingRepertoire(payload) {
+    const items = expectArray(payload, 'openingRepertoire');
+    return items.map((item) => expectObject(item, 'openingRepertoire.item'));
+  },
+
+  openingTraining(payload) {
+    const p = expectObject(payload, 'openingTraining');
+    return {
+      lines: Array.isArray(p.lines) ? p.lines.map((item) => expectObject(item, 'openingTraining.line')) : [],
+      weak_nodes: Array.isArray(p.weak_nodes)
+        ? p.weak_nodes.map((item) => expectObject(item, 'openingTraining.weakNode'))
+        : [],
+      focus: p.focus && typeof p.focus === 'object' ? p.focus : null,
+    };
+  },
+
   jobStatus(payload) {
     const p = expectObject(payload, 'jobStatus');
     const recent = Array.isArray(p.recent_jobs) ? p.recent_jobs : [];
@@ -152,6 +182,18 @@ export const normalize = {
       fail('playerModel', 'missing payload');
     }
     return p;
+  },
+
+  insightsLatest(payload) {
+    const p = expectObject(payload, 'insightsLatest');
+    return {
+      id: p.id,
+      source: String(p.source || ''),
+      computed_at: String(p.computed_at || ''),
+      window_days: Number(p.window_days || 0),
+      slices: Array.isArray(p.slices) ? p.slices.map((item) => expectObject(item, 'insightsLatest.slice')) : [],
+      trends: Array.isArray(p.trends) ? p.trends.map((item) => expectObject(item, 'insightsLatest.trend')) : [],
+    };
   },
 
   drillsDue(payload) {

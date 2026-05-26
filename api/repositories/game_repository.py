@@ -100,6 +100,230 @@ class GameRepository:
             ).fetchall()
         )
 
+    def get_opening_weak_nodes(self, limit: int = 12, color: Optional[str] = None) -> List[Dict[str, Any]]:
+        params: List[Any] = []
+        color_clause = ""
+        if color in {"white", "black"}:
+            color_clause = " AND g.color = ?"
+            params.append(color)
+
+        node_rows = rows(
+            self.conn.execute(
+                """
+                SELECT
+                    g.opening_eco AS eco,
+                    COALESCE(MAX(NULLIF(g.opening_name, '')), 'Unknown opening') AS name,
+                    g.color AS color,
+                    m.ply AS ply,
+                    COUNT(*) AS games,
+                    SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) AS wins,
+                    ROUND(AVG(COALESCE(m.eval_after, 0)), 1) AS avg_eval_after,
+                    SUM(CASE WHEN m.classification IN ('inaccuracy','mistake','blunder','miss') THEN 1 ELSE 0 END) AS issue_moves,
+                    SUM(CASE WHEN m.classification = 'blunder' THEN 1 ELSE 0 END) AS blunders
+                FROM games g
+                JOIN moves m ON m.game_id = g.id
+                WHERE g.analyzed = 1
+                  AND g.opening_eco IS NOT NULL
+                  AND TRIM(g.opening_eco) <> ''
+                  AND m.ply BETWEEN 2 AND 20
+                  """ + color_clause + """
+                GROUP BY g.opening_eco, g.color, m.ply
+                HAVING games >= 3
+                ORDER BY g.opening_eco, g.color, m.ply
+                """,
+                params,
+            ).fetchall()
+        )
+
+        previous_by_line: Dict[tuple[str, str], Dict[str, Any]] = {}
+        weak_nodes: List[Dict[str, Any]] = []
+        for item in node_rows:
+            key = (str(item["eco"] or ""), str(item["color"] or ""))
+            games = int(item["games"] or 0)
+            wins = int(item["wins"] or 0)
+            win_pct = round((wins / games) * 100, 1) if games else 0.0
+            issue_rate = round((int(item["issue_moves"] or 0) / games) * 100, 1) if games else 0.0
+            previous = previous_by_line.get(key)
+            drop = round(win_pct - float(previous["win_pct"]), 1) if previous else 0.0
+            eval_drop = (
+                round(float(item["avg_eval_after"] or 0) - float(previous["avg_eval_after"] or 0), 1)
+                if previous
+                else 0.0
+            )
+            previous_by_line[key] = {
+                "win_pct": win_pct,
+                "avg_eval_after": float(item["avg_eval_after"] or 0),
+            }
+            if drop > -8 and win_pct >= 42 and issue_rate < 25 and eval_drop > -80:
+                continue
+            severity = abs(min(drop, 0)) + max(0, 45 - win_pct) + max(0, issue_rate - 20) / 2 + max(0, -eval_drop) / 40
+            weak_nodes.append(
+                {
+                    "eco": item["eco"],
+                    "name": item["name"],
+                    "color": item["color"],
+                    "ply": int(item["ply"] or 0),
+                    "games": games,
+                    "win_pct": win_pct,
+                    "drop_pct": drop,
+                    "avg_eval_after": float(item["avg_eval_after"] or 0),
+                    "eval_drop": eval_drop,
+                    "issue_rate": issue_rate,
+                    "blunders": int(item["blunders"] or 0),
+                    "severity": round(severity, 1),
+                    "reason": self._opening_weak_node_reason(drop, win_pct, issue_rate, eval_drop),
+                }
+            )
+
+        return sorted(weak_nodes, key=lambda x: (x["severity"], x["games"]), reverse=True)[: max(1, min(limit, 50))]
+
+    @staticmethod
+    def _opening_weak_node_reason(drop: float, win_pct: float, issue_rate: float, eval_drop: float) -> str:
+        if drop <= -15:
+            return "Win rate collapses at this ply."
+        if eval_drop <= -120:
+            return "Engine trend drops sharply in this branch."
+        if issue_rate >= 35:
+            return "Mistakes cluster around this node."
+        if win_pct < 42:
+            return "This line performs below your repertoire baseline."
+        return "This node deserves review before adding more lines."
+
+    def get_repertoire_lines(self, color: Optional[str] = None, active_only: bool = True) -> List[Dict[str, Any]]:
+        params: List[Any] = []
+        where = ["1=1"]
+        if color in {"white", "black"}:
+            where.append("l.color = ?")
+            params.append(color)
+        if active_only:
+            where.append("l.active = 1")
+        return rows(
+            self.conn.execute(
+                """
+                SELECT
+                    l.*,
+                    COUNT(h.id) AS training_count,
+                    SUM(CASE WHEN h.result = 'missed' THEN 1 ELSE 0 END) AS missed_count,
+                    MAX(h.trained_at) AS last_trained_at
+                FROM repertoire_lines l
+                LEFT JOIN opening_training_history h ON h.line_id = l.id
+                WHERE """ + " AND ".join(where) + """
+                GROUP BY l.id
+                ORDER BY l.active DESC, l.priority DESC, l.updated_at DESC, l.id DESC
+                """,
+                params,
+            ).fetchall()
+        )
+
+    def create_repertoire_line(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        cur = self.conn.execute(
+            """
+            INSERT INTO repertoire_lines(color, eco, name, line_moves, notes, priority)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                payload["color"],
+                payload.get("eco"),
+                payload["name"],
+                payload["line_moves"],
+                payload.get("notes"),
+                payload.get("priority", 3),
+            ),
+        )
+        self.conn.commit()
+        return self.get_repertoire_line(int(cur.lastrowid)) or {}
+
+    def get_repertoire_line(self, line_id: int) -> Optional[Dict[str, Any]]:
+        return row(
+            self.conn.execute(
+                """
+                SELECT
+                    l.*,
+                    COUNT(h.id) AS training_count,
+                    SUM(CASE WHEN h.result = 'missed' THEN 1 ELSE 0 END) AS missed_count,
+                    MAX(h.trained_at) AS last_trained_at
+                FROM repertoire_lines l
+                LEFT JOIN opening_training_history h ON h.line_id = l.id
+                WHERE l.id = ?
+                GROUP BY l.id
+                """,
+                (line_id,),
+            ).fetchone()
+        )
+
+    def update_repertoire_line(self, line_id: int, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        existing = self.get_repertoire_line(line_id)
+        if not existing:
+            return None
+        next_values = {
+            "color": payload.get("color", existing["color"]),
+            "eco": payload.get("eco", existing["eco"]),
+            "name": payload.get("name", existing["name"]),
+            "line_moves": payload.get("line_moves", existing["line_moves"]),
+            "notes": payload.get("notes", existing["notes"]),
+            "priority": payload.get("priority", existing["priority"]),
+            "active": payload.get("active", existing["active"]),
+        }
+        self.conn.execute(
+            """
+            UPDATE repertoire_lines
+            SET color=?, eco=?, name=?, line_moves=?, notes=?, priority=?, active=?, updated_at=datetime('now')
+            WHERE id=?
+            """,
+            (
+                next_values["color"],
+                next_values["eco"],
+                next_values["name"],
+                next_values["line_moves"],
+                next_values["notes"],
+                next_values["priority"],
+                next_values["active"],
+                line_id,
+            ),
+        )
+        self.conn.commit()
+        return self.get_repertoire_line(line_id)
+
+    def delete_repertoire_line(self, line_id: int) -> bool:
+        cur = self.conn.execute("DELETE FROM repertoire_lines WHERE id=?", (line_id,))
+        self.conn.commit()
+        return cur.rowcount > 0
+
+    def record_opening_training(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        cur = self.conn.execute(
+            """
+            INSERT INTO opening_training_history(line_id, node_id, result, recall_ms, notes)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                payload.get("line_id"),
+                payload.get("node_id"),
+                payload["result"],
+                payload.get("recall_ms"),
+                payload.get("notes"),
+            ),
+        )
+        self.conn.commit()
+        return row(self.conn.execute("SELECT * FROM opening_training_history WHERE id=?", (cur.lastrowid,)).fetchone()) or {}
+
+    def get_opening_training_queue(self, color: Optional[str] = None, limit: int = 8) -> Dict[str, Any]:
+        lines = self.get_repertoire_lines(color=color, active_only=True)
+        lines = sorted(
+            lines,
+            key=lambda item: (
+                int(item.get("missed_count") or 0),
+                int(item.get("priority") or 0),
+                0 if item.get("last_trained_at") else 1,
+            ),
+            reverse=True,
+        )[: max(1, min(limit, 25))]
+        weak_nodes = self.get_opening_weak_nodes(limit=5, color=color)
+        return {
+            "lines": lines,
+            "weak_nodes": weak_nodes,
+            "focus": weak_nodes[0] if weak_nodes else None,
+        }
+
     def get_stats(self, drills_ok: bool) -> Dict[str, Any]:
         profile = self.conn.execute(
             "SELECT * FROM player_profile WHERE id=1"

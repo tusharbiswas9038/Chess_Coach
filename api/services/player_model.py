@@ -140,6 +140,22 @@ def _build_snapshot_payload(conn) -> Dict[str, Any]:
     tactical_style = _score_ratio(total_mistakes - hanging_mistakes, max(total_mistakes, 1))
     solid_style = round(1.0 - min(1.0, blunders_per_game / 3.0), 3)
     attacking_style = _score_ratio(int(recent["wins"] or 0), int(recent["games"] or 0))
+    recent_games = int(recent["games"] or 0)
+    tags = []
+    if blunders_per_game >= 3:
+        tags.append("tactical volatility")
+    if hanging_piece_rate >= 0.4:
+        tags.append("piece safety risk")
+    if attacking_style >= 0.55:
+        tags.append("initiative converts")
+    if solid_style >= 0.65:
+        tags.append("stable converter")
+    if weaknesses := weak_phase["phase"] if weak_phase else None:
+        tags.append(f"{weaknesses} leak")
+    stability_score = round(
+        max(0.0, min(1.0, (solid_style * 0.5) + (min(recent_games, 30) / 30 * 0.25) + ((1 - min(1.0, hanging_piece_rate)) * 0.25))),
+        3,
+    )
 
     return {
         "computed_at": None,
@@ -172,6 +188,12 @@ def _build_snapshot_payload(conn) -> Dict[str, Any]:
             "attacking": attacking_style,
             "solid": solid_style,
         },
+        "model_v2": {
+            "behavioral_tags": tags[:5] or ["baseline building"],
+            "stability_score": stability_score,
+            "stability_label": "stable" if stability_score >= 0.7 else "swingy" if stability_score < 0.45 else "developing",
+            "confidence": "high" if analyzed_games >= 100 else "medium" if analyzed_games >= 30 else "low",
+        },
     }
 
 
@@ -182,6 +204,7 @@ def compute_and_store_player_model_snapshot(source: str = "job") -> Dict[str, An
         weaknesses = payload["weaknesses"]
         openings = payload["openings"]
         style = payload["style"]
+        model_v2 = payload["model_v2"]
         sample = payload["sample"]
         rating = payload["rating"]
 
@@ -202,9 +225,11 @@ def compute_and_store_player_model_snapshot(source: str = "job") -> Dict[str, An
                 style_tactical,
                 style_attacking,
                 style_solid,
+                behavioral_tags,
+                stability_score,
                 payload_json
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 source,
@@ -221,6 +246,8 @@ def compute_and_store_player_model_snapshot(source: str = "job") -> Dict[str, An
                 style["tactical"],
                 style["attacking"],
                 style["solid"],
+                json.dumps(model_v2["behavioral_tags"]),
+                model_v2["stability_score"],
                 snapshot_json,
             ),
         )
@@ -315,6 +342,8 @@ def snapshot_to_dto(row) -> Dict[str, Any]:
             "style_tactical": data["style_tactical"],
             "style_attacking": data["style_attacking"],
             "style_solid": data["style_solid"],
+            "behavioral_tags": json.loads(data.get("behavioral_tags") or "[]"),
+            "stability_score": data.get("stability_score"),
         },
         "payload": payload,
     }

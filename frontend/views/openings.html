@@ -4,6 +4,63 @@
               <p class="workspace-hero-summary">Combine win-rate confidence with opening genome signals to pinpoint where preparation turns into mistakes.</p>
             </section>
 
+            <div class="grid grid-cols-[1.15fr_0.85fr] gap-3 max-lg:grid-cols-1">
+              <section class="card panel-primary overflow-hidden">
+                <div class="card-header flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3 max-sm:flex-col">
+                  <div>
+                    <div class="card-title">Personal Repertoire</div>
+                    <div class="card-subtitle">Save white/black line sets and rehearse the branches that matter.</div>
+                  </div>
+                  <select id="repertoire-color-filter" class="field-input select select-bordered min-h-10 w-32 max-sm:w-full">
+                    <option value="">All colors</option>
+                    <option value="white">White</option>
+                    <option value="black">Black</option>
+                  </select>
+                </div>
+                <form id="repertoire-form" class="grid grid-cols-[110px_90px_1fr] gap-2 border-b border-[var(--border)] p-4 max-md:grid-cols-2 max-sm:grid-cols-1">
+                  <select id="repertoire-color" class="field-input select select-bordered min-h-10" required>
+                    <option value="white">White</option>
+                    <option value="black">Black</option>
+                  </select>
+                  <input id="repertoire-eco" class="field-input input input-bordered min-h-10 uppercase" maxlength="12" placeholder="ECO" />
+                  <input id="repertoire-name" class="field-input input input-bordered min-h-10" maxlength="120" placeholder="Line name, e.g. Sicilian Alapin" required />
+                  <input id="repertoire-line" class="field-input input input-bordered col-span-2 min-h-10 max-md:col-span-1" maxlength="1000" placeholder="Moves, e.g. 1.e4 c5 2.c3 d5 3.exd5 Qxd5" required />
+                  <div class="flex gap-2">
+                    <select id="repertoire-priority" class="field-input select select-bordered min-h-10 flex-1">
+                      <option value="5">P5</option>
+                      <option value="4">P4</option>
+                      <option value="3" selected>P3</option>
+                      <option value="2">P2</option>
+                      <option value="1">P1</option>
+                    </select>
+                    <button class="btn btn-primary min-h-10" type="submit">Add</button>
+                  </div>
+                  <textarea id="repertoire-notes" class="field-input textarea textarea-bordered col-span-3 min-h-20 max-md:col-span-2 max-sm:col-span-1" maxlength="2000" placeholder="Plan, traps, or memory cue"></textarea>
+                </form>
+                <div id="repertoire-list" class="grid gap-2 p-4"></div>
+              </section>
+
+              <aside class="grid gap-3">
+                <section class="card panel-quiet overflow-hidden">
+                  <div class="card-header border-b border-[var(--border)] px-4 py-3">
+                    <div class="card-title">Weak Opening Nodes</div>
+                    <div class="card-subtitle">Branches where your results, mistakes, or eval trend collapse.</div>
+                  </div>
+                  <div id="opening-weak-nodes" class="grid gap-2 p-4"></div>
+                </section>
+                <section class="card panel-quiet overflow-hidden">
+                  <div class="card-header flex items-start justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
+                    <div>
+                      <div class="card-title">Opening Training</div>
+                      <div class="card-subtitle">Recall saved lines and mark misses for future review.</div>
+                    </div>
+                    <button id="btn-refresh-opening-training" class="btn btn-ghost min-h-10" type="button">Refresh</button>
+                  </div>
+                  <div id="opening-training-list" class="grid gap-2 p-4"></div>
+                </section>
+              </aside>
+            </div>
+
             <div class="charts-row charts-row-openings mb-5 grid gap-2 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:[grid-template-columns:1fr] max-sm:gap-2">
               <div class="chart-card analytics-panel">
                 <div class="chart-head">

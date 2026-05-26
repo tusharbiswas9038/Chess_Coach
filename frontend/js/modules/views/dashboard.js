@@ -5,6 +5,7 @@ import {
   mistakeCountClass,
   resultBadge,
   setBadgeCount,
+  statePanelMarkup,
   tableStateRowMarkup,
   truncate,
 } from '../ui.js';
@@ -432,6 +433,100 @@ export function createDashboardView({
     });
   }
 
+  function trendLabel(metric) {
+    const labels = {
+      win_rate: 'Win rate',
+      mistakes_per_game: 'Mistakes / game',
+      blunders_per_game: 'Blunders / game',
+      games: 'Games played',
+    };
+    return labels[metric] || String(metric || '').replaceAll('_', ' ');
+  }
+
+  function formatTrendValue(metric, value) {
+    const n = Number(value || 0);
+    if (metric === 'win_rate') return `${(n * 100).toFixed(1)}%`;
+    if (metric === 'games') return n.toFixed(0);
+    return n.toFixed(2);
+  }
+
+  function renderInsights(insights) {
+    const trendEl = dom.byId('trend-deltas');
+    const sliceEl = dom.byId('insight-slices');
+    if (!trendEl || !sliceEl) return;
+    const trends = (insights?.trends || []).filter((item) => Number(item.window_days) === 14);
+    trendEl.innerHTML = trends.length
+      ? trends
+          .map((item) => {
+            const direction = item.direction || 'flat';
+            const tone =
+              direction === 'up'
+                ? item.metric === 'mistakes_per_game' || item.metric === 'blunders_per_game'
+                  ? 'text-error'
+                  : 'text-success'
+                : direction === 'down'
+                  ? item.metric === 'mistakes_per_game' || item.metric === 'blunders_per_game'
+                    ? 'text-success'
+                    : 'text-warning'
+                  : 'text-[var(--muted)]';
+            return `
+              <article class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <div class="text-xs uppercase tracking-[0.08em] text-[var(--muted)]">14 day trend</div>
+                    <div class="mt-1 text-sm font-semibold text-[var(--text)]">${esc(trendLabel(item.metric))}</div>
+                  </div>
+                  <span class="badge badge-xs badge-ghost">${esc(item.confidence || 'low')}</span>
+                </div>
+                <div class="mt-3 flex items-end justify-between gap-3">
+                  <div class="text-2xl font-bold ${tone}">${esc(formatTrendValue(item.metric, item.current_value))}</div>
+                  <div class="text-right text-xs text-[var(--muted)]">
+                    <div>Δ ${esc(formatTrendValue(item.metric, item.delta_value))}</div>
+                    <div>${Number(item.sample_size || 0)} games</div>
+                  </div>
+                </div>
+              </article>
+            `;
+          })
+          .join('')
+      : statePanelMarkup('No trend snapshot yet.');
+    renderInsightSlices(insights);
+  }
+
+  function renderInsightSlices(insights) {
+    const sliceEl = dom.byId('insight-slices');
+    if (!sliceEl) return;
+    const dimension = dom.byId('insights-dimension')?.value || 'color';
+    const slices = (insights?.slices || [])
+      .filter((item) => item.dimension === dimension)
+      .sort((a, b) => Number(b.games || 0) - Number(a.games || 0))
+      .slice(0, 8);
+    if (!slices.length) {
+      sliceEl.innerHTML = statePanelMarkup('No slice data available for this dimension.');
+      return;
+    }
+    sliceEl.innerHTML = slices
+      .map((item) => {
+        const winPct = Number(item.win_pct || 0);
+        return `
+          <article class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="text-sm font-semibold text-[var(--text)]">${esc(String(item.bucket || 'unknown').toUpperCase())}</div>
+                <div class="mt-1 text-xs text-[var(--muted)]">${Number(item.games || 0)} games · ${Number(item.mistakes || 0)} mistakes · ${Number(item.blunders || 0)} severe</div>
+              </div>
+              <span class="badge badge-xs badge-ghost">${esc(item.confidence || 'low')}</span>
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+              <span class="min-w-12 text-right text-xs font-semibold ${winPct >= 50 ? 'text-success' : winPct >= 35 ? 'text-warning' : 'text-error'}">${winPct.toFixed(1)}%</span>
+              <progress class="progress-meter ${winPct >= 50 ? 'progress-fill-good' : winPct >= 35 ? 'progress-fill-warn' : 'progress-fill-bad'} grow" max="100" value="${winPct}"></progress>
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+  }
+
   function reviewLatestGame() {
     const latest = getStatsData()?.recent_games?.[0];
     if (latest) {
@@ -462,9 +557,11 @@ export function createDashboardView({
     let statsData;
     let weeklyFocus = null;
     let latestSession = null;
+    let insights = null;
 
     try {
-      const bootstrap = await cache.getOrSet(
+      const [bootstrap, insightsResult] = await Promise.all([
+        cache.getOrSet(
         'dashboard:bootstrap',
         () =>
           fetchContract(
@@ -473,10 +570,20 @@ export function createDashboardView({
             'dashboardBootstrap'
           ),
         20000
-      );
+        ),
+        cache.getOrSet(
+          'dashboard:insights',
+          () => fetchContract(endpoints.insightsLatest(), normalize.insightsLatest, 'insightsLatest'),
+          60000
+        ).catch((e) => {
+          console.warn('Insights snapshot unavailable:', e);
+          return null;
+        }),
+      ]);
       statsData = bootstrap.stats;
       weeklyFocus = bootstrap.weekly_focus;
       latestSession = bootstrap.latest_session;
+      insights = insightsResult;
     } catch (bootstrapError) {
       const [statsResult, weeklyFocusResult, sessionsResult] = await Promise.allSettled([
         fetchContract(endpoints.stats(), normalize.stats, 'stats'),
@@ -507,6 +614,7 @@ export function createDashboardView({
     dom.byId('sidebar-rating').textContent =
       p.current_rating || '—';
     updateDashboardFocus(statsData, weeklyFocus);
+    renderInsights(insights);
     renderSessionFlow(statsData, latestSession);
     dom.byId('btn-review-latest').disabled =
       !statsData.recent_games.length;
@@ -653,6 +761,14 @@ export function createDashboardView({
       const step = e.target.closest('[data-target-view]');
       if (!step) return;
       openTarget(step.dataset.targetView);
+    });
+    dom.byId('insights-dimension')?.addEventListener('change', async () => {
+      const insights = await cache.getOrSet(
+        'dashboard:insights',
+        () => fetchContract(endpoints.insightsLatest(), normalize.insightsLatest, 'insightsLatest'),
+        60000
+      );
+      renderInsightSlices(insights);
     });
     dom.byId('recent-games-body').addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-open-game-id]');

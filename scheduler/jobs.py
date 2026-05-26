@@ -106,12 +106,15 @@ def compute_player_model():
     log.info("Computing player model snapshot...")
     try:
         from api.services.player_model import compute_and_store_player_model_snapshot
+        from api.services.analytics import compute_and_store_analytics_snapshot
 
         snapshot = compute_and_store_player_model_snapshot(source="scheduled")
+        analytics_snapshot = compute_and_store_analytics_snapshot(source="scheduled")
         log.info(
-            "Player model snapshot saved: id=%s games_analyzed=%s",
+            "Player model snapshot saved: id=%s games_analyzed=%s analytics_id=%s",
             snapshot["id"],
             snapshot["games_analyzed"],
+            analytics_snapshot["id"],
         )
     except Exception as e:
         log.error(f"Player model snapshot failed: {e}")

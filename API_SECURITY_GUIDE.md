@@ -14,6 +14,7 @@ This document explains how the current FastAPI backend is organized, how API sec
 | Job queue | `api/job_queue.py`, `api/jobs_service.py`, `api/services/job_enqueue_helpers.py` | Background queue and enqueue helpers for sync, analysis, reports, sessions, player model, puzzle generation, and maintenance. |
 | Coach context | `api/services/coach_context.py`, `coach/prompt_builder.py` | Retrieval-enhanced coaching context, coach mode prompt policies, and response guardrails. |
 | Drill/puzzle engine | `drills/srs_scheduler.py` | SRS scheduling, daily drill sessions, adaptive queues, puzzle generation from mistakes, and drill summaries. |
+| Analytics snapshots | `api/services/analytics.py` | SQLite-friendly precomputed insight slices and trend deltas for dashboard/product analytics. |
 
 ## 2. API Router Map
 
@@ -21,13 +22,13 @@ This document explains how the current FastAPI backend is organized, how API sec
 | --- | --- | --- |
 | `api/routers/games.py` | `/api/games` | Read games, game detail, critical mistakes. |
 | `api/routers/stats.py` | `/api` | Dashboard stats, bootstrap, mistake analytics, heatmap, cache clearing. |
-| `api/routers/openings.py` | `/api/openings` | Opening summaries and opening genome data. |
+| `api/routers/openings.py` | `/api/openings` | Opening summaries, genome data, weak-node detection, repertoire CRUD, and opening training history. |
 | `api/routers/jobs.py` | `/api/jobs` | Starts sync, analysis, journal, session, player-model, weekly-report, and DB-maintenance jobs. |
 | `api/routers/sessions.py` | `/api/sessions` | Session reads and session compute job. |
 | `api/routers/drills.py` | `/api/drills` | Due drills, adaptive/retry/motif queues, drill result submission, puzzle generation, puzzle-bank summary, populate SRS from mistakes. |
 | `api/routers/coach.py` | `/api/coach` | Mode-aware AI coach chat, retrieval-enhanced context, game coaching generation, batch report generation. |
 | `api/routers/reports.py` | `/api/reports` | Weekly report generation. |
-| `api/routers/product.py` | `/api/product` | Weekly focus and latest player-model snapshot. |
+| `api/routers/product.py` | `/api/product` | Weekly focus, latest player-model snapshot, and latest precomputed insights snapshot. |
 | `api/routers/debug.py` | `/api/debug/*` | Debug DB/rate-limit inspection when `ENABLE_DEBUG_ROUTES=true`. |
 | `api/routers/auth.py` | `/api/auth` | Login, logout, and current session status. |
 
@@ -102,6 +103,8 @@ Current protected endpoint categories:
 - Stats cache mutation: `/api/stats/clear_cache`.
 - Coach AI endpoints: `/api/coach/game/{game_id}`, `/api/coach/chat`, `/api/coach/batch`.
 - Puzzle generation: `/api/drills/generate-puzzles`.
+- Opening repertoire mutation: `POST/PUT/DELETE /api/openings/repertoire*`.
+- Opening training mutation: `POST /api/openings/training/result`.
 - Operational endpoints: `/api/ready`, `/api/metrics`.
 - Debug endpoints: `/api/debug/*` when enabled.
 
@@ -135,6 +138,8 @@ Current common buckets:
 - `coach-batch`: batch coach reports, 5/minute.
 - `stats-read`: analytics reads, 120/minute.
 - `stats-write`: cache clearing, 10/minute.
+- `product-insights`: latest precomputed insights snapshot, 60/minute.
+- `product-player-model`: latest player model snapshot, 60/minute.
 - `drills-read`: due drills, 120/minute.
 - `drills-write`: drill mutation and puzzle generation, 5-60/minute depending on endpoint.
 - `reports-write`: weekly report generation, 5/minute.
@@ -287,6 +292,8 @@ Session integration:
 - `frontend/js/app.js` waits for auth initialization before loading protected data. After login it clears frontend caches and reloads the active view.
 - `frontend/js/modules/jobs.js` provides `waitForJobByPrefix(...)` for job completion polling and cache invalidation events.
 - `frontend/js/modules/views/drills.js` uses `/api/drills/due`, `/api/drills/summary`, `/api/drills/puzzles/summary`, and `/api/drills/generate-puzzles`.
+- `frontend/js/modules/views/openings.js` uses opening summary/genome/repertoire/weak-node/training endpoints.
+- `frontend/js/modules/views/dashboard.js` uses `/api/product/insights/latest` for precomputed trend and slice panels.
 
 Do not hardcode the real admin token into frontend JavaScript.
 
@@ -312,7 +319,64 @@ Queue modes:
 
 Puzzle generation is rule-based and does not require Ollama. It depends on analyzed mistakes and Phase 3 fields when available.
 
-## 13. Database Tables Added For Recent Features
+## 13. Opening Preparation APIs
+
+Opening endpoints are in `api/routers/openings.py`.
+
+| Endpoint | Method | Auth | Purpose |
+| --- | --- | --- | --- |
+| `/api/openings/summary?limit=500` | GET | Session required by global API auth | Returns pre-aggregated opening performance by ECO + color. |
+| `/api/openings/genome?eco=B20&color=white` | GET | Session required by global API auth | Returns win-rate by ply for an ECO/color branch. |
+| `/api/openings/weak-nodes?limit=12&color=white` | GET | Session required by global API auth | Returns opening nodes where win rate, eval trend, or issue rate collapses. |
+| `/api/openings/repertoire` | GET | Session required by global API auth | Lists saved active repertoire lines. |
+| `/api/openings/repertoire` | POST | Admin/session required | Creates a repertoire line. |
+| `/api/openings/repertoire/{line_id}` | PUT | Admin/session required | Updates a repertoire line. |
+| `/api/openings/repertoire/{line_id}` | DELETE | Admin/session required | Deletes a repertoire line and cascades its nodes. |
+| `/api/openings/training?color=black` | GET | Session required by global API auth | Returns an opening recall queue plus weak-node focus. |
+| `/api/openings/training/result` | POST | Admin/session required | Records remembered/missed/skipped recall result. |
+
+Security notes:
+
+- Repertoire writes are personal training data and must stay protected.
+- `RepertoireLineIn` validates color, ECO length, line name, line text length, notes length, and priority range.
+- Training results validate result enum and recall time bounds.
+- Weak-node detection is rule-based and uses local analyzed game/move data only.
+- Opening endpoints do not call Ollama directly. Future line explanations may call Ollama, but must be admin-protected and rate-limited if added.
+- Repertoire data is stored in `data/chess.db`; backups now contain personal opening preparation notes.
+
+## 14. Insights and Player Model APIs
+
+Product analytics endpoints are in `api/routers/product.py`.
+
+| Endpoint | Method | Auth | Purpose |
+| --- | --- | --- | --- |
+| `/api/product/weekly-focus` | GET | Session required by global API auth | Returns current training focus and action checklist. |
+| `/api/product/player-model/latest` | GET | Session required by global API auth | Returns latest player-model snapshot, including v2 behavioral tags and stability score. |
+| `/api/product/insights/latest` | GET | Session required by global API auth | Returns latest analytics snapshot with trend deltas and insight slices. |
+
+Analytics snapshot behavior:
+
+- `api/services/analytics.py` computes slices by color, phase, opening family, opponent rating bucket, and result.
+- It computes trend deltas for 7/14/30 day windows across win rate, games, mistakes/game, and blunders/game.
+- Snapshots are stored in `analytics_snapshots`, `insight_slice_stats`, and `trend_deltas`.
+- Sync, analysis, and player-model jobs compute fresh analytics snapshots and clear frontend/backend analytics caches.
+- If no snapshot exists, `/api/product/insights/latest` computes one on demand.
+
+Security notes:
+
+- These endpoints are read-only but still protected by global API auth because they expose personal performance patterns.
+- These endpoints should not return raw PGNs, prompts, secrets, stack traces, or local paths.
+- Analytics snapshots are derived data, but backups are still sensitive because they reveal personal weaknesses and training history.
+- Do not compute expensive analytics in the browser; use precomputed backend snapshots to reduce API and frontend load.
+
+Player model v2:
+
+- `player_model_snapshots` now stores `behavioral_tags` and `stability_score`.
+- Tags are deterministic local summaries such as tactical volatility, piece safety risk, or stable converter.
+- Stability score is derived from recent sample size, solid style, and hanging-piece risk.
+- No Ollama call is required for player-model v2.
+
+## 15. Database Tables Added For Recent Features
 
 Recent additive migrations are managed in `api/db_migrations.py`.
 
@@ -322,6 +386,8 @@ Recent additive migrations are managed in `api/db_migrations.py`.
 | `005_create_drill_sessions` | `drill_sessions` table for server-backed daily queue persistence. |
 | `006_create_coach_quality_tables` | `coach_sessions`, `coach_feedback`, `idx_coach_sessions_created_mode`. |
 | `007_create_puzzle_ecosystem` | `puzzles`, `puzzle_sources`, `srs_items.puzzle_id`, puzzle/SRS indexes. |
+| `008_create_opening_repertoire_tables` | `repertoire_lines`, `repertoire_nodes`, `opening_training_history`, repertoire/training indexes. |
+| `009_create_analytics_snapshot_tables` | `analytics_snapshots`, `insight_slice_stats`, `trend_deltas`, analytics indexes, `player_model_snapshots.behavioral_tags`, `player_model_snapshots.stability_score`. |
 
 Schema design notes:
 
@@ -329,8 +395,12 @@ Schema design notes:
 - `puzzles.signature` dedupes by stable FEN + best move.
 - `puzzle_sources` preserves which mistakes produced a puzzle.
 - `srs_items` remains the scheduling authority; `puzzles` is the reusable training content layer.
+- `repertoire_lines` stores personal white/black opening line sets and notes.
+- `opening_training_history` stores local recall outcomes for repertoire training.
+- `analytics_snapshots.payload_json` preserves the full computed snapshot, while `insight_slice_stats` and `trend_deltas` keep query-friendly materialized rows.
+- `player_model_snapshots.behavioral_tags` is JSON text, not user-provided executable content.
 
-## 14. Known Security Limitations
+## 16. Known Security Limitations
 
 Current limitations to keep visible:
 
@@ -341,8 +411,9 @@ Current limitations to keep visible:
 - `ALLOWED_HOSTS` and `CORS_ORIGINS` must be set correctly for each deployment.
 - Coach sessions store prompts/replies locally. Treat `data/chess.db` as sensitive because it contains personal game data and AI chat content.
 - Puzzle/drill endpoints expose derived game mistakes to authenticated users. Do not make them public.
+- Repertoire and insight endpoints expose personal preparation strategy and weakness patterns. Do not make them public.
 
-## 15. Before Production Checklist
+## 17. Before Production Checklist
 
 1. Set `APP_ENV=production`.
 2. Generate and set strong `APP_SECRET_KEY`.
@@ -358,4 +429,6 @@ Current limitations to keep visible:
 12. Confirm login reloads protected dashboard stats without manual refresh.
 13. Confirm `/api/jobs/status` is protected.
 14. Confirm `/api/drills/generate-puzzles` is protected and job status updates in the UI.
-15. Back up `data/chess.db`; it now contains coach sessions, generated puzzles, and drill state.
+15. Confirm opening repertoire writes require login/session and CSRF checks pass.
+16. Confirm `/api/product/insights/latest` does not expose raw PGNs, prompts, secrets, or stack traces.
+17. Back up `data/chess.db`; it now contains coach sessions, generated puzzles, drill state, repertoire notes, training history, and analytics snapshots.

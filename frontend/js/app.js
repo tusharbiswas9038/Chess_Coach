@@ -1,4 +1,4 @@
-import { api, apiPost, apiContract } from './modules/api.js';
+import { api, apiPost, apiPut, apiDelete, apiContract } from './modules/api.js';
 import { createActionsView } from './modules/views/actions.js';
 import { createNavigationView } from './modules/views/navigation.js';
 import { initChartDefaults } from './modules/charts.js';
@@ -95,6 +95,9 @@ async function ensureView(name) {
     views.openings = createOpeningsView({
       api,
       apiContract,
+      apiDelete,
+      apiPost,
+      apiPut,
       charts,
       destroyChart,
       toast,

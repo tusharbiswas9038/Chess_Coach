@@ -210,6 +210,127 @@ def _create_puzzle_ecosystem(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_srs_last_result_due ON srs_items(last_result, due_date)")
 
 
+def _create_opening_repertoire_tables(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS repertoire_lines (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            color          TEXT NOT NULL CHECK(color IN ('white','black')),
+            eco            TEXT,
+            name           TEXT NOT NULL,
+            line_moves     TEXT NOT NULL,
+            notes          TEXT,
+            priority       INTEGER NOT NULL DEFAULT 3 CHECK(priority BETWEEN 1 AND 5),
+            active         INTEGER NOT NULL DEFAULT 1,
+            created_at     TEXT DEFAULT (datetime('now')),
+            updated_at     TEXT DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS repertoire_nodes (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            line_id        INTEGER NOT NULL REFERENCES repertoire_lines(id) ON DELETE CASCADE,
+            ply            INTEGER NOT NULL,
+            move_san       TEXT,
+            move_uci       TEXT,
+            fen_after      TEXT,
+            note           TEXT,
+            trap_warning   TEXT,
+            is_key_node    INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(line_id, ply)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS opening_training_history (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            line_id        INTEGER REFERENCES repertoire_lines(id) ON DELETE SET NULL,
+            node_id        INTEGER REFERENCES repertoire_nodes(id) ON DELETE SET NULL,
+            trained_at     TEXT DEFAULT (datetime('now')),
+            result         TEXT NOT NULL CHECK(result IN ('remembered','missed','skipped')),
+            recall_ms      INTEGER,
+            notes          TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_repertoire_lines_color_active_priority
+        ON repertoire_lines(color, active, priority DESC, updated_at DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_repertoire_lines_eco_color
+        ON repertoire_lines(eco, color)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_opening_training_history_line_time
+        ON opening_training_history(line_id, trained_at DESC)
+        """
+    )
+
+
+def _create_analytics_snapshot_tables(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS analytics_snapshots (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            computed_at    TEXT DEFAULT (datetime('now')),
+            source         TEXT NOT NULL DEFAULT 'job',
+            window_days    INTEGER NOT NULL DEFAULT 30,
+            payload_json   TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS insight_slice_stats (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            snapshot_id    INTEGER NOT NULL REFERENCES analytics_snapshots(id) ON DELETE CASCADE,
+            dimension      TEXT NOT NULL,
+            bucket         TEXT NOT NULL,
+            games          INTEGER NOT NULL DEFAULT 0,
+            analyzed       INTEGER NOT NULL DEFAULT 0,
+            wins           INTEGER NOT NULL DEFAULT 0,
+            losses         INTEGER NOT NULL DEFAULT 0,
+            draws          INTEGER NOT NULL DEFAULT 0,
+            mistakes       INTEGER NOT NULL DEFAULT 0,
+            blunders       INTEGER NOT NULL DEFAULT 0,
+            avg_eval_loss  REAL,
+            win_pct        REAL,
+            confidence     TEXT NOT NULL DEFAULT 'low'
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS trend_deltas (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            snapshot_id    INTEGER NOT NULL REFERENCES analytics_snapshots(id) ON DELETE CASCADE,
+            metric         TEXT NOT NULL,
+            window_days    INTEGER NOT NULL,
+            current_value  REAL NOT NULL DEFAULT 0,
+            previous_value REAL NOT NULL DEFAULT 0,
+            delta_value    REAL NOT NULL DEFAULT 0,
+            direction      TEXT NOT NULL CHECK(direction IN ('up','down','flat')),
+            confidence     TEXT NOT NULL DEFAULT 'low',
+            sample_size    INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+    _add_column_if_missing(conn, "player_model_snapshots", "behavioral_tags", "TEXT")
+    _add_column_if_missing(conn, "player_model_snapshots", "stability_score", "REAL")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_snapshots_computed_at ON analytics_snapshots(computed_at DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_insight_slice_snapshot_dimension ON insight_slice_stats(snapshot_id, dimension, bucket)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_trend_deltas_snapshot_metric ON trend_deltas(snapshot_id, metric, window_days)")
+
+
 MIGRATIONS: List[Migration] = [
     ("001_cleanup_orphans_and_reconcile_indexes", _cleanup_orphan_srs_and_reconcile_indexes),
     ("002_optimize_indexes_for_hot_paths", _optimize_indexes_for_hot_paths),
@@ -218,6 +339,8 @@ MIGRATIONS: List[Migration] = [
     ("005_create_drill_sessions", _create_drill_sessions),
     ("006_create_coach_quality_tables", _create_coach_quality_tables),
     ("007_create_puzzle_ecosystem", _create_puzzle_ecosystem),
+    ("008_create_opening_repertoire_tables", _create_opening_repertoire_tables),
+    ("009_create_analytics_snapshot_tables", _create_analytics_snapshot_tables),
 ]
 
 

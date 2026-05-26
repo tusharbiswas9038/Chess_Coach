@@ -130,6 +130,90 @@ CREATE TABLE puzzle_sources (
 CREATE INDEX idx_puzzles_motif_difficulty ON puzzles(motif, difficulty);
 CREATE INDEX idx_puzzles_phase_motif ON puzzles(phase, motif);
 
+-- ── OPENING REPERTOIRE + TRAINING ────────────────────────────────
+CREATE TABLE repertoire_lines (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    color          TEXT NOT NULL CHECK(color IN ('white','black')),
+    eco            TEXT,
+    name           TEXT NOT NULL,
+    line_moves     TEXT NOT NULL,     -- SAN/PGN-style move sequence for recall
+    notes          TEXT,
+    priority       INTEGER NOT NULL DEFAULT 3 CHECK(priority BETWEEN 1 AND 5),
+    active         INTEGER NOT NULL DEFAULT 1,
+    created_at     TEXT DEFAULT (datetime('now')),
+    updated_at     TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE repertoire_nodes (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    line_id        INTEGER NOT NULL REFERENCES repertoire_lines(id) ON DELETE CASCADE,
+    ply            INTEGER NOT NULL,
+    move_san       TEXT,
+    move_uci       TEXT,
+    fen_after      TEXT,
+    note           TEXT,
+    trap_warning   TEXT,
+    is_key_node    INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(line_id, ply)
+);
+
+CREATE TABLE opening_training_history (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    line_id        INTEGER REFERENCES repertoire_lines(id) ON DELETE SET NULL,
+    node_id        INTEGER REFERENCES repertoire_nodes(id) ON DELETE SET NULL,
+    trained_at     TEXT DEFAULT (datetime('now')),
+    result         TEXT NOT NULL CHECK(result IN ('remembered','missed','skipped')),
+    recall_ms      INTEGER,
+    notes          TEXT
+);
+
+CREATE INDEX idx_repertoire_lines_color_active_priority ON repertoire_lines(color, active, priority DESC, updated_at DESC);
+CREATE INDEX idx_repertoire_lines_eco_color ON repertoire_lines(eco, color);
+CREATE INDEX idx_opening_training_history_line_time ON opening_training_history(line_id, trained_at DESC);
+
+-- ── ANALYTICS SNAPSHOTS (SQLite-friendly materialized insights) ──
+CREATE TABLE analytics_snapshots (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    computed_at    TEXT DEFAULT (datetime('now')),
+    source         TEXT NOT NULL DEFAULT 'job',
+    window_days    INTEGER NOT NULL DEFAULT 30,
+    payload_json   TEXT NOT NULL
+);
+
+CREATE TABLE insight_slice_stats (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    snapshot_id    INTEGER NOT NULL REFERENCES analytics_snapshots(id) ON DELETE CASCADE,
+    dimension      TEXT NOT NULL,      -- color, phase, opening_family, opponent_rating, result
+    bucket         TEXT NOT NULL,
+    games          INTEGER NOT NULL DEFAULT 0,
+    analyzed       INTEGER NOT NULL DEFAULT 0,
+    wins           INTEGER NOT NULL DEFAULT 0,
+    losses         INTEGER NOT NULL DEFAULT 0,
+    draws          INTEGER NOT NULL DEFAULT 0,
+    mistakes       INTEGER NOT NULL DEFAULT 0,
+    blunders       INTEGER NOT NULL DEFAULT 0,
+    avg_eval_loss  REAL,
+    win_pct        REAL,
+    confidence     TEXT NOT NULL DEFAULT 'low'
+);
+
+CREATE TABLE trend_deltas (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    snapshot_id    INTEGER NOT NULL REFERENCES analytics_snapshots(id) ON DELETE CASCADE,
+    metric         TEXT NOT NULL,
+    window_days    INTEGER NOT NULL,
+    current_value  REAL NOT NULL DEFAULT 0,
+    previous_value REAL NOT NULL DEFAULT 0,
+    delta_value    REAL NOT NULL DEFAULT 0,
+    direction      TEXT NOT NULL CHECK(direction IN ('up','down','flat')),
+    confidence     TEXT NOT NULL DEFAULT 'low',
+    sample_size    INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_analytics_snapshots_computed_at ON analytics_snapshots(computed_at DESC);
+CREATE INDEX idx_insight_slice_snapshot_dimension ON insight_slice_stats(snapshot_id, dimension, bucket);
+CREATE INDEX idx_trend_deltas_snapshot_metric ON trend_deltas(snapshot_id, metric, window_days);
+
 -- ── DAILY DRILL SESSIONS ─────────────────────────────────────────
 CREATE TABLE drill_sessions (
     date        TEXT PRIMARY KEY,
@@ -196,6 +280,8 @@ CREATE TABLE player_model_snapshots (
     style_tactical          REAL,
     style_attacking         REAL,
     style_solid             REAL,
+    behavioral_tags         TEXT,
+    stability_score         REAL,
     payload_json            TEXT NOT NULL
 );
 

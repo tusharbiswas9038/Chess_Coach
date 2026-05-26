@@ -162,6 +162,27 @@
               </div>
             </div>
 
+            <section class="card panel-primary mb-5 overflow-hidden">
+              <div class="card-header flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3 max-sm:flex-col">
+                <div>
+                  <div class="section-kicker">Insights Explorer</div>
+                  <div class="card-title mt-1">Where your results are changing</div>
+                  <div class="card-subtitle">Precomputed slices by color, phase, opening family, rating bucket, and result.</div>
+                </div>
+                <select id="insights-dimension" class="field-input select select-bordered min-h-10 w-44 max-sm:w-full">
+                  <option value="color">Color</option>
+                  <option value="phase">Phase</option>
+                  <option value="opening_family">Opening family</option>
+                  <option value="opponent_rating">Opponent rating</option>
+                  <option value="result">Result</option>
+                </select>
+              </div>
+              <div class="grid gap-3 p-4 [grid-template-columns:0.85fr_1.15fr] max-lg:grid-cols-1 max-sm:p-3">
+                <div id="trend-deltas" class="grid gap-2"></div>
+                <div id="insight-slices" class="grid gap-2"></div>
+              </div>
+            </section>
+
             <div class="card panel-quiet mt-3 overflow-hidden">
               <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
                 <div class="card-title">Recent Games</div>

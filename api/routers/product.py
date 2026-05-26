@@ -91,3 +91,19 @@ def latest_player_model(request: Request):
     payload = snapshot or {"status": "empty", "message": "No player model snapshot computed yet."}
     _CACHE.set("player_model_latest", payload)
     return payload
+
+
+@router.get("/insights/latest")
+def latest_insights(request: Request):
+    enforce_rate_limit(request, bucket="product-insights", limit=60, window_sec=60)
+    from api.services.analytics import compute_and_store_analytics_snapshot, get_latest_analytics_snapshot
+
+    cached = _CACHE.get("insights_latest")
+    if cached is not None:
+        return cached
+
+    snapshot = get_latest_analytics_snapshot()
+    if not snapshot:
+        snapshot = compute_and_store_analytics_snapshot(source="on-demand")
+    _CACHE.set("insights_latest", snapshot)
+    return snapshot
