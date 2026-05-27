@@ -42,6 +42,13 @@ async def startup_event():
             "error": "lost on restart",
             "source": "recovery",
         })
+    from api.auth_service import admin_token_fallback_active
+    if admin_token_fallback_active():
+        log.warning(
+            "auth: ADMIN_TOKEN-as-password fallback is active because "
+            "ADMIN_PASSWORD_HASH is not set. This is only allowed outside "
+            "production. Set ADMIN_PASSWORD_HASH to disable it."
+        )
     log.info(
         "startup env=%s queue_max=%s debug_routes=%s migrations_applied=%s orphan_jobs=%s",
         config.APP_ENV,
@@ -146,6 +153,7 @@ async def serve_dashboard():
 
 @app.get("/dashboard", include_in_schema=False)
 @app.get("/games", include_in_schema=False)
+@app.get("/games/{game_id}", include_in_schema=False)
 @app.get("/game-detail", include_in_schema=False)
 @app.get("/mistakes", include_in_schema=False)
 @app.get("/openings", include_in_schema=False)
@@ -209,12 +217,17 @@ def metrics(request: Request):
     recent_jobs = status.get("recent_jobs", [])
     failed_recent = sum(1 for j in recent_jobs if j.get("status") == "failed")
 
+    from api.services.slow_query import get_slow_query_metrics
+    from coach.ollama_client import get_breaker_state
+
     return {
         "db_ok": db_ok,
         "job_queue_size": queue_size,
         "job_queue_max_size": queue_max,
         "job_queue_worker_running": worker_running,
         "job_recent_failed": failed_recent,
+        "ollama_breaker": get_breaker_state(),
+        "slow_queries": get_slow_query_metrics(),
         "env": config.APP_ENV,
     }
 

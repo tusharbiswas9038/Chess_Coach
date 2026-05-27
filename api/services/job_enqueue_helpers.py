@@ -10,7 +10,7 @@ from scripts.db_maintenance import run_maintenance
 from api.dependencies import COACH_OK # New Import from dependencies
 from api.services.player_model import compute_and_store_player_model_snapshot
 from api.services.analytics import compute_and_store_analytics_snapshot
-from api.services.mistake_motifs import compute_mistake_motifs
+from api.services.mistake_motifs import compute_mistake_motifs, label_pending_motifs
 
 log = logging.getLogger("chess_coach.api.jobs")
 
@@ -79,6 +79,11 @@ def run_analysis_worker_and_clear_cache() -> None:
         compute_mistake_motifs()
     except Exception as e:
         log.warning("mistake_motifs compute skipped after analysis: %s", e)
+    if COACH_OK:
+        try:
+            label_pending_motifs(max_labels=5)
+        except Exception as e:
+            log.warning("mistake_motifs labeling skipped after analysis: %s", e)
     clear_analytics_caches()
     log.info("Cleared analytics caches after analysis job.")
     return _completion_payload("analyze")
@@ -96,6 +101,11 @@ def compute_player_model_and_clear_cache() -> None:
         compute_mistake_motifs()
     except Exception as e:
         log.warning("mistake_motifs compute skipped after manual player-model: %s", e)
+    if COACH_OK:
+        try:
+            label_pending_motifs(max_labels=5)
+        except Exception as e:
+            log.warning("mistake_motifs labeling skipped after manual player-model: %s", e)
     clear_analytics_caches()
     log.info("Cleared analytics caches after player model job.")
     return _completion_payload("player-model")
@@ -109,12 +119,19 @@ def generate_weekly_report_and_clear_cache() -> None:
 
 def db_maintenance_job(vacuum: bool = False) -> None:
     result = run_maintenance(analyze=True, vacuum=vacuum)
+    deleted = result.get("retention_deleted") or {}
     log.info(
-        "[job:db-maintenance] completed analyze=%s vacuum=%s integrity=%s fk_violations=%s size_mb=%.2f",
+        "[job:db-maintenance] completed analyze=%s vacuum=%s integrity=%s fk_violations=%s size_mb=%.2f retention=%s",
         result["analyze"],
         result["vacuum"],
         result["integrity_check"],
         result["foreign_key_violations"],
         result["estimated_size_mb"],
+        deleted,
     )
-    return {"invalidates": ["database"], "event": "database:optimized", "source": "db-maintenance"}
+    return {
+        "invalidates": ["database"],
+        "event": "database:optimized",
+        "source": "db-maintenance",
+        "retention_deleted": deleted,
+    }

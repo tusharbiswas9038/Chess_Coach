@@ -2,16 +2,16 @@
               <div class="drill-toolbar-copy min-w-0">
                 <div class="section-kicker">Training Track</div>
                 <div class="drill-toolbar-title mt-1 text-[20px] font-bold text-[var(--text)]">Daily Drills</div>
-                <div class="drill-toolbar-subtitle mt-1 text-[13px] text-[var(--muted)]">
+                <div class="drill-toolbar-subtitle mt-1 text-sm text-[var(--muted)]">
                   Positions from your own mistakes — spaced repetition
                 </div>
               </div>
               <div class="drill-toolbar-actions flex flex-wrap justify-end gap-1 max-md:justify-start max-sm:w-full">
-                <button class="flip-btn inline-flex items-center max-sm:flex-1 max-sm:justify-center max-sm:min-h-[44px]" type="button" aria-label="Flip drill board orientation">⟳ Flip Board</button>
-                <button class="btn btn-ghost max-sm:flex-1 max-sm:justify-center max-sm:min-h-[44px]" id="btn-reload-drills" type="button">
+                <button class="flip-btn inline-flex items-center max-sm:flex-1 max-sm:justify-center max-sm:tap-44" type="button" aria-label="Flip drill board orientation">⟳ Flip Board</button>
+                <button class="btn btn-ghost max-sm:flex-1 max-sm:justify-center max-sm:tap-44" id="btn-reload-drills" type="button">
                   Reload Queue
                 </button>
-                <button class="btn btn-ghost max-sm:flex-1 max-sm:justify-center max-sm:min-h-[44px]" id="btn-generate-puzzles" type="button">
+                <button class="btn btn-ghost max-sm:flex-1 max-sm:justify-center max-sm:tap-44" id="btn-generate-puzzles" type="button">
                   Generate Puzzles
                 </button>
               </div>
@@ -31,7 +31,7 @@
 
                 <!-- Quality buttons — shown after answer -->
                 <div id="quality-section" class="mt-2" hidden>
-                  <div class="mb-1 text-[13px] text-[var(--muted)]">
+                  <div class="mb-1 text-sm text-[var(--muted)]">
                     How hard was this? (affects next review date)
                   </div>
                   <div class="mt-2 grid grid-cols-4 gap-1 max-sm:grid-cols-2">
@@ -66,7 +66,7 @@
               <!-- SIDEBAR -->
               <div class="drill-sidebar flex flex-col gap-2">
                 <div class="drill-info-card panel-quiet p-3">
-                  <div class="drill-card-title mb-2 text-[13px] font-semibold">Queue Mode</div>
+                  <div class="drill-card-title mb-2 text-sm font-semibold">Queue Mode</div>
                   <label class="field mb-2">
                     <span class="field-label">Mode</span>
                     <select id="drill-queue-mode" class="field-input select select-bordered w-full">
@@ -84,8 +84,8 @@
                 </div>
 
                 <div class="drill-info-card analytics-panel p-3">
-                  <div class="drill-card-title mb-2 text-[13px] font-semibold">Puzzle Bank</div>
-                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-[13px]">
+                  <div class="drill-card-title mb-2 text-sm font-semibold">Puzzle Bank</div>
+                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-sm">
                     <span class="drill-stat-label text-[var(--muted)]">Generated puzzles</span>
                     <span id="drill-puzzle-total" class="drill-stat-value font-bold">—</span>
                   </div>
@@ -95,24 +95,24 @@
                 </div>
 
                 <div class="drill-info-card panel-quiet p-3">
-                  <div class="drill-card-title mb-2 text-[13px] font-semibold">Session Stats</div>
-                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-[13px]">
+                  <div class="drill-card-title mb-2 text-sm font-semibold">Session Stats</div>
+                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-sm">
                     <span class="drill-stat-label text-[var(--muted)]">Session queue</span>
                     <span id="ds-due" class="drill-stat-value font-bold">—</span>
                   </div>
-                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-[13px]">
+                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-sm">
                     <span class="drill-stat-label text-[var(--muted)]">All due</span>
                     <span id="ds-total-due" class="drill-stat-value font-bold">—</span>
                   </div>
-                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-[13px]">
+                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-sm">
                     <span class="drill-stat-label text-[var(--muted)]">Completed</span>
                     <span id="ds-done" class="drill-stat-value drill-stat-value-success font-bold">0</span>
                   </div>
-                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-[13px]">
+                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-sm">
                     <span class="drill-stat-label text-[var(--muted)]">Correct</span>
                     <span id="ds-correct" class="drill-stat-value drill-stat-value-success font-bold">0</span>
                   </div>
-                  <div class="drill-stat-row flex items-center justify-between py-2 text-[13px]">
+                  <div class="drill-stat-row flex items-center justify-between py-2 text-sm">
                     <span class="drill-stat-label text-[var(--muted)]">Wrong</span>
                     <span id="ds-wrong" class="drill-stat-value drill-stat-value-error font-bold">0</span>
                   </div>
@@ -129,7 +129,7 @@
                 </div>
 
                 <div class="drill-info-card panel-quiet p-3">
-                  <div class="drill-card-title mb-2 text-[13px] font-semibold">Training Flow</div>
+                  <div class="drill-card-title mb-2 text-sm font-semibold">Training Flow</div>
                   <div class="stepper-rail">
                     <div class="coach-step">
                       <span class="coach-step-index">1</span>
@@ -156,7 +156,7 @@
                 </div>
 
                 <div class="drill-info-card panel-quiet p-3">
-                  <div class="drill-card-title mb-2 text-[13px] font-semibold">Queue</div>
+                  <div class="drill-card-title mb-2 text-sm font-semibold">Queue</div>
                   <div class="drill-queue-list flex max-h-[300px] flex-col gap-[6px] overflow-y-auto" id="drill-queue-list"></div>
                 </div>
 

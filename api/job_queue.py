@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import queue
@@ -5,11 +6,47 @@ import sqlite3
 import threading
 import time
 from collections import deque
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Deque, Dict, List, Optional
+
+import httpx
 
 import config
 
 log = logging.getLogger("chess_coach.job_queue")
+
+
+# Exception types we consider transient. Anything else is treated as a real
+# bug and not retried — retrying a programmer error just hides it.
+TRANSIENT_EXCEPTIONS = (
+    ConnectionError,
+    TimeoutError,
+    httpx.ConnectError,
+    httpx.ReadError,
+    httpx.RemoteProtocolError,
+    httpx.TimeoutException,
+    asyncio.TimeoutError,
+    sqlite3.OperationalError,
+)
+
+# Default retry budget. Per-job overrides land via enqueue_job(max_retries=...).
+DEFAULT_MAX_RETRIES_BY_KIND = {
+    "sync": 2,        # Chess.com / network → worth retrying
+    "analyze": 1,     # Stockfish is local → one retry covers a transient stall
+    "weekly-report": 1,
+    "coach-game": 1,
+    "coach-batch": 0,
+}
+RETRY_BACKOFF_SCHEDULE_SEC = [5, 30, 120, 600]
+
+
+def _is_transient(exc: BaseException) -> bool:
+    return isinstance(exc, TRANSIENT_EXCEPTIONS)
+
+
+def _backoff_seconds(attempt: int) -> float:
+    return float(
+        RETRY_BACKOFF_SCHEDULE_SEC[min(attempt, len(RETRY_BACKOFF_SCHEDULE_SEC) - 1)]
+    )
 
 
 def _ledger_kind(job_id: str) -> str:
@@ -24,21 +61,62 @@ def _ledger_conn() -> sqlite3.Connection:
     return conn
 
 
-def _ledger_insert_queued(job_id: str, payload: Optional[Dict[str, Any]] = None) -> None:
+def _ledger_insert_queued(
+    job_id: str,
+    payload: Optional[Dict[str, Any]] = None,
+    max_retries: int = 0,
+) -> None:
     payload_json = json.dumps(payload, default=str) if payload else None
     conn = _ledger_conn()
     try:
         conn.execute(
             """
             INSERT OR REPLACE INTO job_ledger
-                (job_id, kind, payload_json, status, enqueued_at)
-            VALUES (?, ?, ?, 'queued', datetime('now'))
+                (job_id, kind, payload_json, status, enqueued_at, max_retries, retry_count)
+            VALUES (?, ?, ?, 'queued', datetime('now'), ?, 0)
             """,
-            (job_id, _ledger_kind(job_id), payload_json),
+            (job_id, _ledger_kind(job_id), payload_json, int(max_retries)),
         )
         conn.commit()
     except sqlite3.OperationalError as e:
         log.warning("job_ledger insert skipped (%s)", e)
+    finally:
+        conn.close()
+
+
+def _ledger_get_retry_state(job_id: str) -> Dict[str, int]:
+    conn = _ledger_conn()
+    try:
+        row = conn.execute(
+            "SELECT retry_count, max_retries FROM job_ledger WHERE job_id=?",
+            (job_id,),
+        ).fetchone()
+        if not row:
+            return {"retry_count": 0, "max_retries": 0}
+        return {"retry_count": int(row[0] or 0), "max_retries": int(row[1] or 0)}
+    except sqlite3.OperationalError:
+        return {"retry_count": 0, "max_retries": 0}
+    finally:
+        conn.close()
+
+
+def _ledger_record_retry_scheduled(job_id: str, next_attempt: int, delay_sec: float) -> None:
+    conn = _ledger_conn()
+    try:
+        conn.execute(
+            """
+            UPDATE job_ledger
+            SET status='queued',
+                retry_count=?,
+                next_retry_at=datetime('now', '+' || CAST(? AS TEXT) || ' seconds'),
+                error=NULL
+            WHERE job_id=?
+            """,
+            (int(next_attempt), int(round(delay_sec)), job_id),
+        )
+        conn.commit()
+    except sqlite3.OperationalError as e:
+        log.warning("job_ledger retry update skipped (%s)", e)
     finally:
         conn.close()
 
@@ -195,20 +273,48 @@ class JobQueue:
                     log.info(f"Job {job_id} completed successfully.")
                 except Exception as e:
                     elapsed = round(time.time() - start_time, 3)
-                    self._recent_jobs.appendleft({
-                        "id": job_id,
-                        "status": "failed",
-                        "duration_sec": elapsed,
-                        "finished_at": time.time(),
-                        "error": str(e),
-                    })
-                    _ledger_mark_finished(
-                        job_id,
-                        status="failed",
-                        duration_ms=int(elapsed * 1000),
-                        error=str(e)[:500],
+                    retry_state = _ledger_get_retry_state(job_id)
+                    transient = _is_transient(e)
+                    can_retry = (
+                        transient
+                        and retry_state["retry_count"] < retry_state["max_retries"]
                     )
-                    log.error(f"Job {job_id} failed with error: {e}", exc_info=True)
+                    if can_retry:
+                        next_attempt = retry_state["retry_count"] + 1
+                        delay = _backoff_seconds(retry_state["retry_count"])
+                        _ledger_record_retry_scheduled(job_id, next_attempt, delay)
+                        log.warning(
+                            "Job %s failed transiently (%s); retry %d/%d in %.0fs",
+                            job_id,
+                            type(e).__name__,
+                            next_attempt,
+                            retry_state["max_retries"],
+                            delay,
+                        )
+                        # Schedule the retry on a background timer so we don't
+                        # block the worker thread waiting for backoff.
+                        threading.Timer(
+                            delay,
+                            self._requeue_for_retry,
+                            args=(job_func, job_args, job_kwargs, job_id),
+                        ).start()
+                    else:
+                        self._recent_jobs.appendleft({
+                            "id": job_id,
+                            "status": "failed",
+                            "duration_sec": elapsed,
+                            "finished_at": time.time(),
+                            "error": str(e),
+                            "transient": transient,
+                            "retry_count": retry_state["retry_count"],
+                        })
+                        _ledger_mark_finished(
+                            job_id,
+                            status="failed",
+                            duration_ms=int(elapsed * 1000),
+                            error=str(e)[:500],
+                        )
+                        log.error(f"Job {job_id} failed with error: {e}", exc_info=True)
                 finally:
                     with self._running_job_lock:
                         self._running_job_info = {} # Clear running job info
@@ -220,6 +326,21 @@ class JobQueue:
                 log.error(f"JobQueue worker encountered an unexpected error: {e}", exc_info=True)
 
         log.info("JobQueue worker stopped.")
+
+    def _requeue_for_retry(
+        self,
+        job_func: Callable,
+        job_args: tuple,
+        job_kwargs: dict,
+        job_id: str,
+    ) -> None:
+        if self._stop_event.is_set():
+            return
+        try:
+            self._queue.put((job_func, job_args, job_kwargs, job_id))
+            log.info("Job %s requeued after backoff", job_id)
+        except Exception as exc:
+            log.error("Failed to requeue %s: %s", job_id, exc)
 
     def start_worker(self):
         if self._worker_thread is None or not self._worker_thread.is_alive():
@@ -247,6 +368,7 @@ class JobQueue:
         *args,
         job_id: str = None,
         ledger_payload: Optional[Dict[str, Any]] = None,
+        max_retries: Optional[int] = None,
         **kwargs,
     ):
         if not job_id:
@@ -254,7 +376,9 @@ class JobQueue:
         if self._queue.full():
             raise RuntimeError("Job queue is full. Please retry later.")
         log.info(f"Enqueuing job {job_id}...")
-        _ledger_insert_queued(job_id, payload=ledger_payload)
+        if max_retries is None:
+            max_retries = DEFAULT_MAX_RETRIES_BY_KIND.get(_ledger_kind(job_id), 0)
+        _ledger_insert_queued(job_id, payload=ledger_payload, max_retries=max_retries)
         self._queue.put((job_func, args, kwargs, job_id))
         return job_id
 

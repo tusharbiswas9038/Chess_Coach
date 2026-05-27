@@ -450,6 +450,63 @@ export function createDashboardView({
     return n.toFixed(2);
   }
 
+  function renderDashboardMotifs(payload) {
+    const list = dom.byId('dashboard-motifs-list');
+    const meta = dom.byId('dashboard-motifs-meta');
+    if (!list) return;
+
+    const motifs = Array.isArray(payload?.motifs) ? payload.motifs : [];
+    if (!motifs.length) {
+      list.innerHTML = `<li>${statePanelMarkup('No motifs yet — they appear after the next analyze job runs.', { kind: 'empty', icon: '#', compact: true })}</li>`;
+      if (meta) meta.textContent = '';
+      return;
+    }
+
+    if (meta) meta.textContent = `${motifs.length} pattern${motifs.length === 1 ? '' : 's'}`;
+    list.innerHTML = motifs
+      .map((m) => {
+        const subtype = String(m.subtype || 'mistake').replace(/_/g, ' ');
+        const phase = m.phase || 'unknown';
+        const family = m.opening_family && m.opening_family !== '?'
+          ? `ECO ${m.opening_family}`
+          : 'mixed openings';
+        const occurrences = Number(m.occurrences || 0);
+        const avg = Number(m.avg_eval_loss || 0);
+        const latest = m.latest_date ? String(m.latest_date).slice(0, 10) : '-';
+        const exampleId = m.example_game_id;
+        const exampleBtn = exampleId
+          ? `<button class="btn btn-ghost btn-sm" type="button" data-open-game-id="${esc(exampleId)}">Open example</button>`
+          : '';
+        const coachLabel = (m.coach_label || '').trim();
+        const labelLine = coachLabel
+          ? `<div class="text-sm text-[var(--text)] mb-1">${esc(coachLabel)}</div>`
+          : '';
+        return `
+          <li class="motif-row rounded-cc border border-[var(--border)] bg-[var(--surface-2)] p-3">
+            <div class="flex items-start justify-between gap-3 max-sm:flex-col">
+              <div class="min-w-0">
+                ${labelLine}
+                <div class="text-sm font-semibold text-[var(--text)]">
+                  ${esc(subtype)} <span class="text-[var(--muted)]">in</span> ${esc(phase)}
+                </div>
+                <div class="mt-1 text-xs text-[var(--muted)]">
+                  ${esc(family)} &middot; last seen ${esc(latest)}
+                </div>
+              </div>
+              <div class="flex shrink-0 items-center gap-3 text-right">
+                <div>
+                  <div class="text-lg font-bold text-[var(--text)]">${occurrences}x</div>
+                  <div class="text-xs text-[var(--muted)]">avg ${avg.toFixed(0)}cp lost</div>
+                </div>
+                ${exampleBtn}
+              </div>
+            </div>
+          </li>
+        `;
+      })
+      .join('');
+  }
+
   function renderInsights(insights) {
     const trendEl = dom.byId('trend-deltas');
     const sliceEl = dom.byId('insight-slices');
@@ -558,9 +615,10 @@ export function createDashboardView({
     let weeklyFocus = null;
     let latestSession = null;
     let insights = null;
+    let motifs = null;
 
     try {
-      const [bootstrap, insightsResult] = await Promise.all([
+      const [bootstrap, insightsResult, motifsResult] = await Promise.all([
         cache.getOrSet(
         'dashboard:bootstrap',
         () =>
@@ -579,11 +637,20 @@ export function createDashboardView({
           console.warn('Insights snapshot unavailable:', e);
           return null;
         }),
+        cache.getOrSet(
+          'dashboard:motifs',
+          () => api(endpoints.motifsLatest(5)),
+          60000
+        ).catch((e) => {
+          console.warn('Motifs snapshot unavailable:', e);
+          return null;
+        }),
       ]);
       statsData = bootstrap.stats;
       weeklyFocus = bootstrap.weekly_focus;
       latestSession = bootstrap.latest_session;
       insights = insightsResult;
+      motifs = motifsResult;
     } catch (bootstrapError) {
       const [statsResult, weeklyFocusResult, sessionsResult] = await Promise.allSettled([
         fetchContract(endpoints.stats(), normalize.stats, 'stats'),
@@ -615,6 +682,7 @@ export function createDashboardView({
       p.current_rating || '—';
     updateDashboardFocus(statsData, weeklyFocus);
     renderInsights(insights);
+    renderDashboardMotifs(motifs);
     renderSessionFlow(statsData, latestSession);
     dom.byId('btn-review-latest').disabled =
       !statsData.recent_games.length;
@@ -748,8 +816,44 @@ export function createDashboardView({
     }
   }
 
+  const FOCUS_PREF_KEY = 'cc.dashboard.focus';
+
+  function readFocusPref() {
+    try {
+      return window.localStorage.getItem(FOCUS_PREF_KEY) === '1';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function writeFocusPref(enabled) {
+    try {
+      window.localStorage.setItem(FOCUS_PREF_KEY, enabled ? '1' : '0');
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  function applyFocusMode(enabled) {
+    document.body.classList.toggle('dashboard-focused', !!enabled);
+  }
+
+  function setupFocusToggle() {
+    const initial = readFocusPref();
+    applyFocusMode(initial);
+    const checkbox = dom.byId('dashboard-focus-toggle');
+    if (!checkbox) return;
+    checkbox.checked = initial;
+    checkbox.addEventListener('change', () => {
+      const next = !!checkbox.checked;
+      applyFocusMode(next);
+      writeFocusPref(next);
+    });
+  }
+
   function bindEvents() {
     btnSyncGames = dom.byId('btn-sync');
+    setupFocusToggle();
     dom.byId('btn-review-latest').addEventListener('click', reviewLatestGame);
     dom.byId('btn-next-step-action')?.addEventListener('click', () => {
       openTarget(nextStepTargets.primary);
@@ -771,6 +875,10 @@ export function createDashboardView({
       renderInsightSlices(insights);
     });
     dom.byId('recent-games-body').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-open-game-id]');
+      if (btn) onOpenGame(btn.dataset.openGameId);
+    });
+    dom.byId('dashboard-motifs-list')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-open-game-id]');
       if (btn) onOpenGame(btn.dataset.openGameId);
     });

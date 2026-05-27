@@ -168,6 +168,7 @@ navigationView = createNavigationView({
   onEnterMistakes: () => views.mistakes?.load(),
   onEnterOpenings: () => views.openings?.load(),
   onEnterReports: () => views.reports?.load(),
+  onOpenGameDetail: (gameId) => loadGameDetail(gameId),
 });
 getActionsView().bindEvents();
 navigationView.bindEvents();

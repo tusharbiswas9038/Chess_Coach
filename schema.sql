@@ -338,7 +338,10 @@ CREATE TABLE IF NOT EXISTS job_ledger (
     started_at    TEXT,
     finished_at   TEXT,
     duration_ms   INTEGER,
-    error         TEXT
+    error         TEXT,
+    retry_count   INTEGER NOT NULL DEFAULT 0,
+    max_retries   INTEGER NOT NULL DEFAULT 0,
+    next_retry_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_job_ledger_status_enqueued ON job_ledger(status, enqueued_at);
 CREATE INDEX IF NOT EXISTS idx_job_ledger_finished ON job_ledger(finished_at DESC);
@@ -371,7 +374,9 @@ CREATE TABLE IF NOT EXISTS mistake_motifs (
     latest_date     TEXT,
     example_game_id TEXT,
     example_played  TEXT,
-    example_best    TEXT
+    example_best    TEXT,
+    coach_label     TEXT,
+    labeled_at      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_mistake_motifs_recent ON mistake_motifs(computed_at DESC, occurrences DESC);
 CREATE INDEX IF NOT EXISTS idx_mistake_motifs_key ON mistake_motifs(cluster_key, computed_at DESC);

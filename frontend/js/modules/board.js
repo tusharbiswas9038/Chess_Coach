@@ -78,6 +78,10 @@ export function applyMove(pos, uci, turn) {
   return p;
 }
 
+// Threshold (in pixels) past which a pointer-down + move counts as a drag
+// rather than a click. Below this we let click-to-move take over.
+const DRAG_THRESHOLD_PX = 6;
+
 export function renderPositionBoard(
   boardId,
   position,
@@ -88,6 +92,8 @@ export function renderPositionBoard(
     lastTo: toSquare = null,
     hintSquare = null,
     onSquareClick = null,
+    onMove = null,
+    isDraggable = null,
   } = {}
 ) {
   const board = document.getElementById(boardId);
@@ -142,4 +148,126 @@ export function renderPositionBoard(
     }
   }
   board.appendChild(grid);
+
+  if (onMove) {
+    attachDragAndDrop(board, grid, { position, onMove, isDraggable });
+  }
+}
+
+function attachDragAndDrop(boardEl, gridEl, { position, onMove, isDraggable }) {
+  // Pointer-event drag-and-drop. Falls back gracefully — pointerdown on a
+  // square also fires click after pointerup if the pointer didn't move,
+  // so click-to-move still works for users who prefer it.
+  let active = null;
+
+  function pieceAt(sq) {
+    return position[sq] || null;
+  }
+
+  function isPieceDraggable(sq) {
+    const piece = pieceAt(sq);
+    if (!piece) return false;
+    if (typeof isDraggable === 'function') return !!isDraggable(sq, piece);
+    return true;
+  }
+
+  function squareFromPoint(x, y) {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    const sqEl = el.closest?.('.sq');
+    return sqEl?.dataset?.sq || null;
+  }
+
+  function onPointerDown(event) {
+    if (event.button !== undefined && event.button !== 0) return;
+    const cell = event.target.closest?.('.sq');
+    if (!cell || !gridEl.contains(cell)) return;
+    const sq = cell.dataset.sq;
+    if (!sq || !isPieceDraggable(sq)) return;
+    const pieceEl = cell.querySelector('.piece');
+    if (!pieceEl) return;
+
+    active = {
+      from: sq,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      pieceEl,
+      cell,
+      dragging: false,
+      lastTarget: null,
+    };
+    // Prevent the browser's native drag/select behaviour and scroll-on-touch.
+    event.preventDefault();
+    try {
+      cell.setPointerCapture(event.pointerId);
+    } catch (_) {
+      // older browsers without pointer capture — drag still works via
+      // window-level listeners below.
+    }
+  }
+
+  function onPointerMove(event) {
+    if (!active || event.pointerId !== active.pointerId) return;
+    const dx = event.clientX - active.startX;
+    const dy = event.clientY - active.startY;
+    if (!active.dragging) {
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+      active.dragging = true;
+      active.pieceEl.classList.add('piece-dragging');
+    }
+    active.pieceEl.style.transform = `translate(${dx}px, ${dy}px)`;
+    const target = squareFromPoint(event.clientX, event.clientY);
+    if (target !== active.lastTarget) {
+      if (active.lastTarget) {
+        gridEl.querySelector(`.sq[data-sq="${active.lastTarget}"]`)?.classList.remove('drop-target');
+      }
+      if (target && target !== active.from) {
+        gridEl.querySelector(`.sq[data-sq="${target}"]`)?.classList.add('drop-target');
+      }
+      active.lastTarget = target;
+    }
+  }
+
+  function clearDrag() {
+    if (!active) return;
+    active.pieceEl.style.transform = '';
+    active.pieceEl.classList.remove('piece-dragging');
+    if (active.lastTarget) {
+      gridEl.querySelector(`.sq[data-sq="${active.lastTarget}"]`)?.classList.remove('drop-target');
+    }
+    try {
+      active.cell.releasePointerCapture?.(active.pointerId);
+    } catch (_) {
+      /* ignore */
+    }
+    active = null;
+  }
+
+  function onPointerUp(event) {
+    if (!active || event.pointerId !== active.pointerId) return;
+    const wasDragging = active.dragging;
+    const from = active.from;
+    const target = wasDragging ? squareFromPoint(event.clientX, event.clientY) : null;
+    clearDrag();
+    if (wasDragging && target && target !== from) {
+      // Dragged onto a real square — fire the move and suppress the
+      // synthetic click that would otherwise restart click-to-move state.
+      event.preventDefault?.();
+      event.stopPropagation?.();
+      onMove(from, target);
+    }
+  }
+
+  function onPointerCancel(event) {
+    if (!active || event.pointerId !== active.pointerId) return;
+    clearDrag();
+  }
+
+  // Bind on the grid for down/move/up so we don't leak window listeners.
+  gridEl.addEventListener('pointerdown', onPointerDown);
+  gridEl.addEventListener('pointermove', onPointerMove);
+  gridEl.addEventListener('pointerup', onPointerUp);
+  gridEl.addEventListener('pointercancel', onPointerCancel);
+  gridEl.addEventListener('lostpointercapture', onPointerCancel);
 }

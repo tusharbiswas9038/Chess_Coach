@@ -35,6 +35,37 @@ export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
   let gamesSearchTimer = null;
   let lastLoadedGames = [];
 
+  function readFiltersFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    if (![...params.keys()].length) return null;
+    const next = { ...DEFAULT_GAMES_FILTERS };
+    const fields = ['search', 'opening', 'color', 'result', 'analyzed', 'sort'];
+    fields.forEach((k) => {
+      if (params.has(k)) next[k] = params.get(k) || '';
+    });
+    if (params.has('hasJournal')) next.hasJournal = params.get('hasJournal') || '';
+    if (params.has('has_journal')) next.hasJournal = params.get('has_journal') || '';
+    if (params.has('minMistakes')) next.minMistakes = params.get('minMistakes') || '0';
+    if (params.has('min_mistakes')) next.minMistakes = params.get('min_mistakes') || '0';
+    return next;
+  }
+
+  function syncUrlFromFilters() {
+    // Only update URL when on the games view; avoid clobbering other pages.
+    if (!window.location.pathname.replace(/^\/+/, '').startsWith('games')) return;
+    const params = new URLSearchParams();
+    Object.entries(gamesFilters).forEach(([k, v]) => {
+      const def = DEFAULT_GAMES_FILTERS[k];
+      if (v && v !== def) params.set(k, v);
+    });
+    if (gamesPage > 0) params.set('page', String(gamesPage + 1));
+    const qs = params.toString();
+    const target = qs ? `/games?${qs}` : '/games';
+    if (`${window.location.pathname}${window.location.search}` !== target) {
+      window.history.replaceState({ view: 'games' }, '', target);
+    }
+  }
+
   function writeFiltersToControls() {
     dom.byId('games-search').value = gamesFilters.search;
     dom.byId('games-opening').value = gamesFilters.opening;
@@ -106,6 +137,8 @@ export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
   async function loadGames() {
     const tbody = dom.byId('all-games-body');
     tbody.innerHTML = tableStateRowMarkup('Loading games…', 8, { kind: 'loading' });
+
+    syncUrlFromFilters();
 
     const offset = gamesPage * PAGE_SIZE;
     let response;
@@ -333,6 +366,14 @@ export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
   function ensureLoaded() {
     if (gamesLoaded) return;
     gamesLoaded = true;
+    const fromUrl = readFiltersFromUrl();
+    if (fromUrl) {
+      gamesFilters = fromUrl;
+      writeFiltersToControls();
+      const params = new URLSearchParams(window.location.search);
+      const pageParam = parseInt(params.get('page') || '1', 10);
+      gamesPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam - 1 : 0;
+    }
     loadGames();
   }
 

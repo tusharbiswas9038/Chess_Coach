@@ -276,6 +276,17 @@ def _create_opening_repertoire_tables(conn: sqlite3.Connection) -> None:
     )
 
 
+def _job_ledger_retry_columns(conn: sqlite3.Connection) -> None:
+    _add_column_if_missing(conn, "job_ledger", "retry_count", "INTEGER NOT NULL DEFAULT 0")
+    _add_column_if_missing(conn, "job_ledger", "max_retries", "INTEGER NOT NULL DEFAULT 0")
+    _add_column_if_missing(conn, "job_ledger", "next_retry_at", "TEXT")
+
+
+def _mistake_motifs_label_columns(conn: sqlite3.Connection) -> None:
+    _add_column_if_missing(conn, "mistake_motifs", "coach_label", "TEXT")
+    _add_column_if_missing(conn, "mistake_motifs", "labeled_at", "TEXT")
+
+
 def _create_mistake_motifs(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
@@ -418,6 +429,8 @@ MIGRATIONS: List[Migration] = [
     ("010_create_coach_memory_and_job_ledger", _create_coach_memory_and_job_ledger),
     ("011_create_repertoire_node_srs", _create_repertoire_node_srs),
     ("012_create_mistake_motifs", _create_mistake_motifs),
+    ("013_job_ledger_retry_columns", _job_ledger_retry_columns),
+    ("014_mistake_motifs_labels", _mistake_motifs_label_columns),
 ]
 
 

@@ -59,6 +59,13 @@ def validate_startup_config() -> None:
             raise RuntimeError(
                 "ADMIN_TOKEN is required and must be >=24 chars in production."
             )
+        if not ADMIN_PASSWORD_HASH:
+            raise RuntimeError(
+                "ADMIN_PASSWORD_HASH is required in production. "
+                "Generate with: python3 -c \"from api.auth_service import create_password_hash; "
+                "import getpass; print(create_password_hash(getpass.getpass('Admin password: ')))\". "
+                "The ADMIN_TOKEN-as-password fallback is no longer accepted in production."
+            )
 
     parsed = urlparse(OLLAMA_URL)
     if parsed.scheme not in {"http", "https"}:

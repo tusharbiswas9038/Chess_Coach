@@ -5,22 +5,22 @@
             </section>
 
             <div class="games-preset-row mt-2 flex flex-wrap gap-1 max-sm:grid max-sm:grid-cols-2" id="mistakes-phase-tabs">
-              <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px] active" type="button" data-phase="">All Phases</button>
-              <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-phase="opening">Opening</button>
-              <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-phase="middlegame">Middlegame</button>
-              <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-phase="endgame">Endgame</button>
+              <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm active" type="button" data-phase="">All Phases</button>
+              <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-phase="opening">Opening</button>
+              <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-phase="middlegame">Middlegame</button>
+              <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-phase="endgame">Endgame</button>
             </div>
             <div class="filter-toolbar mt-2 flex flex-wrap items-center justify-between gap-2 rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-2 max-sm:grid max-sm:grid-cols-1" id="mistakes-v2-controls">
               <div class="games-preset-row flex flex-wrap gap-1" id="mistakes-subtype-tabs">
-                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px] active" type="button" data-subtype="">All Classes</button>
-                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-subtype="tactical_blunder">Tactical</button>
-                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-subtype="missed_tactic">Missed tactic</button>
-                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-subtype="conversion_miss">Conversion</button>
-                <button class="preset-btn btn btn-ghost rounded-full min-h-[40px] px-3 text-[13px]" type="button" data-subtype="opening_inaccuracy">Opening</button>
+                <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm active" type="button" data-subtype="">All Classes</button>
+                <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-subtype="tactical_blunder">Tactical</button>
+                <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-subtype="missed_tactic">Missed tactic</button>
+                <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-subtype="conversion_miss">Conversion</button>
+                <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-subtype="opening_inaccuracy">Opening</button>
               </div>
               <label class="field-label mb-0 flex items-center gap-2 text-xs text-[var(--muted)]">
                 Sort
-                <select id="mistakes-sort" class="field-input select select-bordered min-h-[40px] w-auto min-w-[160px] text-xs">
+                <select id="mistakes-sort" class="field-input select select-bordered tap-40 w-auto min-w-[160px] text-xs">
                   <option value="date_desc">Newest first</option>
                   <option value="loss_desc">Largest eval loss</option>
                   <option value="confidence_desc">Highest confidence</option>
@@ -52,7 +52,7 @@
                   <div class="chart-meta" id="mistakes-phase-meta">Refreshing…</div>
                 </div>
                 <div class="chart-container chart-container-short max-sm:h-[180px]">
-                  <canvas id="chart-phase"></canvas>
+                  <canvas id="chart-phase" role="img" aria-label="Mistakes grouped by game phase — counts shown in the phase tab labels"></canvas>
                 </div>
               </div>
               <div class="chart-card analytics-panel chart-card-span-2 col-span-2 max-md:col-span-1" id="mistakes-card-trend">
@@ -61,7 +61,7 @@
                   <div class="chart-meta" id="mistakes-trend-meta">Refreshing…</div>
                 </div>
                 <div class="chart-container chart-container-short max-sm:h-[180px]">
-                  <canvas id="chart-blunder-trend"></canvas>
+                  <canvas id="chart-blunder-trend" role="img" aria-label="Blunders per game across the last 20 games — see the critical mistakes table for game-level detail"></canvas>
                 </div>
               </div>
             </div>

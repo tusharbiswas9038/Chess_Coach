@@ -91,6 +91,17 @@ def _fetch_drill_items(conn: sqlite3.Connection, item_ids: list[int], today: str
 
 
 def _priority_motifs(conn: sqlite3.Connection) -> list[str]:
+    """
+    Return the subtype/theme names whose drills should jump the queue.
+
+    Two complementary signals are unioned:
+    1. Recent SRS failures — what the player has been struggling with in
+       the last 14 days. Drives the "retry what hurts" loop.
+    2. Latest `mistake_motifs` snapshot — what recurs across analyzed games,
+       even if the player hasn't drilled it recently. Drives the "fix the
+       big leak first" loop and ties the SRS queue to the dashboard motifs
+       panel that comes from the same table.
+    """
     rows = conn.execute(
         """
         SELECT COALESCE(p.motif, m.mistake_subtype, m.type) AS motif,
@@ -105,7 +116,29 @@ def _priority_motifs(conn: sqlite3.Connection) -> list[str]:
         LIMIT 3
         """
     ).fetchall()
-    return [r["motif"] for r in rows if r["motif"]]
+    motifs = [r["motif"] for r in rows if r["motif"]]
+
+    # Latest motif snapshot — pick the top three subtypes by occurrence.
+    try:
+        snapshot_rows = conn.execute(
+            """
+            SELECT subtype
+            FROM mistake_motifs
+            WHERE computed_at = (SELECT MAX(computed_at) FROM mistake_motifs)
+              AND subtype IS NOT NULL
+            ORDER BY occurrences DESC
+            LIMIT 3
+            """
+        ).fetchall()
+        for r in snapshot_rows:
+            sub = r["subtype"]
+            if sub and sub not in motifs:
+                motifs.append(sub)
+    except sqlite3.OperationalError:
+        # mistake_motifs may not exist on very old DBs — fall back silently.
+        pass
+
+    return motifs
 
 
 def _due_item_ids(

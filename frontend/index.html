@@ -28,6 +28,7 @@
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
   </head>
   <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <noscript>
       <div class="noscript-panel">
         <h2>Chess Coach requires JavaScript</h2>
@@ -56,11 +57,11 @@
           </p>
         </div>
         <label class="mb-3 block">
-          <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Username</span>
+          <span class="mb-1 block text-xs font-semibold uppercase tracking-label text-[var(--muted)]">Username</span>
           <input id="auth-username" class="field-input w-full" autocomplete="username" value="admin" required />
         </label>
         <label class="mb-4 block">
-          <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Password</span>
+          <span class="mb-1 block text-xs font-semibold uppercase tracking-label text-[var(--muted)]">Password</span>
           <input id="auth-password" class="field-input w-full" type="password" autocomplete="current-password" required />
         </label>
         <button id="auth-submit" class="btn btn-primary w-full justify-center" type="submit">
@@ -95,7 +96,7 @@
         </div>
 
         <nav class="sidebar-nav flex flex-1 flex-col gap-1 px-1 py-2 max-sm:flex-row max-sm:items-stretch max-sm:justify-between max-sm:gap-[6px] max-sm:px-[max(8px,env(safe-area-inset-left))] max-sm:pt-[6px] max-sm:pb-[calc(6px+env(safe-area-inset-bottom))] max-sm:pr-[max(8px,env(safe-area-inset-right))]" aria-label="Main navigation">
-          <button class="nav-item active shadow-none max-sm:min-h-[48px] max-sm:flex-col max-sm:justify-center max-sm:gap-[2px] max-sm:rounded-[10px] max-sm:px-[6px] max-sm:py-2" data-view="dashboard" type="button" aria-current="page">
+          <button class="nav-item active shadow-none bottom-nav-item" data-view="dashboard" type="button" aria-current="page">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -107,9 +108,9 @@
               <rect x="3" y="14" width="7" height="7" />
               <rect x="14" y="14" width="7" height="7" />
             </svg>
-            <span class="max-sm:block max-sm:max-w-full max-sm:overflow-hidden max-sm:text-ellipsis max-sm:whitespace-nowrap max-sm:text-[10px] max-sm:leading-[1.1]">Dashboard</span>
+            <span class="bottom-nav-label">Dashboard</span>
           </button>
-          <button class="nav-item shadow-none max-sm:min-h-[48px] max-sm:flex-col max-sm:justify-center max-sm:gap-[2px] max-sm:rounded-[10px] max-sm:px-[6px] max-sm:py-2" data-view="games" type="button">
+          <button class="nav-item shadow-none bottom-nav-item" data-view="games" type="button">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -120,9 +121,9 @@
                 d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
               />
             </svg>
-            <span class="max-sm:block max-sm:max-w-full max-sm:overflow-hidden max-sm:text-ellipsis max-sm:whitespace-nowrap max-sm:text-[10px] max-sm:leading-[1.1]">Games</span>
+            <span class="bottom-nav-label">Games</span>
           </button>
-          <button class="nav-item shadow-none max-sm:min-h-[48px] max-sm:flex-col max-sm:justify-center max-sm:gap-[2px] max-sm:rounded-[10px] max-sm:px-[6px] max-sm:py-2" data-view="mistakes" type="button">
+          <button class="nav-item shadow-none bottom-nav-item" data-view="mistakes" type="button">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -133,9 +134,9 @@
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
-            <span class="max-sm:block max-sm:max-w-full max-sm:overflow-hidden max-sm:text-ellipsis max-sm:whitespace-nowrap max-sm:text-[10px] max-sm:leading-[1.1]">Mistakes</span>
+            <span class="bottom-nav-label">Mistakes</span>
           </button>
-          <button class="nav-item shadow-none max-sm:min-h-[48px] max-sm:flex-col max-sm:justify-center max-sm:gap-[2px] max-sm:rounded-[10px] max-sm:px-[6px] max-sm:py-2" data-view="openings" type="button">
+          <button class="nav-item shadow-none bottom-nav-item" data-view="openings" type="button">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -147,9 +148,9 @@
                 d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
               />
             </svg>
-            <span class="max-sm:block max-sm:max-w-full max-sm:overflow-hidden max-sm:text-ellipsis max-sm:whitespace-nowrap max-sm:text-[10px] max-sm:leading-[1.1]">Openings</span>
+            <span class="bottom-nav-label">Openings</span>
           </button>
-          <button class="nav-item shadow-none max-sm:min-h-[48px] max-sm:flex-col max-sm:justify-center max-sm:gap-[2px] max-sm:rounded-[10px] max-sm:px-[6px] max-sm:py-2" data-view="drills" type="button">
+          <button class="nav-item shadow-none bottom-nav-item" data-view="drills" type="button">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -160,9 +161,9 @@
               <path d="M2 17l10 5 10-5" />
               <path d="M2 12l10 5 10-5" />
             </svg>
-            <span class="max-sm:block max-sm:max-w-full max-sm:overflow-hidden max-sm:text-ellipsis max-sm:whitespace-nowrap max-sm:text-[10px] max-sm:leading-[1.1]">Drills</span><span id="drill-badge" class="nav-badge max-sm:right-1 max-sm:top-1 max-sm:ml-0 max-sm:min-w-4 max-sm:px-[5px] max-sm:text-[10px]" hidden></span>
+            <span class="bottom-nav-label">Drills</span><span id="drill-badge" class="nav-badge bottom-nav-badge" hidden></span>
           </button>
-          <button class="nav-item shadow-none max-sm:min-h-[48px] max-sm:flex-col max-sm:justify-center max-sm:gap-[2px] max-sm:rounded-[10px] max-sm:px-[6px] max-sm:py-2" data-view="coach" type="button">
+          <button class="nav-item shadow-none bottom-nav-item" data-view="coach" type="button">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -172,7 +173,7 @@
               <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
               <path d="M8 9h8M8 13h5" />
             </svg>
-            <span class="max-sm:block max-sm:max-w-full max-sm:overflow-hidden max-sm:text-ellipsis max-sm:whitespace-nowrap max-sm:text-[10px] max-sm:leading-[1.1]">Coach</span>
+            <span class="bottom-nav-label">Coach</span>
           </button>
         </nav>
 
@@ -198,7 +199,7 @@
       </aside>
 
       <!-- ── MAIN ── -->
-      <main class="main flex min-h-dvh flex-1 flex-col max-sm:ml-0">
+      <main class="main flex min-h-dvh flex-1 flex-col max-sm:ml-0" id="main-content" tabindex="-1">
         <header class="topbar sticky top-0 z-50 flex min-h-4 items-center justify-between gap-2 px-5 max-sm:min-h-[56px] max-sm:px-3">
           <div class="topbar-main flex min-w-0 items-center gap-2">
             <button
@@ -270,6 +271,9 @@
               </button>
               <button class="btn btn-ghost max-sm:w-full max-sm:justify-start" id="btn-db-maintenance" type="button">
                 DB Optimize
+              </button>
+              <button class="btn btn-ghost max-sm:w-full max-sm:justify-start" id="btn-clear-motif-labels" type="button">
+                Refresh Motif Labels
               </button>
               <button class="btn btn-ghost max-sm:w-full max-sm:justify-start" id="btn-logout" type="button" hidden>
                 Sign Out

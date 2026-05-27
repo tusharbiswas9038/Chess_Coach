@@ -1340,6 +1340,111 @@
 
   .coach-message-pending .coach-bubble { color: var(--muted); }
 
+  .skip-link {
+    position: absolute;
+    left: 50%;
+    top: -100px;
+    transform: translateX(-50%);
+    padding: 10px 18px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    font-weight: 600;
+    text-decoration: none;
+    z-index: 1000;
+    transition: top var(--dur-fast) var(--ease-standard);
+  }
+
+  .skip-link:focus,
+  .skip-link:focus-visible {
+    top: 12px;
+    outline: var(--ring-focus);
+  }
+
+  /* Comfortable tap target for compact buttons. 40px is the design-system
+     default for non-primary actions; 44px is reserved for primary CTAs and
+     filter/preset buttons that double as nav. Replaces a recurring
+     `min-h-[40px]` arbitrary value across templates. */
+  .tap-40 {
+    min-height: 40px;
+  }
+  .tap-44 {
+    min-height: 44px;
+  }
+
+  /* Coach panel sizing. The chat scroll area uses dvh-aware caps so iOS
+     Safari doesn't push input off-screen when the keyboard opens; the
+     min-h floor keeps the empty state from collapsing on first render.
+     Mobile breakpoint shrinks the floor and tightens the cap. */
+  .coach-pane {
+    min-height: 390px;
+    max-height: 58vh;
+  }
+  @media (max-width: 640px) {
+    .coach-pane {
+      min-height: 280px;
+      max-height: 52vh;
+    }
+  }
+  .coach-input-tall {
+    min-height: 120px;
+  }
+
+  /* Dashboard focus mode. When body carries the modifier, secondary cards
+     (insights explorer + recent games) collapse so the daily entry point
+     is just hero → KPIs → motifs → next-step. The toggle persists in
+     localStorage; the body class is applied at boot before render so there's
+     no flash of full layout. */
+  body.dashboard-focused .dashboard-secondary {
+    display: none;
+  }
+
+  /* Section-kicker / table-header letter-spacing tokens. Replaces a recurring
+     `tracking-[0.08em]` / `tracking-[0.12em]` arbitrary value across templates. */
+  .tracking-kicker {
+    letter-spacing: 0.08em;
+  }
+  .tracking-label {
+    letter-spacing: 0.12em;
+  }
+
+  /* Mobile bottom-nav cells. Replaces a 7-class arbitrary-value cluster
+     (max-sm:min-h-[48px] max-sm:flex-col max-sm:justify-center
+      max-sm:gap-[2px] max-sm:rounded-[10px] max-sm:px-[6px] max-sm:py-2)
+     that was duplicated on every nav item. Desktop styling continues to
+     come from `.nav-item` defined elsewhere in the design system. */
+  @media (max-width: 640px) {
+    .bottom-nav-item {
+      min-height: 48px;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+      border-radius: 10px;
+      padding: 8px 6px;
+    }
+
+    .bottom-nav-item .bottom-nav-label {
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 10px;
+      line-height: 1.1;
+    }
+
+    .bottom-nav-badge {
+      right: 4px;
+      top: 4px;
+      margin-left: 0;
+      min-width: 16px;
+      padding: 0 5px;
+      font-size: 10px;
+    }
+  }
+
   .coach-feedback {
     margin-top: 4px;
     display: inline-flex;

@@ -8,6 +8,7 @@ export function createNavigationView({
   onEnterMistakes,
   onEnterOpenings,
   onEnterReports,
+  onOpenGameDetail,
 }) {
   const dom = createDomCache();
   const SIDEBAR_PREF_KEY = 'cc.sidebar.collapsed';
@@ -33,13 +34,19 @@ export function createNavigationView({
   function parseRoute(hash, pathname = '/') {
     const fromPath = String(pathname || '/').trim();
     if (fromPath && fromPath !== '/') {
-      const pathSeg = fromPath.replace(/^\/+/, '').split('/')[0];
-      if (validViews.has(pathSeg)) return pathSeg;
+      const segments = fromPath.replace(/^\/+/, '').split('/');
+      const head = segments[0];
+      // /games/{id} → deep link into review with the id, but the active view
+      // is game-detail. Game IDs are Chess.com UUIDs (alnum + hyphens).
+      if (head === 'games' && segments[1] && /^[A-Za-z0-9-]{8,}$/.test(segments[1])) {
+        return { view: 'game-detail', gameId: segments[1] };
+      }
+      if (validViews.has(head)) return { view: head };
     }
     const raw = String(hash || '').trim();
-    if (!raw || raw === '#') return 'dashboard';
+    if (!raw || raw === '#') return { view: 'dashboard' };
     const normalized = raw.replace(/^#\/?/, '').replace(/^\/+/, '').split('?')[0];
-    return validViews.has(normalized) ? normalized : 'dashboard';
+    return validViews.has(normalized) ? { view: normalized } : { view: 'dashboard' };
   }
 
   async function showView(name, options = {}) {
@@ -122,8 +129,11 @@ export function createNavigationView({
   }
 
   function syncFromRoute() {
-    const nextView = parseRoute(window.location.hash, window.location.pathname);
-    showView(nextView, { updateRoute: false });
+    const parsed = parseRoute(window.location.hash, window.location.pathname);
+    showView(parsed.view, { updateRoute: false });
+    if (parsed.gameId && typeof onOpenGameDetail === 'function') {
+      onOpenGameDetail(parsed.gameId);
+    }
   }
 
   function bindEvents() {

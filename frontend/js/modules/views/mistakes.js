@@ -131,15 +131,28 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
     const maxCount = counts.length ? Math.max(...counts) : 0;
 
     // Determine player color for orientation (assuming 'white' is default for dashboard view)
-    const playerColor = getStatsData()?.profile?.color || 'white'; 
+    const playerColor = getStatsData()?.profile?.color || 'white';
     const isWhite = playerColor === 'white';
     ensureHeatmapGrid(heatmapBoardEl, isWhite);
+
+    // Build a screen-reader summary of the hottest squares — the visual
+    // heatmap is purely color-coded so there's no other text alternative.
+    const ranked = Object.entries(heatmapData)
+      .filter(([, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    const summary = ranked.length
+      ? `Blunder heatmap: top squares ${ranked.map(([sq, n]) => `${sq} (${n})`).join(', ')}.`
+      : 'Blunder heatmap: no blunders in the current filter.';
+    heatmapBoardEl.setAttribute('aria-label', summary);
+    heatmapBoardEl.setAttribute('role', 'img');
 
     for (const [squareName, squareEl] of heatmapSquareNodes.entries()) {
       const count = heatmapData[squareName] || 0;
       const level = heatmapLevel(count, maxCount);
       squareEl.className = `heatmap-square heatmap-level-${level}`;
       squareEl.title = `${squareName}: ${count} blunders`;
+      squareEl.setAttribute('aria-label', `${squareName}: ${count} blunder${count === 1 ? '' : 's'}`);
     }
   }
 

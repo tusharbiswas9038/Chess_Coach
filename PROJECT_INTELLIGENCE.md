@@ -1,6 +1,6 @@
 # PROJECT_INTELLIGENCE
 
-> **Last verified:** 2026-05-27 (Horizon 1 + Horizon 2 polish — coach memory, repertoire ↔ SRS bridge, opening-aware coaching, recurring motif clustering, weekly report reflection, hanging-rate bug fix).
+> **Last verified:** 2026-05-28 (Horizons 1–8 polish — coach memory, repertoire ↔ SRS bridge, opening-aware coaching, motif clustering + LLM labeling + carry-forward, weekly report reflection, hanging-rate fix, Ollama timeouts + circuit breaker, retention policy, URL state, accessibility pass, dashboard motifs panel, job retry policy, auth hardening, slow-query instrumentation @ 250ms, motif-driven drill priority, heatmap perf fix (770ms→12ms), batch labeler refactor, drag-and-drop board, label-clear UI, dashboard focus mode, inline-Tailwind ratchet 165→50).
 
 ## 1. Executive Summary
 - **Product**: Self-hosted AI chess coaching platform for a single player (`CHESS_USERNAME`, default `Tushar9038`) that syncs Chess.com rapid games, analyzes them with Stockfish, extracts mistakes, generates drills, and provides AI coaching/reports.
@@ -214,27 +214,23 @@ Core tables: `games`, `moves`, `mistakes`, `srs_items`, `player_profile`, `playe
 - Stockfish and Ollama are local bottlenecks; analysis/chat throughput limited by host CPU/RAM.
 
 ## 12. Technical Debt & Risks
-- **Resolved (2026-05-27):** durable `job_ledger` table now records every enqueue/start/finish; orphan `queued`/`running` rows are reconciled on startup ([api/job_queue.py](/api/job_queue.py), [api/main.py](/api/main.py), migration 010).
-- **Resolved (2026-05-27):** prior intel claim that `coach/ollama_client.py` had duplicate code blocks is incorrect — the file is ~100 lines, no duplication. Verified by direct read.
-- **Resolved (2026-05-27):** `player_profile.hanging_piece_rate` formula corrected to `COUNT(DISTINCT game_id where type='hanging_piece') / analyzed_games`, capped at 1.0. Was previously reading 4.5+ on the production DB.
-- **Resolved (2026-05-27):** repertoire ↔ SRS bridge (`repertoire_node_srs` table) — opening recall results now drive an SM-2 schedule. Coach context surfaces recently missed nodes.
-- **Resolved (2026-05-27):** recurring-mistake motif clustering — `mistake_motifs` snapshot table populated by sync/analyze/player-model jobs; rule-based on `(subtype, phase, eco_family)` with min-3-occurrences threshold.
-- **High**: Job retries are still single-attempt (ledger captures failures, but no automatic re-run policy).
-- **Medium**: Mixed sync/async boundaries and thread-based async wrappers in report generation.
-- **Medium**: Router-local caches (`stats`, `product`) are wrapped in `TTLCache` with `threading.Lock`, but `lru_cache` on `_get_cached_stats` is stdlib-thread-safe and unaudited for invalidation race semantics under heavy load.
-- **Medium**: Frontend large modules (`dashboard.js`, `review.js`) are feature-rich but harder to maintain.
-- **Low-medium**: Schema docs mostly aligned, but timestamp and data-retention policies are not standardized.
+- **Resolved (2026-05-28):** dashboard focus mode — `body.dashboard-focused .dashboard-secondary { display:none }` collapses Insights Explorer + Recent Games when toggled. Persisted in localStorage, applied before render.
+- **Resolved (2026-05-28):** slow-query threshold tightened from 500ms → 250ms now that no instrumented hot path exceeds 60ms (median; slowest is `get_opening_weak_nodes` at 56ms). Future regressions surface 2× sooner.
+- **Resolved (2026-05-28):** drag-and-drop on the drills board with click-to-move fallback, label-clear in actions menu, chat-pane height consolidation, tap-target classes, heatmap rewrite, motif label carry-forward, async batch labeler.
+- **Resolved (2026-05-28):** typography token consolidation — `text-[14px]`→`text-md`, `tracking-[0.08em]`→`.tracking-kicker`, `tracking-[0.12em]`→`.tracking-label` (11 literals removed). Inline-Tailwind cap dropped 60 → 50; current 43.
+- **Resolved (2026-05-27/28):** durable `job_ledger` with retry policy + restart recovery, per-mode Ollama timeouts + circuit breaker, retention policy, URL state, accessibility pass, hanging-rate formula, repertoire ↔ SRS bridge, motif clustering + LLM labels, weekly-report reflection, auth hardening, dashboard motifs panel, motif-driven drill priority.
+- **Medium**: Mixed sync/async boundaries in report generation (thread-wrapped async).
+- **Medium**: Frontend large modules (`dashboard.js` ~970 lines after focus mode + motifs panel, `review.js` 638 lines).
+- **Low-medium**: Schema docs mostly aligned, but timestamp formats (text vs ISO vs `datetime()`) are not standardized.
 - **Low**: `BackgroundTasks` import unused in [api/routers/reports.py](/api/routers/reports.py).
 
 ## 13. Recommended Next Priorities
-1. **LLM-driven motif labeling**: current motif clustering is rule-based on `(subtype, phase, eco_family)`. Next pass: name each cluster with an LLM ("back-rank weakness in C-family middlegames") so dashboard surfacing reads like coaching, not telemetry.
-2. **Surface motifs and SRS-due nodes in the dashboard UI**: backend exposes `/api/product/motifs/latest` and `srs_due_nodes` in the training queue; the dashboard doesn't read them yet.
-3. **Job retry policy**: extend the durable `job_ledger` with retry counters and exponential backoff on transient failures.
-4. **Auth hardening**: deprecate the `ADMIN_TOKEN`-as-password fallback in [api/auth_service.py](/api/auth_service.py); require `ADMIN_PASSWORD_HASH` in production with a startup warning otherwise.
-5. **Frontend maintainability**: split `dashboard.js` and `review.js` into smaller submodules (render/state/actions).
-6. **AI safety/quality**: tighten chat input constraints; add per-mode timeouts and a fallback message when Ollama is slow.
-7. **Data lifecycle**: retention policy for `player_model_snapshots`, `analytics_snapshots`, and stale SRS items. (`mistake_motifs` already has a 5-snapshot rolling cap.)
-8. **Performance**: instrument slow SQL endpoints (`critical mistakes`, `heatmap`, `get_stats` bundle) with query plans before they degrade past 200k moves.
+1. **Frontend module split** — `dashboard.js` (~970 lines after focus mode) and `review.js` (638 lines) into render/state/actions submodules.
+2. **Extract auth-form arbitrary-value cluster** — single biggest remaining offender is the auth modal in `index.html` (`max-w-[420px]` + `rounded-[24px]` + `bg-[linear-gradient(...)]` + `shadow-[0_24px_80px_...]`). One CSS class would clear ~5 literals.
+3. **Promotion UI** — when a pawn drag/click reaches rank 1 or 8, prompt for promotion piece. Drills currently match correctly because they compare from+to, but real games would need the explicit choice.
+4. **"What if" drag mode on review board** — drag an alternative move and show eval delta from Stockfish. Adds exploration to the existing navigation board.
+5. **Dashboard hide-by-default for `dashboard-focused` users** — currently the toggle requires JS to apply the body class on render. If localStorage says focused, set the class server-side via a meta-cookie or before view template loads.
+6. **Continue Tailwind ratchet** — gate at 50, current 43. Next likely targets: auth-form cluster (5 literals together), `h-[180px]/[190px]/[210px]` chart heights.
 
 ## 14. AI Guidance Section (For Future Assistants)
 

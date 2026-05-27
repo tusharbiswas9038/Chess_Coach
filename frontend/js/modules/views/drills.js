@@ -104,7 +104,15 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
       lastTo,
       hintSquare: hintShown ? parseUCI(correctUCI).from : null,
       onSquareClick: handleSquareClick,
+      onMove: handleDragMove,
+      isDraggable: (_sq, piece) => !answered && piece[0] === currentTurn,
     });
+  }
+
+  function handleDragMove(from, to) {
+    if (answered) return;
+    selectedSq = null;
+    checkAnswer(from, to, from + to);
   }
 
   function handleSquareClick(sq) {

@@ -125,3 +125,19 @@ def latest_motifs(request: Request, limit: int = 8):
     payload = {"motifs": motifs, "count": len(motifs)}
     _CACHE.set(cache_key, payload)
     return payload
+
+
+@router.post("/motifs/clear-labels")
+def clear_motif_labels_endpoint(request: Request):
+    """
+    Wipe all coach_label values so the next analyze/player-model job
+    regenerates them. Useful when prompt style changes.
+    """
+    from api.security import require_admin_if_configured
+    from api.services.mistake_motifs import clear_motif_labels
+
+    require_admin_if_configured(request)
+    enforce_rate_limit(request, bucket="product-motifs-clear", limit=10, window_sec=60)
+    cleared = clear_motif_labels()
+    _CACHE.clear()
+    return {"status": "cleared", "rows": cleared}

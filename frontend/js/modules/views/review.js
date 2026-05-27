@@ -436,6 +436,10 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
 
   async function loadGameDetail(gameId) {
     showView('game-detail');
+    const targetUrl = `/games/${encodeURIComponent(gameId)}`;
+    if (`${window.location.pathname}` !== targetUrl) {
+      window.history.replaceState({ view: 'game-detail', gameId }, '', targetUrl);
+    }
     const container = dom.byId('game-detail-content');
     container.innerHTML = loadingStateMarkup('Loading game review…');
 

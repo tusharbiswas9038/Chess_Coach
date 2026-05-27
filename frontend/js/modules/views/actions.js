@@ -114,6 +114,29 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
     }
   }
 
+  async function triggerClearMotifLabels() {
+    const btn = dom.byId('btn-clear-motif-labels');
+    if (!btn) return;
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = 'Clearing…';
+    try {
+      const result = await apiPost(endpoints.motifsClearLabels(), {});
+      const rows = Number(result?.rows ?? 0);
+      toast(
+        rows
+          ? `Cleared ${rows} motif label${rows === 1 ? '' : 's'}. Run analyze to regenerate.`
+          : 'No motif labels to clear.'
+      );
+    } catch (e) {
+      toast(`Could not clear motif labels: ${e.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+      closeActionsMenu();
+    }
+  }
+
   async function generateReport(gameId) {
     toast('Generating coach note — takes ~30 seconds...');
     try {
@@ -168,6 +191,7 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
     dom.byId('btn-sync').addEventListener('click', triggerSync);
     dom.byId('btn-analyze').addEventListener('click', triggerAnalyze);
     dom.byId('btn-db-maintenance')?.addEventListener('click', triggerDbMaintenance);
+    dom.byId('btn-clear-motif-labels')?.addEventListener('click', triggerClearMotifLabels);
     dom.byId('btn-logout')?.addEventListener('click', async () => {
       closeActionsMenu();
       await onLogout?.();

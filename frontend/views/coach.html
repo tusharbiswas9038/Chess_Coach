@@ -9,12 +9,12 @@
                       what to study before the next rapid session.
                     </p>
                   </div>
-                  <button class="btn btn-ghost max-sm:min-h-[40px] max-sm:w-full max-sm:justify-center" id="btn-coach-clear" type="button">
+                  <button class="btn btn-ghost max-sm:tap-40 max-sm:w-full max-sm:justify-center" id="btn-coach-clear" type="button">
                     Clear Chat
                   </button>
                 </div>
 
-                <div class="coach-messages flex max-h-[58vh] min-h-[390px] flex-col gap-2 overflow-y-auto p-5 max-sm:min-h-[280px] max-sm:max-h-[52vh] max-sm:p-3" id="coach-messages" aria-live="polite">
+                <div class="coach-messages coach-pane flex flex-col gap-2 overflow-y-auto p-5 max-sm:p-3" id="coach-messages" aria-live="polite">
                   <div class="coach-empty space-y-3">
                     <div class="empty alert alert-neutral border border-[var(--border)] bg-[var(--surface-2)] py-4 text-[var(--text)]" role="status">
                       <div class="empty-icon text-base leading-none">♟</div>
@@ -45,7 +45,7 @@
                     <span class="field-label">Question</span>
                     <textarea
                       id="coach-input"
-                      class="coach-input textarea textarea-bordered min-h-[120px] w-full"
+                      class="coach-input coach-input-tall textarea textarea-bordered w-full"
                       rows="4"
                       placeholder="Example: What should I fix before my next 10+0 game?"
                     ></textarea>
@@ -54,7 +54,7 @@
                     <div class="meta-label" id="coach-status" role="status" aria-live="polite">
                       Ready
                     </div>
-                    <button class="btn btn-primary w-full max-w-[240px] tracking-[0.08em] max-sm:max-w-none" id="btn-coach-send" type="submit">
+                    <button class="btn btn-primary w-full max-w-[240px] tracking-kicker max-sm:max-w-none" id="btn-coach-send" type="submit">
                       Ask Coach
                     </button>
                   </div>
@@ -63,7 +63,7 @@
 
               <aside class="coach-sidebar grid gap-2">
                 <div class="coach-panel panel-quiet p-3">
-                  <div class="coach-panel-title mb-2 text-[14px] font-bold">Coach Flow</div>
+                  <div class="coach-panel-title mb-2 text-md font-bold">Coach Flow</div>
                   <div class="wizard-stepper stepper-rail">
                     <div class="coach-step">
                       <span class="coach-step-index">1</span>
@@ -90,25 +90,25 @@
                 </div>
 
                 <div class="coach-panel panel-quiet p-3">
-                  <div class="coach-panel-title mb-2 text-[14px] font-bold">Quick Questions</div>
+                  <div class="coach-panel-title mb-2 text-md font-bold">Quick Questions</div>
                   <div class="coach-prompt-list grid grid-cols-1 gap-1">
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-mode="quick_answer" data-coach-prompt="What should I study today based on my recent games?" type="button">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-sm" data-coach-mode="quick_answer" data-coach-prompt="What should I study today based on my recent games?" type="button">
                       What should I study today?
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-mode="deep_lesson" data-coach-prompt="What is my biggest recurring weakness and how do I fix it in one week?" type="button">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-sm" data-coach-mode="deep_lesson" data-coach-prompt="What is my biggest recurring weakness and how do I fix it in one week?" type="button">
                       Biggest recurring weakness
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-mode="pre_game_prep" data-coach-prompt="Give me a 20 minute warm-up routine before I play rapid chess." type="button">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-sm" data-coach-mode="pre_game_prep" data-coach-prompt="Give me a 20 minute warm-up routine before I play rapid chess." type="button">
                       20 minute warm-up
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-[13px]" data-coach-mode="pre_game_prep" data-coach-prompt="Which openings are currently hurting my results most?" type="button">
+                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-sm" data-coach-mode="pre_game_prep" data-coach-prompt="Which openings are currently hurting my results most?" type="button">
                       Opening weaknesses
                     </button>
                   </div>
                 </div>
 
                 <div class="coach-panel panel-quiet p-3">
-                  <div class="coach-panel-title mb-2 text-[14px] font-bold">Current Context</div>
+                  <div class="coach-panel-title mb-2 text-md font-bold">Current Context</div>
                   <div class="coach-context-list">
                     <div class="coach-context-row">
                       <span>Rating</span>

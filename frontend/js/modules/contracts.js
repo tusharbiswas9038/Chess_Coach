@@ -43,6 +43,7 @@ export const endpoints = {
   playerModelLatest: () => '/api/product/player-model/latest',
   insightsLatest: () => '/api/product/insights/latest',
   motifsLatest: (limit = 8) => `/api/product/motifs/latest?limit=${limit}`,
+  motifsClearLabels: () => '/api/product/motifs/clear-labels',
   drillsResult: () => '/api/drills/result',
   drillsDue: (limit = 15, refresh = false, mode = 'adaptive', motif = '') =>
     `/api/drills/due?limit=${limit}${refresh ? '&refresh=true' : ''}&mode=${encodeURIComponent(mode)}${motif ? `&motif=${encodeURIComponent(motif)}` : ''}`,

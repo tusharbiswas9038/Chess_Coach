@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 import time
 from typing import Any
@@ -9,11 +10,26 @@ from typing import Any
 import config
 
 
+log = logging.getLogger("chess_coach.auth")
+
 PBKDF2_ALGORITHM = "pbkdf2_sha256"
 
 
 def auth_required() -> bool:
     return bool(config.ADMIN_TOKEN or config.ADMIN_PASSWORD_HASH or config.is_production())
+
+
+def password_hash_configured() -> bool:
+    return bool(config.ADMIN_PASSWORD_HASH)
+
+
+def admin_token_fallback_active() -> bool:
+    """
+    True when login will accept the admin token in place of a password.
+    This fallback is only meant for the transition period before
+    `ADMIN_PASSWORD_HASH` is set; production refuses to start without it.
+    """
+    return bool(config.ADMIN_TOKEN and not config.ADMIN_PASSWORD_HASH)
 
 
 def _b64_encode(raw: bytes) -> str:
@@ -50,9 +66,16 @@ def verify_admin_login(username: str, password: str) -> bool:
         return False
     if config.ADMIN_PASSWORD_HASH:
         return verify_password(password, config.ADMIN_PASSWORD_HASH)
-    if config.ADMIN_TOKEN:
-        # Transitional fallback: allows first-party sessions before a password hash is configured.
-        return hmac.compare_digest(password, config.ADMIN_TOKEN)
+    if config.ADMIN_TOKEN and not config.is_production():
+        # Transitional fallback: only honored outside production. Production
+        # startup validation refuses to boot without ADMIN_PASSWORD_HASH.
+        ok = hmac.compare_digest(password, config.ADMIN_TOKEN)
+        if ok:
+            log.warning(
+                "admin_login_fallback_used: ADMIN_TOKEN accepted as password — "
+                "set ADMIN_PASSWORD_HASH and remove this fallback."
+            )
+        return ok
     return False
 
 
