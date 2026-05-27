@@ -1,18 +1,20 @@
 # PROJECT_INTELLIGENCE
 
-> **Last verified:** 2026-05-28 (Horizons 1–13 polish — coach memory, repertoire ↔ SRS bridge, opening-aware coaching, motif clustering + LLM labeling, weekly report reflection, hanging-rate fix, Ollama timeouts + circuit breaker, retention policy, URL state, accessibility pass, dashboard motifs panel + insights extraction, job retry policy, auth hardening, slow-query instrumentation @ 250ms, motif-driven drill priority, heatmap perf fix (770ms→12ms), drag-and-drop board, dashboard focus mode, promotion UI, what-if drag with arrow + persistence + depth slider + engine pool + LRU cache + click-to-move + cache-warm + extracted controller, review.js split, dashboard.js split (970→770), inline-Tailwind ratchet 165→22).
+> **Last verified:** 2026-05-28 (Horizons 1–14 polish — coach memory, repertoire ↔ SRS bridge, opening-aware coaching, motif clustering + LLM labeling, weekly report reflection, hanging-rate fix, Ollama timeouts + circuit breaker, retention policy, URL state, accessibility pass, dashboard motifs panel + insights extraction, job retry policy, auth hardening, slow-query instrumentation @ 250ms, motif-driven drill priority, heatmap perf fix (770ms→12ms), drag-and-drop board, dashboard focus mode (default-on after H14), promotion UI, what-if drag with arrow + persistence + depth slider + engine pool + LRU cache + click-to-move + cache-warm + extracted controller, review.js split, dashboard.js split (970→770), PWA + design-token pipeline + Lit primitives, inline-Tailwind ratchet 165→22).
 
 ## 1. Executive Summary
 - **Product**: Self-hosted AI chess coaching platform for a single player (`CHESS_USERNAME`, default `Tushar9038`) that syncs Chess.com rapid games, analyzes them with Stockfish, extracts mistakes, generates drills, and provides AI coaching/reports.
 - **Primary goals**: Convert raw game history into actionable improvement loops (analyze -> prioritize -> drill -> coach).
-- **Target use case**: Personal training dashboard (not multi-tenant SaaS), desktop-first but mobile-usable.
-- **Current maturity**: **Functional beta**. Core flows work end-to-end; architecture is coherent but still has notable technical debt and scaling/security limitations.
+- **Target use case**: Personal training dashboard (not multi-tenant SaaS), desktop-first but mobile-usable. **PWA-installable** as of H14.
+- **Current maturity**: **Functional beta, polished**. Core flows work end-to-end; architecture is coherent. 14 horizons of polish on top of the original audit baseline.
 
 ## 2. Tech Stack
 
 | Area | Stack |
 |---|---|
-| Frontend | Vanilla JS (ES modules), Chart.js CDN, Tailwind CSS v4 + daisyUI |
+| Frontend | Vanilla JS (ES modules), Chart.js CDN, Tailwind CSS v4 + daisyUI, **Lit web components** (loaded via jsdelivr, light DOM) |
+| Frontend tokens | `frontend/design/tokens.json` → `theme.ts` (RN-shape) via `build-tokens.mjs` |
+| PWA | `manifest.webmanifest` + `sw.js` at root scope; 3-tier cache strategy |
 | Backend | FastAPI 0.128.3, Starlette 0.49.1, Uvicorn |
 | DB | SQLite (`data/chess.db`) with WAL, foreign keys enabled |
 | Chess engine | `python-chess` + local Stockfish binary (`/usr/games/stockfish`) |
@@ -214,23 +216,39 @@ Core tables: `games`, `moves`, `mistakes`, `srs_items`, `player_profile`, `playe
 - Stockfish and Ollama are local bottlenecks; analysis/chat throughput limited by host CPU/RAM.
 
 ## 12. Technical Debt & Risks
-- **Resolved (2026-05-28):** dashboard module split — `dashboard-motifs.js` (87 lines) and `dashboard-insights.js` (139 lines) extracted. `dashboard.js` dropped from 970 → 770 lines.
-- **Resolved (2026-05-28):** cache-warm critical position on review entry — `loadGameDetail` fires a fire-and-forget what-if for the critical mistake's played move ~250ms after render, so the engine has the position warm by the time the user drags an alternative.
-- **Resolved (2026-05-28):** what-if LRU cache (256 entries, depth-aware), click-to-move parity, review-whatif extraction.
-- **Resolved (2026-05-28):** what-if Stockfish pool, depth slider, hero typography, what-if best-move arrow + persistence.
-- **Resolved (2026-05-27/28):** durable `job_ledger`, retry policy, Ollama timeouts + circuit breaker, retention policy, URL state, accessibility, motif clustering + LLM labels, repertoire ↔ SRS bridge, hanging-rate fix, dashboard motifs panel + focus mode, drag-and-drop board, promotion UI, weekly-report reflection, auth hardening, slow-query instrumentation @ 250ms.
+- **Resolved (2026-05-28, H14):** PWA installable — `manifest.webmanifest` + `sw.js` at root scope, 3-tier cache strategy (shell stale-while-revalidate, fonts cache-first, drill-queue network-first-with-fallback), service worker registered lazily on `load` so it never blocks first paint.
+- **Resolved (2026-05-28, H14):** design token pipeline — `frontend/design/tokens.json` is single source; `build-tokens.mjs` generates RN-shape `theme.ts`. Style Dictionary deferred until needed.
+- **Resolved (2026-05-28, H14):** Lit primitives introduced — `<cc-empty-state>` and `<cc-skeleton>` as proof-of-shape; APIs documented in `frontend/design/COMPONENT_CONTRACTS.md`. Audit gate updated to require `@source "../js/components/**/*.js"`.
+- **Resolved (2026-05-28, H14):** dashboard focus mode now defaults on for new sessions; session-flow + charts row tagged `dashboard-secondary` so above-the-fold drops from 7+ sections to 4.
+- **Resolved (2026-05-28, H14):** color discipline (green=action, blue/purple=data-vis only) documented in STYLING_CONTRACT.md.
+- **Resolved (2026-05-28, H13):** dashboard module split — `dashboard-motifs.js` (87 lines) and `dashboard-insights.js` (139 lines) extracted. `dashboard.js` dropped from 970 → 770 lines.
+- **Resolved (2026-05-28, H13):** cache-warm critical position on review entry.
+- **Resolved (2026-05-28, H12):** what-if LRU cache (256 entries, depth-aware), click-to-move parity, review-whatif extraction.
+- **Resolved (2026-05-28, H11):** what-if Stockfish pool, depth slider, hero typography, what-if best-move arrow + persistence.
+- **Resolved (2026-05-27/28, H1–H10):** durable `job_ledger`, retry policy, Ollama timeouts + circuit breaker, retention policy, URL state, accessibility, motif clustering + LLM labels, repertoire ↔ SRS bridge, hanging-rate fix, dashboard motifs panel, drag-and-drop board, promotion UI, weekly-report reflection, auth hardening, slow-query instrumentation @ 250ms.
 - **Medium**: Mixed sync/async boundaries in report generation (thread-wrapped async).
 - **Medium**: `dashboard.js` ~770 lines and `review.js` ~700 lines remain the largest single modules — third-pass extraction targets are session-flow and game-meta-row.
 - **Low-medium**: Schema docs mostly aligned, but timestamp formats (text vs ISO vs `datetime()`) are not standardized.
 - **Low**: `BackgroundTasks` import unused in [api/routers/reports.py](/api/routers/reports.py).
 
 ## 13. Recommended Next Priorities
-1. **Continue dashboard module split** — `dashboard.js` is now 770 lines. Next extraction targets: session-flow controller, game-meta-row + KPI grid renderer, weekly-focus card.
-2. **Move drag-and-drop into the coach prompt builder** — let the user drag a position-aware question instead of typing FEN/UCI by hand.
-3. **What-if cache hit indicator** — UI shows "(cached)" suffix when present; could promote to a small visual pill instead of trailing text.
-4. **`review.js` polish-pass** — at 700 lines after the what-if extraction it's manageable but could split rendering helpers (`reviewModeConfig` + `renderReviewBoard` + `updateReviewSelectionStyles`) into a `review-render.js` sibling.
-5. **Promote `dashboard-secondary` opt-in to a documented pattern** — there are still cards that could be hidden under focus mode but aren't tagged.
-6. **Continue Tailwind ratchet selectively** — gate at 25, current 22. Pursue only when natural class extractions present themselves.
+
+The H14 plan defines Phase B (visual upgrade) and Phase C (component contract migration). These are the active queue:
+
+**Phase B — Visual upgrade**
+1. **`formatStat(metric, value)` helper** — translate raw stats to coach voice (e.g., "81.1% · piece-safety risk" instead of "81.1%"). Reuse in coach context, KPI subtitles, mistakes header.
+2. **Progressive disclosure** — collapse the openings repertoire form behind "Add a line" CTA; collapse games filter panel to "Filters (N active)" pill.
+3. **Drill micro-feedback** — green pulse on destination square + streak counter scale animation on correct; confirm modal before breaking streaks ≥5.
+4. **View-transition motion** — 120ms cross-fade on view switches (View Transitions API where supported, fall back to opacity).
+
+**Phase C — Component contract migration**
+5. **More Lit primitives** — `<cc-kpi-card>`, `<cc-section-header>`, `<cc-stat-pill>`, `<cc-motif-row>`. Each documented in COMPONENT_CONTRACTS.md.
+6. **Install-prompt chip** — capture `beforeinstallprompt`, show "Install Chess Coach" in actions menu after 3 sessions.
+7. **Offline drill buffering** — IndexedDB queue for drill results posted while offline; flush on `online` event.
+
+**Always-on**
+8. **Continue dashboard module split** — session-flow controller, game-meta-row + KPI grid renderer, weekly-focus card.
+9. **Continue Tailwind ratchet selectively** — gate at 25, current 22. Pursue only when natural class extractions present themselves.
 
 ## 14. AI Guidance Section (For Future Assistants)
 

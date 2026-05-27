@@ -96,19 +96,21 @@ X-ADMIN-TOKEN: <ADMIN_TOKEN>
 Current protected endpoint categories:
 
 - Job submission: `/api/jobs/*` write endpoints.
-- Job status: `/api/jobs/status`.
+- Job status: `/api/jobs/status`, `/api/jobs/ledger` (durable history, H1).
 - Session compute: `/api/sessions/compute`.
-- Report generation: `/api/reports/weekly`.
+- Report generation: `POST /api/reports/weekly`. Read endpoints `GET /api/reports/weekly/latest` and `GET /api/reports/weekly/{date}` (H1) are session-protected and rate-limited.
 - Drill mutation: `/api/drills/result`, `/api/drills/populate`.
 - Stats cache mutation: `/api/stats/clear_cache`.
-- Coach AI endpoints: `/api/coach/game/{game_id}`, `/api/coach/chat`, `/api/coach/batch`.
+- Coach AI endpoints: `/api/coach/game/{game_id}`, `/api/coach/chat`, `/api/coach/batch`, `/api/coach/feedback` (H1, thumbs rating).
+- What-if Stockfish endpoint (H9–H12): `POST /api/games/whatif` is session-protected and rate-limited (`whatif` bucket, 20/min).
 - Puzzle generation: `/api/drills/generate-puzzles`.
 - Opening repertoire mutation: `POST/PUT/DELETE /api/openings/repertoire*`.
 - Opening training mutation: `POST /api/openings/training/result`.
+- Product/motifs: `/api/product/motifs/latest` (read), `/api/product/motifs/clear-labels` (admin mutation, H6).
 - Operational endpoints: `/api/ready`, `/api/metrics`.
 - Debug endpoints: `/api/debug/*` when enabled.
 
-If `ADMIN_PASSWORD_HASH` is not set but `ADMIN_TOKEN` is set, login temporarily accepts the admin token as the password. This is only a migration fallback; production should use `ADMIN_PASSWORD_HASH`.
+If `ADMIN_PASSWORD_HASH` is not set but `ADMIN_TOKEN` is set, login temporarily accepts the admin token as the password — **only outside production**. As of H4 (`api/auth_service.py`, `config.py`), production startup refuses to boot when `ADMIN_PASSWORD_HASH` is unset, with an actionable error pointing at the password-hash generation command. The fallback also logs a warning per use (in dev) so it's never silently relied on.
 
 ## 5. Rate Limiting
 
@@ -136,13 +138,19 @@ Current common buckets:
 - `coach-chat`: coach chat, 30/minute.
 - `coach-game`: game coaching generation, 10/minute.
 - `coach-batch`: batch coach reports, 5/minute.
+- `coach-feedback`: thumbs rating writes, 60/minute (H1).
+- `whatif`: review-board what-if Stockfish calls, 20/minute (H9).
 - `stats-read`: analytics reads, 120/minute.
 - `stats-write`: cache clearing, 10/minute.
 - `product-insights`: latest precomputed insights snapshot, 60/minute.
 - `product-player-model`: latest player model snapshot, 60/minute.
+- `product-motifs`: motif snapshot reads, 60/minute (H5).
+- `product-motifs-clear`: motif label refresh, 10/minute (H6).
+- `product-weekly-focus`: weekly focus + actions, 60/minute.
 - `drills-read`: due drills, 120/minute.
-- `drills-write`: drill mutation and puzzle generation, 5-60/minute depending on endpoint.
+- `drills-write`: drill mutation and puzzle generation, 5–60/minute depending on endpoint.
 - `reports-write`: weekly report generation, 5/minute.
+- `reports-read`: weekly report reads, 60/minute (H1).
 
 ## 6. CORS, Hosts, and CSP
 
@@ -388,6 +396,12 @@ Recent additive migrations are managed in `api/db_migrations.py`.
 | `007_create_puzzle_ecosystem` | `puzzles`, `puzzle_sources`, `srs_items.puzzle_id`, puzzle/SRS indexes. |
 | `008_create_opening_repertoire_tables` | `repertoire_lines`, `repertoire_nodes`, `opening_training_history`, repertoire/training indexes. |
 | `009_create_analytics_snapshot_tables` | `analytics_snapshots`, `insight_slice_stats`, `trend_deltas`, analytics indexes, `player_model_snapshots.behavioral_tags`, `player_model_snapshots.stability_score`. |
+| `010_create_coach_memory_and_job_ledger` (H1) | `coach_sessions.user_rating`; `job_ledger` table for durable job tracking with status/timing/error fields and indexes on `(status, enqueued_at)` and `finished_at`. |
+| `011_create_repertoire_node_srs` (H2) | `repertoire_node_srs` — SM-2 schedule for opening recall results. Bridges repertoire training into the spaced-repetition queue. |
+| `012_create_mistake_motifs` (H2) | `mistake_motifs` snapshot table (cluster_key, subtype, phase, opening_family, occurrences, avg_eval_loss, example fields) with indexes on `(computed_at, occurrences)` and `(cluster_key, computed_at)`. |
+| `013_job_ledger_retry_columns` (H4) | `job_ledger.retry_count`, `job_ledger.max_retries`, `job_ledger.next_retry_at`. Transient failures retry per `DEFAULT_MAX_RETRIES_BY_KIND`. |
+| `014_mistake_motifs_labels` (H5) | `mistake_motifs.coach_label`, `mistake_motifs.labeled_at` — LLM-generated one-line labels (sanitizer trims bullets/quotes/length). Labels carry forward on recompute when `cluster_key` matches (H6). |
+| `015_create_whatif_attempts` (H10) | `whatif_attempts` — interactive Stockfish queries from review-board what-if drag (fen, attempted_uci, best_uci, eval_before/after, delta_cp, depth). Rolling 500-row cap; coach context surfaces last 5 as `RECENT WHAT-IF EXPLORATIONS`. |
 
 Schema design notes:
 
@@ -399,19 +413,58 @@ Schema design notes:
 - `opening_training_history` stores local recall outcomes for repertoire training.
 - `analytics_snapshots.payload_json` preserves the full computed snapshot, while `insight_slice_stats` and `trend_deltas` keep query-friendly materialized rows.
 - `player_model_snapshots.behavioral_tags` is JSON text, not user-provided executable content.
+- `job_ledger` is the durability layer for the in-process job queue. Every enqueue/start/finish writes a row; orphans (`queued`/`running` at startup) are reconciled to `failed` with `error="lost on restart"`. `retry_count`/`max_retries`/`next_retry_at` drive transient-failure retries.
+- `repertoire_node_srs` runs an SM-2 schedule per repertoire node; `remembered`→quality 2, `missed`→quality 0, `skipped`→no-op. Decoupled from `srs_items` (which schedules mistake drills).
+- `mistake_motifs` is a rolling snapshot — at most a few hundred rows. Each `compute_mistake_motifs()` call writes a new `computed_at` cohort and prunes older snapshots beyond the 5-snapshot retention window. `coach_label` is generated by the 7B Ollama model and sanitized before write; carries forward across recomputes when `cluster_key` matches.
+- `whatif_attempts` is append-only with a per-insert rolling 500-row cap. Coach context reads the last 5; long-tail rows age out automatically.
 
-## 16. Known Security Limitations
+## 16. AI and Engine Safety: What-If Endpoint
+
+`POST /api/games/whatif` (H9) lets the user drag any move on the review board and get a Stockfish evaluation. Treated as a privileged endpoint:
+
+- **Auth.** Session-protected via the global API auth middleware.
+- **Rate limit.** `whatif` bucket, 20/minute per IP.
+- **Input validation.** `WhatIfBody` (Pydantic) validates `fen` (10–120 chars), `move` (4–5 char UCI), and optional `depth` (8–22). The engine layer (`engine/eval_position.evaluate_what_if`) re-validates the FEN with `chess.Board(fen).is_valid()` and confirms the move is legal in that position before invoking Stockfish — bad input returns a 400 with a descriptive message instead of crashing the engine.
+- **Timeouts.** Per-call deadline of 8 seconds. Depth clamped server-side to `[8, 22]`.
+- **Engine reuse.** Module-level singleton with `threading.Lock` (H11). On `EngineTerminatedError` the engine respawns once. `atexit.register` cleans up on shutdown.
+- **Cache.** LRU keyed on `(fen, uci, depth)`, capped at 256 entries. Repeated lookups return in 0ms.
+- **Persistence.** Every successful call logs to `whatif_attempts` (rolling 500-row cap). Failures don't crash the request path — the persistence wrapper catches and discards.
+- **Don't expose to the internet.** Stockfish is a local CPU resource; the endpoint should stay behind the same network boundary as the rest of the API.
+
+## 17. PWA / Service Worker
+
+The frontend is PWA-installable as of H14. Two static assets ship at root scope:
+
+- `GET /manifest.webmanifest` (`api.main.serve_manifest`) — app metadata, two shortcuts (Drills, Coach).
+- `GET /sw.js` (`api.main.serve_service_worker`) — service worker controlling all paths.
+
+Both are served with `Cache-Control: no-cache` so updates land on the next reload. The service worker keeps three named caches (suffixed with `CACHE_VERSION`):
+
+- `cc-shell-v1` — stale-while-revalidate for HTML/CSS/JS/view templates.
+- `cc-fonts-v1` — cache-first for Manrope (`fonts.gstatic.com`).
+- `cc-api-v1` — network-first with cached fallback. **Only `/api/drills/due` is cached.** All other API calls pass through; mutations are never cached.
+
+CSP implications:
+
+- `worker-src` falls back to `script-src 'self'`, which is sufficient — `sw.js` is same-origin.
+- `manifest-src` falls back to `default-src 'self'`, also same-origin.
+- No CSP changes were needed for PWA support.
+
+If you change `frontend/sw.js`, bump `CACHE_VERSION` so the `activate` handler invalidates the old shell cache. See OPERATIONS_RUNBOOK.md §12 for the full PWA ops playbook.
+
+## 18. Known Security Limitations
 
 Current limitations to keep visible:
 
-- No multi-user authentication or role model.
+- No multi-user authentication or role model. **By design** — single-user is the project center.
 - Sessions are signed cookies, not server-side revocable sessions. Rotate `APP_SECRET_KEY` to invalidate all sessions.
 - SQLite rate limiting is good for self-hosted use but not a distributed multi-instance deployment.
-- CSP still allows the current Chart.js CDN and configured domain; remove unused external sources if dependencies are fully local.
+- CSP allows the current Chart.js CDN (`cdn.jsdelivr.net`, also used for the Lit ESM bundle as of H14) and the configured production domain; remove unused external sources if dependencies become fully local.
 - `ALLOWED_HOSTS` and `CORS_ORIGINS` must be set correctly for each deployment.
-- Coach sessions store prompts/replies locally. Treat `data/chess.db` as sensitive because it contains personal game data and AI chat content.
-- Puzzle/drill endpoints expose derived game mistakes to authenticated users. Do not make them public.
+- Coach sessions, motif labels, and what-if attempts store prompts/replies/positions locally. Treat `data/chess.db` as sensitive because it contains personal game data, AI chat content, and exploration history.
+- Puzzle/drill/whatif endpoints expose derived game positions to authenticated users. Do not make them public.
 - Repertoire and insight endpoints expose personal preparation strategy and weakness patterns. Do not make them public.
+- `ADMIN_TOKEN`-as-password fallback is gated to non-production (H4); production refuses to boot without `ADMIN_PASSWORD_HASH`.
 
 ## 17. Before Production Checklist
 
