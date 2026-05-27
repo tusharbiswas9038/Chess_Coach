@@ -1,0 +1,35 @@
+{
+  "name": "Chess Coach",
+  "short_name": "Coach",
+  "description": "Personal AI chess coaching with mistake-driven drills, what-if analysis, and memoryful coaching.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
+  "categories": ["education", "games", "productivity"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/static/favicon.ico",
+      "sizes": "48x48 64x64",
+      "type": "image/x-icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Daily Drills",
+      "short_name": "Drills",
+      "description": "Today's spaced-repetition queue",
+      "url": "/drills"
+    },
+    {
+      "name": "Ask Coach",
+      "short_name": "Coach",
+      "description": "Memoryful chess coaching",
+      "url": "/coach"
+    }
+  ]
+}

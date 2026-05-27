@@ -44,3 +44,29 @@ Project gate command:
 ```bash
 npm run frontend:gate
 ```
+
+## Color Discipline
+
+The dark theme has three saturated colors at near-equal weight: `--primary`
+(green), `--info` / `--blue` (#58a6ff), and `--analytics` (#a855f7). When all
+three appear in the same view at similar saturation they fight for attention
+and the screen reads "dashboard" instead of "premium product."
+
+Rules going forward:
+
+- **Green = action.** Primary CTAs, active nav state, "improving" trend
+  arrows, drill-correct feedback, success badges. If something is green in
+  the UI chrome, it should mean "do this" or "this got better."
+- **Blue and purple are data-vis only.** Use them inside chart series,
+  heatmap legends, and the analytics surface (`.analytics-panel`,
+  trend-deltas, opening genome). Avoid them on buttons, pills, status
+  text, or border accents.
+- **Errors and warnings stay semantic.** Use `--error` and `--warning`;
+  do not improvise red/amber accents.
+- **Neutral grays carry density.** When in doubt, reach for `--muted`,
+  `--faint`, or `--surface-2` before a saturated accent.
+
+Existing primitives already follow this — `.active-pill`, `.quality-pill`,
+`.btn-primary`, `.tap-44` active states, drill-feedback green flashes. The
+discipline applies to new code, not a bulk recolor.
+

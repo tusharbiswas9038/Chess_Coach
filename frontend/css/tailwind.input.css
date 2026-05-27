@@ -4,6 +4,7 @@
 @source "../js/**/*.js";
 @source "../js/modules/ui.js";
 @source "../js/modules/views/**/*.js";
+@source "../js/components/**/*.js";
 
 @theme {
   --breakpoint-sm: 40rem;

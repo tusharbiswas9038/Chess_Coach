@@ -1,4 +1,3 @@
-import { emptyStateMarkup } from '../ui.js';
 import { createDomCache } from '../dom.js';
 import { endpoints } from '../contracts.js';
 
@@ -38,7 +37,7 @@ export function createCoachView({
     if (!coachHistory.length && !pending) {
       container.innerHTML = `
         <div class="coach-empty space-y-3">
-          ${emptyStateMarkup('No coach conversation yet', '♟', false)}
+          <cc-empty-state title="No coach conversation yet" icon="♟"></cc-empty-state>
           <div class="coach-empty-copy text-sm text-[var(--muted)]">
             Pick a prompt or ask a direct question. The coach will use your current chess data as context.
           </div>

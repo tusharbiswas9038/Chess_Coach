@@ -6,6 +6,22 @@ import { clearAllCaches } from './modules/cache.js';
 import { loadSectionTemplate } from './modules/viewLoader.js';
 import { createAuthGate } from './modules/auth.js';
 import { maybeShowOnboarding } from './modules/onboarding.js';
+// Lit-powered design primitives. Side-effect imports register the
+// custom elements globally so any view can use them without per-view
+// boilerplate.
+import './components/cc-empty-state.js';
+import './components/cc-skeleton.js';
+
+// Register the service worker if the browser supports it. We register lazily
+// so it never blocks first paint, and silently swallow errors — the app
+// works fine without it; the worker is purely an offline + caching upgrade.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
+      console.warn('Service worker registration failed:', err);
+    });
+  });
+}
 
 if (typeof Chart === 'undefined') {
   document.body.innerHTML =

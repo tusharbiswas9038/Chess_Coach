@@ -147,9 +147,40 @@ def _serve_index() -> HTMLResponse:
     with open("frontend/index.html", "r") as f:
         return HTMLResponse(content=f.read())
 
+
+def _serve_static_file(path: str, media_type: str) -> Response:
+    """
+    Serve a single file from the frontend root with explicit caching off.
+    Used by /sw.js and /manifest.webmanifest, both of which must live at
+    root scope (the service worker can only control paths under its own
+    URL prefix; it would be useless under /static/sw.js).
+    """
+    with open(path, "rb") as f:
+        body = f.read()
+    return Response(
+        content=body,
+        media_type=media_type,
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
 @app.get("/", include_in_schema=False)
 async def serve_dashboard():
     return _serve_index()
+
+
+@app.get("/sw.js", include_in_schema=False)
+async def serve_service_worker():
+    # Browser limitation: a service worker's max scope is the directory of
+    # its own URL. Serving from /sw.js gives it scope "/", covering all
+    # SPA routes. Service-Worker-Allowed could widen this, but root-served
+    # is cleaner.
+    return _serve_static_file("frontend/sw.js", "application/javascript")
+
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+async def serve_manifest():
+    return _serve_static_file("frontend/manifest.webmanifest", "application/manifest+json")
 
 @app.get("/dashboard", include_in_schema=False)
 @app.get("/games", include_in_schema=False)

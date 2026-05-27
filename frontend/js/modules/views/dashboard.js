@@ -697,10 +697,15 @@ export function createDashboardView({
   const FOCUS_PREF_KEY = 'cc.dashboard.focus';
 
   function readFocusPref() {
+    // Default ON for new users so the first impression is calm. Users who
+    // explicitly toggle it off have their choice persisted; everyone else
+    // gets the curated four-section above-the-fold.
     try {
-      return window.localStorage.getItem(FOCUS_PREF_KEY) === '1';
+      const raw = window.localStorage.getItem(FOCUS_PREF_KEY);
+      if (raw === null) return true;
+      return raw === '1';
     } catch (_) {
-      return false;
+      return true;
     }
   }
 
