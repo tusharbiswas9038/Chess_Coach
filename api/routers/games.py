@@ -1,9 +1,11 @@
 from typing import Any, List, Dict, Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
+from pydantic import BaseModel, Field
 
 
 from api.repositories.game_repository import GameRepository
 from api.dependencies import get_game_repo
+from api.security import enforce_rate_limit
 
 router = APIRouter(tags=["games"])
 
@@ -80,3 +82,65 @@ def get_critical_moment(game_id: str, repo: GameRepository = Depends(get_game_re
     """Return the single most impactful mistake in this game."""
     result = repo.get_critical_moment_for_game(game_id)
     return result if result else {}
+
+
+class WhatIfBody(BaseModel):
+    fen: str = Field(..., min_length=10, max_length=120)
+    move: str = Field(..., min_length=4, max_length=5)
+    depth: Optional[int] = Field(default=None, ge=8, le=22)
+
+
+@router.post("/whatif")
+def evaluate_whatif(request: Request, body: WhatIfBody):
+    """
+    Stockfish-evaluate a hypothetical move from a position. Used by the
+    review board's what-if drag to show the eval delta of an alternative
+    move without persisting anything.
+    """
+    enforce_rate_limit(request, bucket="whatif", limit=20, window_sec=60)
+    from engine.eval_position import evaluate_what_if, DEFAULT_WHATIF_DEPTH
+
+    move = body.move.lower()
+    depth = body.depth if body.depth is not None else DEFAULT_WHATIF_DEPTH
+    result = evaluate_what_if(body.fen, move, depth=depth)
+    if not result.get("ok"):
+        raise HTTPException(400, result.get("error") or "Could not evaluate")
+
+    # Log the attempt so the coach can later reference exploration history.
+    # Failures here are non-fatal — what-if remains primarily interactive.
+    try:
+        from api.db import db_conn
+
+        with db_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO whatif_attempts
+                    (fen, attempted_uci, best_uci, eval_before, eval_after, delta_cp, depth)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    body.fen,
+                    move,
+                    result.get("best_move"),
+                    result.get("eval_before"),
+                    result.get("eval_after"),
+                    result.get("delta"),
+                    result.get("depth"),
+                ),
+            )
+            # Keep the rolling log bounded — last 500 attempts is plenty for
+            # context windows; older ones get pruned each call.
+            conn.execute(
+                """
+                DELETE FROM whatif_attempts
+                WHERE id NOT IN (
+                    SELECT id FROM whatif_attempts ORDER BY id DESC LIMIT 500
+                )
+                """
+            )
+            conn.commit()
+    except Exception:
+        # Pure logging concern — don't fail the user's interactive call.
+        pass
+
+    return result

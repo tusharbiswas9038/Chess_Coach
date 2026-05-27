@@ -287,6 +287,27 @@ def _mistake_motifs_label_columns(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(conn, "mistake_motifs", "labeled_at", "TEXT")
 
 
+def _create_whatif_attempts(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS whatif_attempts (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+            fen             TEXT NOT NULL,
+            attempted_uci   TEXT NOT NULL,
+            best_uci        TEXT,
+            eval_before     INTEGER,
+            eval_after      INTEGER,
+            delta_cp        INTEGER,
+            depth           INTEGER
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_whatif_attempts_recent ON whatif_attempts(created_at DESC)"
+    )
+
+
 def _create_mistake_motifs(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
@@ -431,6 +452,7 @@ MIGRATIONS: List[Migration] = [
     ("012_create_mistake_motifs", _create_mistake_motifs),
     ("013_job_ledger_retry_columns", _job_ledger_retry_columns),
     ("014_mistake_motifs_labels", _mistake_motifs_label_columns),
+    ("015_create_whatif_attempts", _create_whatif_attempts),
 ]
 
 

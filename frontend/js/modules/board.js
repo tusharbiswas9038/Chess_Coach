@@ -82,6 +82,73 @@ export function applyMove(pos, uci, turn) {
 // rather than a click. Below this we let click-to-move take over.
 const DRAG_THRESHOLD_PX = 6;
 
+// Pawn promotion: returns true when the move would land a pawn on its
+// promotion rank. The board widget doesn't validate move legality (the
+// callers do), but we always need to know whether to ask for a piece.
+export function requiresPromotion(piece, from, to) {
+  if (!piece || piece[1] !== 'P') return false;
+  if (piece[0] === 'w' && from?.[1] === '7' && to?.[1] === '8') return true;
+  if (piece[0] === 'b' && from?.[1] === '2' && to?.[1] === '1') return true;
+  return false;
+}
+
+// Show a small 4-piece picker (Q/R/B/N). Resolves to a UCI promo char
+// ('q'|'r'|'b'|'n'). Esc / click-outside resolves to 'q' — sensible default
+// for almost every real position. Anchored under the document body so the
+// stacking context is independent of the board's scroll container.
+export function pickPromotion(turn = 'w') {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'promotion-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-label', 'Choose promotion piece');
+
+    const panel = document.createElement('div');
+    panel.className = 'promotion-panel';
+    const choices = [
+      { key: 'q', label: turn === 'w' ? '♕' : '♛' },
+      { key: 'r', label: turn === 'w' ? '♖' : '♜' },
+      { key: 'b', label: turn === 'w' ? '♗' : '♝' },
+      { key: 'n', label: turn === 'w' ? '♘' : '♞' },
+    ];
+
+    function close(value) {
+      overlay.remove();
+      window.removeEventListener('keydown', onKey);
+      resolve(value);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close('q');
+      } else if (['q', 'r', 'b', 'n'].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+        close(e.key.toLowerCase());
+      }
+    }
+
+    choices.forEach((c) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `promotion-choice promotion-choice-${turn}`;
+      btn.dataset.promo = c.key;
+      btn.setAttribute('aria-label', `Promote to ${c.key.toUpperCase()}`);
+      btn.textContent = c.label;
+      btn.addEventListener('click', () => close(c.key));
+      panel.appendChild(btn);
+    });
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close('q');
+    });
+    window.addEventListener('keydown', onKey);
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    panel.querySelector('.promotion-choice')?.focus();
+  });
+}
+
 export function renderPositionBoard(
   boardId,
   position,
@@ -94,6 +161,7 @@ export function renderPositionBoard(
     onSquareClick = null,
     onMove = null,
     isDraggable = null,
+    arrow = null,
   } = {}
 ) {
   const board = document.getElementById(boardId);
@@ -149,9 +217,89 @@ export function renderPositionBoard(
   }
   board.appendChild(grid);
 
+  if (arrow && arrow.from && arrow.to && arrow.from !== arrow.to) {
+    grid.appendChild(buildArrowOverlay(arrow, flipped));
+  }
+
   if (onMove) {
     attachDragAndDrop(board, grid, { position, onMove, isDraggable });
   }
+}
+
+// Draws an SVG arrow over the board grid pointing from `arrow.from` to
+// `arrow.to` (algebraic squares). Uses a 100×100 viewBox so coordinates
+// translate directly into percent of the grid; the SVG itself fills the
+// grid via absolute positioning.
+function buildArrowOverlay(arrow, flipped) {
+  const files = 'abcdefgh';
+  const tone = arrow.tone || 'best';
+
+  function center(sq) {
+    const file = files.indexOf(sq[0]);
+    const rank = parseInt(sq[1], 10);
+    if (file < 0 || !Number.isFinite(rank)) return null;
+    // Each square is 12.5% of the grid; +6.25 lands at the center.
+    const fileIndex = flipped ? 7 - file : file;
+    const rankIndex = flipped ? rank - 1 : 8 - rank;
+    return {
+      x: fileIndex * 12.5 + 6.25,
+      y: rankIndex * 12.5 + 6.25,
+    };
+  }
+
+  const a = center(arrow.from);
+  const b = center(arrow.to);
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const wrap = document.createElement('div');
+  wrap.className = `board-arrow board-arrow-${tone}`;
+  wrap.setAttribute('aria-hidden', 'true');
+  if (!a || !b) return wrap;
+
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.classList.add('board-arrow-svg');
+
+  const arrowId = `board-arrow-head-${tone}`;
+  const defs = document.createElementNS(svgNS, 'defs');
+  const marker = document.createElementNS(svgNS, 'marker');
+  marker.setAttribute('id', arrowId);
+  marker.setAttribute('viewBox', '0 0 10 10');
+  marker.setAttribute('refX', '7');
+  marker.setAttribute('refY', '5');
+  marker.setAttribute('markerWidth', '6');
+  marker.setAttribute('markerHeight', '6');
+  marker.setAttribute('orient', 'auto-start-reverse');
+  const head = document.createElementNS(svgNS, 'path');
+  head.setAttribute('d', 'M0,0 L10,5 L0,10 Z');
+  head.setAttribute('class', 'board-arrow-head');
+  marker.appendChild(head);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  // Pull the line endpoints back so they sit on the square edge rather than
+  // the center, which gives a cleaner look against the existing piece.
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const padStart = 4;
+  const padEnd = 5.5;
+  const x1 = a.x + (dx / len) * padStart;
+  const y1 = a.y + (dy / len) * padStart;
+  const x2 = b.x - (dx / len) * padEnd;
+  const y2 = b.y - (dy / len) * padEnd;
+
+  const line = document.createElementNS(svgNS, 'line');
+  line.setAttribute('x1', String(x1));
+  line.setAttribute('y1', String(y1));
+  line.setAttribute('x2', String(x2));
+  line.setAttribute('y2', String(y2));
+  line.setAttribute('class', 'board-arrow-line');
+  line.setAttribute('marker-end', `url(#${arrowId})`);
+  svg.appendChild(line);
+
+  wrap.appendChild(svg);
+  return wrap;
 }
 
 function attachDragAndDrop(boardEl, gridEl, { position, onMove, isDraggable }) {

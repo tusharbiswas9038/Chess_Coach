@@ -82,6 +82,7 @@ async function ensureView(name) {
     views.review = createReviewView({
       api,
       apiContract,
+      apiPost,
       generateReport: getActionsView().generateReport,
       onAskCoach: (prompt) => views.coach?.draftQuestion?.(prompt),
       showView,

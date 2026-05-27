@@ -20,8 +20,9 @@ import {
 } from '../ui.js';
 import { createDomCache } from '../dom.js';
 import { endpoints, normalize } from '../contracts.js';
+import { createWhatIfController } from './review-whatif.js';
 
-export function createReviewView({ api, apiContract, generateReport, onAskCoach, showView }) {
+export function createReviewView({ api, apiContract, apiPost, generateReport, onAskCoach, showView }) {
   const dom = createDomCache();
   let reviewState = null;
   let reviewDelegatedEventsBound = false;
@@ -121,6 +122,8 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
         caption: 'No move selected',
         from: null,
         to: null,
+        fen: null,
+        turn: null,
       };
     }
 
@@ -131,6 +134,8 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
         caption: `After your move ${move.san}`,
         from: played.from,
         to: played.to,
+        fen: move.fen_after,
+        turn: fenTurn(move.fen_after),
       };
     }
 
@@ -141,6 +146,10 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
         caption: `Best-move preview: ${move.best_move_san || move.best_move_uci}`,
         from: best.from,
         to: best.to,
+        // The "best" mode shows the position after the best move; we don't
+        // ship a synthesized FEN to Stockfish, so what-if drag is disabled.
+        fen: null,
+        turn: null,
       };
     }
 
@@ -150,6 +159,8 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
       caption: 'Position before your move',
       from: played.from,
       to: played.to,
+      fen: move.fen_before,
+      turn: fenTurn(move.fen_before),
     };
   }
 
@@ -157,12 +168,50 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
     const move = currentReviewMove();
     if (!move) return;
     const config = reviewModeConfig(move);
-    renderPositionBoard('review-board', config.position, {
+    const turn = config.turn;
+    const positionAtRender = config.position;
+    renderPositionBoard('review-board', positionAtRender, {
       flipped: reviewState.flipped,
       lastFrom: config.from,
       lastTo: config.to,
+      selectedSquare: config.fen ? whatIf.selectionFor(config.fen) : null,
+      // What-if works in "played" and the fen_before fallback — both have
+      // a real FEN to evaluate against. Disabled for synthesized
+      // best-preview positions.
+      onMove: config.fen ? (from, to) => whatIf.run(config.fen, from, to, turn) : null,
+      isDraggable: config.fen ? (_sq, piece) => piece && piece[0] === turn : null,
+      onSquareClick: config.fen
+        ? (sq) => whatIf.handleSquareClick(sq, positionAtRender, config.fen, turn)
+        : null,
+      arrow: config.fen ? whatIf.arrowFor(config.fen) : null,
     });
     dom.byId('review-caption').textContent = config.caption;
+    whatIf.syncTo(config.fen);
+  }
+
+  const whatIf = createWhatIfController({
+    apiPost,
+    endpoint: endpoints.gameWhatIf(),
+    dom,
+    requestRender: () => renderReviewBoard(),
+  });
+
+  function warmCriticalCache(state) {
+    const critical = state?.mistakes?.find((m) => m.is_critical);
+    if (!critical) return;
+    const move = state.playerMoves?.[critical.reviewIndex];
+    if (!move?.fen_before || !move?.uci) return;
+    // Defer slightly so the initial render isn't blocked. Standard depth
+    // matches the default what-if select; failures are logged silently.
+    setTimeout(() => {
+      apiPost(endpoints.gameWhatIf(), {
+        fen: move.fen_before,
+        move: move.uci,
+        depth: 14,
+      }).catch(() => {
+        /* fire-and-forget cache warm */
+      });
+    }, 250);
   }
 
   function updateReviewSelectionStyles(move) {
@@ -462,6 +511,12 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
       return;
     }
 
+    // Background cache-warm: fire a what-if for the critical mistake's
+    // played move so Stockfish has the position in its transposition table
+    // by the time the user drags an alternative. Fire-and-forget; failures
+    // are silently ignored.
+    warmCriticalCache(reviewState);
+
     const reviewMistakesMarkup = renderCriticalMistakesMarkup(reviewState.mistakes, {
       interactive: true,
     });
@@ -507,6 +562,17 @@ export function createReviewView({ api, apiContract, generateReport, onAskCoach,
         <div class="review-board-shell board-stage mt-2">
           <div class="engine-eval-bar" aria-hidden="true"></div>
           <div id="review-board"></div>
+        </div>
+        <div class="review-whatif mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+          <label class="flex items-center gap-1" for="review-whatif-depth">
+            <span>Depth</span>
+            <select id="review-whatif-depth" class="field-input select select-bordered select-xs">
+              <option value="10">Quick (10)</option>
+              <option value="14" selected>Standard (14)</option>
+              <option value="18">Deep (18)</option>
+            </select>
+          </label>
+          <span id="review-whatif-status" role="status" aria-live="polite" data-hint="Drag a piece to evaluate a what-if move.">Drag a piece to test an alternative.</span>
         </div>
 
         <div class="review-toolbar mt-2 flex flex-wrap items-center justify-between gap-2 max-sm:items-start">

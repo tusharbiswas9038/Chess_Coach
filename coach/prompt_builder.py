@@ -147,6 +147,33 @@ def _recurring_motifs(limit: int = 4) -> list[dict]:
         return []
 
 
+def _recent_whatif_attempts(conn: sqlite3.Connection, limit: int = 5) -> list[dict]:
+    """
+    Recent positions the player asked Stockfish about via the review board's
+    what-if feature. Lets the coach call back to "you explored X in this
+    position; here's what to learn from it."
+    """
+    try:
+        rows = conn.execute(
+            """
+            SELECT
+                substr(created_at, 1, 16) AS ts,
+                attempted_uci,
+                best_uci,
+                eval_before,
+                eval_after,
+                delta_cp
+            FROM whatif_attempts
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(1, int(limit)),),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    return [dict(r) for r in rows]
+
+
 def _repertoire_context(conn: sqlite3.Connection) -> dict:
     try:
         lines = conn.execute(
@@ -290,6 +317,7 @@ def build_player_context() -> str:
     pressure = _time_pressure_stats(conn)
     repertoire = _repertoire_context(conn)
     motifs = _recurring_motifs(limit=4)
+    whatif = _recent_whatif_attempts(conn, limit=5)
 
     conn.close()
 
@@ -357,6 +385,18 @@ def build_player_context() -> str:
             lines.append(
                 f"  {m['subtype']} in {m['phase']} (ECO family {family}): "
                 f"{m['occurrences']}× · avg eval loss {m.get('avg_eval_loss', 0)}cp · last seen {m.get('latest_date') or '—'}"
+            )
+
+    if whatif:
+        lines += ["", "RECENT WHAT-IF EXPLORATIONS (player tested these moves on the review board):"]
+        for w in whatif:
+            attempted = (w.get("attempted_uci") or "?").upper()
+            best = (w.get("best_uci") or "—").upper()
+            delta = w.get("delta_cp")
+            delta_str = "—" if delta is None else f"{'+' if delta > 0 else ''}{delta/100:.2f}"
+            same = "" if best != attempted else " (matched engine)"
+            lines.append(
+                f"  [{w.get('ts') or '—'}] tried {attempted} · best {best} · Δ {delta_str}{same}"
             )
 
     lines += [f"", f"SRS DRILLS DUE TODAY: {srs_due}"]

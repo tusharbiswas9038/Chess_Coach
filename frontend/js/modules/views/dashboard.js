@@ -13,6 +13,8 @@ import { createDomCache } from '../dom.js';
 import { endpoints, normalize } from '../contracts.js';
 import { createCache } from '../cache.js';
 import { baseCartesianOptions, chartPalette, doughnutOptions } from '../charts.js';
+import { createDashboardMotifsView } from './dashboard-motifs.js';
+import { createDashboardInsightsView } from './dashboard-insights.js';
 
 export function createDashboardView({
   api,
@@ -433,155 +435,31 @@ export function createDashboardView({
     });
   }
 
-  function trendLabel(metric) {
-    const labels = {
-      win_rate: 'Win rate',
-      mistakes_per_game: 'Mistakes / game',
-      blunders_per_game: 'Blunders / game',
-      games: 'Games played',
-    };
-    return labels[metric] || String(metric || '').replaceAll('_', ' ');
-  }
+  const motifsView = createDashboardMotifsView({
+    dom,
+    onOpenGame: (gameId) => onOpenGame(gameId),
+  });
 
-  function formatTrendValue(metric, value) {
-    const n = Number(value || 0);
-    if (metric === 'win_rate') return `${(n * 100).toFixed(1)}%`;
-    if (metric === 'games') return n.toFixed(0);
-    return n.toFixed(2);
-  }
+  const insightsView = createDashboardInsightsView({
+    dom,
+    fetchInsights: () =>
+      cache.getOrSet(
+        'dashboard:insights',
+        () => fetchContract(endpoints.insightsLatest(), normalize.insightsLatest, 'insightsLatest'),
+        60000
+      ),
+  });
 
   function renderDashboardMotifs(payload) {
-    const list = dom.byId('dashboard-motifs-list');
-    const meta = dom.byId('dashboard-motifs-meta');
-    if (!list) return;
-
-    const motifs = Array.isArray(payload?.motifs) ? payload.motifs : [];
-    if (!motifs.length) {
-      list.innerHTML = `<li>${statePanelMarkup('No motifs yet — they appear after the next analyze job runs.', { kind: 'empty', icon: '#', compact: true })}</li>`;
-      if (meta) meta.textContent = '';
-      return;
-    }
-
-    if (meta) meta.textContent = `${motifs.length} pattern${motifs.length === 1 ? '' : 's'}`;
-    list.innerHTML = motifs
-      .map((m) => {
-        const subtype = String(m.subtype || 'mistake').replace(/_/g, ' ');
-        const phase = m.phase || 'unknown';
-        const family = m.opening_family && m.opening_family !== '?'
-          ? `ECO ${m.opening_family}`
-          : 'mixed openings';
-        const occurrences = Number(m.occurrences || 0);
-        const avg = Number(m.avg_eval_loss || 0);
-        const latest = m.latest_date ? String(m.latest_date).slice(0, 10) : '-';
-        const exampleId = m.example_game_id;
-        const exampleBtn = exampleId
-          ? `<button class="btn btn-ghost btn-sm" type="button" data-open-game-id="${esc(exampleId)}">Open example</button>`
-          : '';
-        const coachLabel = (m.coach_label || '').trim();
-        const labelLine = coachLabel
-          ? `<div class="text-sm text-[var(--text)] mb-1">${esc(coachLabel)}</div>`
-          : '';
-        return `
-          <li class="motif-row rounded-cc border border-[var(--border)] bg-[var(--surface-2)] p-3">
-            <div class="flex items-start justify-between gap-3 max-sm:flex-col">
-              <div class="min-w-0">
-                ${labelLine}
-                <div class="text-sm font-semibold text-[var(--text)]">
-                  ${esc(subtype)} <span class="text-[var(--muted)]">in</span> ${esc(phase)}
-                </div>
-                <div class="mt-1 text-xs text-[var(--muted)]">
-                  ${esc(family)} &middot; last seen ${esc(latest)}
-                </div>
-              </div>
-              <div class="flex shrink-0 items-center gap-3 text-right">
-                <div>
-                  <div class="text-lg font-bold text-[var(--text)]">${occurrences}x</div>
-                  <div class="text-xs text-[var(--muted)]">avg ${avg.toFixed(0)}cp lost</div>
-                </div>
-                ${exampleBtn}
-              </div>
-            </div>
-          </li>
-        `;
-      })
-      .join('');
+    motifsView.render(payload);
   }
 
   function renderInsights(insights) {
-    const trendEl = dom.byId('trend-deltas');
-    const sliceEl = dom.byId('insight-slices');
-    if (!trendEl || !sliceEl) return;
-    const trends = (insights?.trends || []).filter((item) => Number(item.window_days) === 14);
-    trendEl.innerHTML = trends.length
-      ? trends
-          .map((item) => {
-            const direction = item.direction || 'flat';
-            const tone =
-              direction === 'up'
-                ? item.metric === 'mistakes_per_game' || item.metric === 'blunders_per_game'
-                  ? 'text-error'
-                  : 'text-success'
-                : direction === 'down'
-                  ? item.metric === 'mistakes_per_game' || item.metric === 'blunders_per_game'
-                    ? 'text-success'
-                    : 'text-warning'
-                  : 'text-[var(--muted)]';
-            return `
-              <article class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
-                <div class="flex items-start justify-between gap-2">
-                  <div>
-                    <div class="text-xs uppercase tracking-[0.08em] text-[var(--muted)]">14 day trend</div>
-                    <div class="mt-1 text-sm font-semibold text-[var(--text)]">${esc(trendLabel(item.metric))}</div>
-                  </div>
-                  <span class="badge badge-xs badge-ghost">${esc(item.confidence || 'low')}</span>
-                </div>
-                <div class="mt-3 flex items-end justify-between gap-3">
-                  <div class="text-2xl font-bold ${tone}">${esc(formatTrendValue(item.metric, item.current_value))}</div>
-                  <div class="text-right text-xs text-[var(--muted)]">
-                    <div>Δ ${esc(formatTrendValue(item.metric, item.delta_value))}</div>
-                    <div>${Number(item.sample_size || 0)} games</div>
-                  </div>
-                </div>
-              </article>
-            `;
-          })
-          .join('')
-      : statePanelMarkup('No trend snapshot yet.');
-    renderInsightSlices(insights);
+    insightsView.render(insights);
   }
 
   function renderInsightSlices(insights) {
-    const sliceEl = dom.byId('insight-slices');
-    if (!sliceEl) return;
-    const dimension = dom.byId('insights-dimension')?.value || 'color';
-    const slices = (insights?.slices || [])
-      .filter((item) => item.dimension === dimension)
-      .sort((a, b) => Number(b.games || 0) - Number(a.games || 0))
-      .slice(0, 8);
-    if (!slices.length) {
-      sliceEl.innerHTML = statePanelMarkup('No slice data available for this dimension.');
-      return;
-    }
-    sliceEl.innerHTML = slices
-      .map((item) => {
-        const winPct = Number(item.win_pct || 0);
-        return `
-          <article class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <div class="text-sm font-semibold text-[var(--text)]">${esc(String(item.bucket || 'unknown').toUpperCase())}</div>
-                <div class="mt-1 text-xs text-[var(--muted)]">${Number(item.games || 0)} games · ${Number(item.mistakes || 0)} mistakes · ${Number(item.blunders || 0)} severe</div>
-              </div>
-              <span class="badge badge-xs badge-ghost">${esc(item.confidence || 'low')}</span>
-            </div>
-            <div class="mt-3 flex items-center gap-2">
-              <span class="min-w-12 text-right text-xs font-semibold ${winPct >= 50 ? 'text-success' : winPct >= 35 ? 'text-warning' : 'text-error'}">${winPct.toFixed(1)}%</span>
-              <progress class="progress-meter ${winPct >= 50 ? 'progress-fill-good' : winPct >= 35 ? 'progress-fill-warn' : 'progress-fill-bad'} grow" max="100" value="${winPct}"></progress>
-            </div>
-          </article>
-        `;
-      })
-      .join('');
+    insightsView.renderSlices(insights);
   }
 
   function reviewLatestGame() {
@@ -866,22 +744,12 @@ export function createDashboardView({
       if (!step) return;
       openTarget(step.dataset.targetView);
     });
-    dom.byId('insights-dimension')?.addEventListener('change', async () => {
-      const insights = await cache.getOrSet(
-        'dashboard:insights',
-        () => fetchContract(endpoints.insightsLatest(), normalize.insightsLatest, 'insightsLatest'),
-        60000
-      );
-      renderInsightSlices(insights);
-    });
+    insightsView.bindEvents();
     dom.byId('recent-games-body').addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-open-game-id]');
       if (btn) onOpenGame(btn.dataset.openGameId);
     });
-    dom.byId('dashboard-motifs-list')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-open-game-id]');
-      if (btn) onOpenGame(btn.dataset.openGameId);
-    });
+    motifsView.bindEvents();
     document.addEventListener('drills:progress-updated', (event) => {
       const current = getStatsData();
       if (current && event.detail) {

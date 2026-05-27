@@ -3,7 +3,9 @@ import {
   fenTurn,
   parseFen,
   parseUCI,
+  pickPromotion,
   renderPositionBoard,
+  requiresPromotion,
 } from '../board.js';
 import { esc, setBadgeCount } from '../ui.js';
 import { createDomCache } from '../dom.js';
@@ -112,7 +114,17 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
   function handleDragMove(from, to) {
     if (answered) return;
     selectedSq = null;
-    checkAnswer(from, to, from + to);
+    submitMove(from, to);
+  }
+
+  async function submitMove(from, to) {
+    const piece = boardPosition[from];
+    let uci = from + to;
+    if (piece && requiresPromotion(piece, from, to)) {
+      const promo = await pickPromotion(currentTurn);
+      uci = from + to + promo;
+    }
+    checkAnswer(from, to, uci);
   }
 
   function handleSquareClick(sq) {
@@ -142,7 +154,7 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
     const attemptedUCI = selectedSq + sq;
     const from = selectedSq;
     selectedSq = null;
-    checkAnswer(from, sq, attemptedUCI);
+    submitMove(from, sq);
   }
 
   function checkAnswer(from, to, uci) {

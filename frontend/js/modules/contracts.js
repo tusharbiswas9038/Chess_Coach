@@ -9,6 +9,7 @@ export const endpoints = {
   gamesList: (query = '') => (query ? `/api/games?${query}` : '/api/games'),
   gameDetail: (gameId) => `/api/games/${gameId}`,
   gameCritical: (gameId) => `/api/games/${gameId}/critical`,
+  gameWhatIf: () => '/api/games/whatif',
   mistakesByPhase: (phase = '') =>
     phase ? `/api/mistakes/by-phase?phase=${encodeURIComponent(phase)}` : '/api/mistakes/by-phase',
   blunderHeatmap: (phase = '') =>

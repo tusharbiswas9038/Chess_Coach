@@ -380,3 +380,17 @@ CREATE TABLE IF NOT EXISTS mistake_motifs (
 );
 CREATE INDEX IF NOT EXISTS idx_mistake_motifs_recent ON mistake_motifs(computed_at DESC, occurrences DESC);
 CREATE INDEX IF NOT EXISTS idx_mistake_motifs_key ON mistake_motifs(cluster_key, computed_at DESC);
+
+-- ── WHAT-IF ATTEMPTS (interactive Stockfish queries from review board) ──
+CREATE TABLE IF NOT EXISTS whatif_attempts (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    fen             TEXT NOT NULL,
+    attempted_uci   TEXT NOT NULL,
+    best_uci        TEXT,
+    eval_before     INTEGER,
+    eval_after      INTEGER,
+    delta_cp        INTEGER,
+    depth           INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_whatif_attempts_recent ON whatif_attempts(created_at DESC);

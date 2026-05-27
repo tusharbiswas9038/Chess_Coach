@@ -21,7 +21,7 @@
               <div class="dashboard-focus-main workspace-hero pb-1 pt-3 max-md:pt-0 max-sm:pb-0">
                 <p class="section-kicker">Today</p>
                 <h1 class="dashboard-title workspace-hero-title mt-1 max-w-[12ch] text-[var(--text)]">Train before you queue.</h1>
-                <p class="dashboard-summary workspace-hero-summary mt-2 max-w-[52ch] text-[15px] text-[var(--muted)]">
+                <p class="dashboard-summary workspace-hero-summary mt-2 max-w-[52ch] text-body text-[var(--muted)]">
                   Use your own mistakes as the main workspace. Clear the drill queue,
                   review the latest critical swing, then decide whether to sync or
                   analyze more games.
@@ -40,8 +40,8 @@
               </div>
 
               <div class="dashboard-focus-panel insight-panel rounded-[calc(var(--radius-lg)+4px)] p-6 max-sm:p-3">
-                <div class="focus-panel-label text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--muted)]">Current priority</div>
-                <div class="focus-panel-value mt-1 text-[32px] font-bold leading-[1.05]" id="focus-primary-value">—</div>
+                <div class="focus-panel-label text-2xs font-bold uppercase tracking-kicker text-[var(--muted)]">Current priority</div>
+                <div class="focus-panel-value mt-1 hero-display" id="focus-primary-value">—</div>
                 <p class="focus-panel-text mt-1 text-[var(--muted)]" id="focus-primary-text">
                   Loading your current training target…
                 </p>
@@ -88,7 +88,7 @@
                   </div>
                 </div>
                 <div class="focus-actions mt-2 border-t border-[var(--border)] pt-1">
-                  <div class="focus-actions-title text-[11px] font-bold uppercase tracking-kicker text-[var(--muted)]">Weekly Actions</div>
+                  <div class="focus-actions-title text-2xs font-bold uppercase tracking-kicker text-[var(--muted)]">Weekly Actions</div>
                   <ul class="focus-actions-list mt-1 grid gap-1 pl-2 text-[var(--text)]" id="focus-actions-list">
                     <li class="text-md">Loading weekly plan…</li>
                   </ul>
@@ -150,7 +150,7 @@
                   <div class="chart-title">Weekly Win Rate %</div>
                   <div class="chart-meta" id="chart-winrate-meta">Refreshing…</div>
                 </div>
-                <div class="chart-container max-sm:h-[190px]">
+                <div class="chart-container">
                   <canvas id="chart-winrate"
                     role="img"
                     aria-label="Weekly win rate chart — see weekly stats below for the underlying numbers"
@@ -164,7 +164,7 @@
                   <div class="chart-title">Mistake Breakdown</div>
                   <div class="chart-meta" id="chart-mistakes-meta">Refreshing…</div>
                 </div>
-                <div class="chart-container max-sm:h-[190px]">
+                <div class="chart-container">
                   <canvas id="chart-mistakes"
                     role="img"
                     aria-label="Mistake breakdown chart — see KPIs and recent games table for the underlying numbers"

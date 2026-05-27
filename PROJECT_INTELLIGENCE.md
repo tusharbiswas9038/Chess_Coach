@@ -1,6 +1,6 @@
 # PROJECT_INTELLIGENCE
 
-> **Last verified:** 2026-05-28 (Horizons 1–8 polish — coach memory, repertoire ↔ SRS bridge, opening-aware coaching, motif clustering + LLM labeling + carry-forward, weekly report reflection, hanging-rate fix, Ollama timeouts + circuit breaker, retention policy, URL state, accessibility pass, dashboard motifs panel, job retry policy, auth hardening, slow-query instrumentation @ 250ms, motif-driven drill priority, heatmap perf fix (770ms→12ms), batch labeler refactor, drag-and-drop board, label-clear UI, dashboard focus mode, inline-Tailwind ratchet 165→50).
+> **Last verified:** 2026-05-28 (Horizons 1–13 polish — coach memory, repertoire ↔ SRS bridge, opening-aware coaching, motif clustering + LLM labeling, weekly report reflection, hanging-rate fix, Ollama timeouts + circuit breaker, retention policy, URL state, accessibility pass, dashboard motifs panel + insights extraction, job retry policy, auth hardening, slow-query instrumentation @ 250ms, motif-driven drill priority, heatmap perf fix (770ms→12ms), drag-and-drop board, dashboard focus mode, promotion UI, what-if drag with arrow + persistence + depth slider + engine pool + LRU cache + click-to-move + cache-warm + extracted controller, review.js split, dashboard.js split (970→770), inline-Tailwind ratchet 165→22).
 
 ## 1. Executive Summary
 - **Product**: Self-hosted AI chess coaching platform for a single player (`CHESS_USERNAME`, default `Tushar9038`) that syncs Chess.com rapid games, analyzes them with Stockfish, extracts mistakes, generates drills, and provides AI coaching/reports.
@@ -214,23 +214,23 @@ Core tables: `games`, `moves`, `mistakes`, `srs_items`, `player_profile`, `playe
 - Stockfish and Ollama are local bottlenecks; analysis/chat throughput limited by host CPU/RAM.
 
 ## 12. Technical Debt & Risks
-- **Resolved (2026-05-28):** dashboard focus mode — `body.dashboard-focused .dashboard-secondary { display:none }` collapses Insights Explorer + Recent Games when toggled. Persisted in localStorage, applied before render.
-- **Resolved (2026-05-28):** slow-query threshold tightened from 500ms → 250ms now that no instrumented hot path exceeds 60ms (median; slowest is `get_opening_weak_nodes` at 56ms). Future regressions surface 2× sooner.
-- **Resolved (2026-05-28):** drag-and-drop on the drills board with click-to-move fallback, label-clear in actions menu, chat-pane height consolidation, tap-target classes, heatmap rewrite, motif label carry-forward, async batch labeler.
-- **Resolved (2026-05-28):** typography token consolidation — `text-[14px]`→`text-md`, `tracking-[0.08em]`→`.tracking-kicker`, `tracking-[0.12em]`→`.tracking-label` (11 literals removed). Inline-Tailwind cap dropped 60 → 50; current 43.
-- **Resolved (2026-05-27/28):** durable `job_ledger` with retry policy + restart recovery, per-mode Ollama timeouts + circuit breaker, retention policy, URL state, accessibility pass, hanging-rate formula, repertoire ↔ SRS bridge, motif clustering + LLM labels, weekly-report reflection, auth hardening, dashboard motifs panel, motif-driven drill priority.
+- **Resolved (2026-05-28):** dashboard module split — `dashboard-motifs.js` (87 lines) and `dashboard-insights.js` (139 lines) extracted. `dashboard.js` dropped from 970 → 770 lines.
+- **Resolved (2026-05-28):** cache-warm critical position on review entry — `loadGameDetail` fires a fire-and-forget what-if for the critical mistake's played move ~250ms after render, so the engine has the position warm by the time the user drags an alternative.
+- **Resolved (2026-05-28):** what-if LRU cache (256 entries, depth-aware), click-to-move parity, review-whatif extraction.
+- **Resolved (2026-05-28):** what-if Stockfish pool, depth slider, hero typography, what-if best-move arrow + persistence.
+- **Resolved (2026-05-27/28):** durable `job_ledger`, retry policy, Ollama timeouts + circuit breaker, retention policy, URL state, accessibility, motif clustering + LLM labels, repertoire ↔ SRS bridge, hanging-rate fix, dashboard motifs panel + focus mode, drag-and-drop board, promotion UI, weekly-report reflection, auth hardening, slow-query instrumentation @ 250ms.
 - **Medium**: Mixed sync/async boundaries in report generation (thread-wrapped async).
-- **Medium**: Frontend large modules (`dashboard.js` ~970 lines after focus mode + motifs panel, `review.js` 638 lines).
+- **Medium**: `dashboard.js` ~770 lines and `review.js` ~700 lines remain the largest single modules — third-pass extraction targets are session-flow and game-meta-row.
 - **Low-medium**: Schema docs mostly aligned, but timestamp formats (text vs ISO vs `datetime()`) are not standardized.
 - **Low**: `BackgroundTasks` import unused in [api/routers/reports.py](/api/routers/reports.py).
 
 ## 13. Recommended Next Priorities
-1. **Frontend module split** — `dashboard.js` (~970 lines after focus mode) and `review.js` (638 lines) into render/state/actions submodules.
-2. **Extract auth-form arbitrary-value cluster** — single biggest remaining offender is the auth modal in `index.html` (`max-w-[420px]` + `rounded-[24px]` + `bg-[linear-gradient(...)]` + `shadow-[0_24px_80px_...]`). One CSS class would clear ~5 literals.
-3. **Promotion UI** — when a pawn drag/click reaches rank 1 or 8, prompt for promotion piece. Drills currently match correctly because they compare from+to, but real games would need the explicit choice.
-4. **"What if" drag mode on review board** — drag an alternative move and show eval delta from Stockfish. Adds exploration to the existing navigation board.
-5. **Dashboard hide-by-default for `dashboard-focused` users** — currently the toggle requires JS to apply the body class on render. If localStorage says focused, set the class server-side via a meta-cookie or before view template loads.
-6. **Continue Tailwind ratchet** — gate at 50, current 43. Next likely targets: auth-form cluster (5 literals together), `h-[180px]/[190px]/[210px]` chart heights.
+1. **Continue dashboard module split** — `dashboard.js` is now 770 lines. Next extraction targets: session-flow controller, game-meta-row + KPI grid renderer, weekly-focus card.
+2. **Move drag-and-drop into the coach prompt builder** — let the user drag a position-aware question instead of typing FEN/UCI by hand.
+3. **What-if cache hit indicator** — UI shows "(cached)" suffix when present; could promote to a small visual pill instead of trailing text.
+4. **`review.js` polish-pass** — at 700 lines after the what-if extraction it's manageable but could split rendering helpers (`reviewModeConfig` + `renderReviewBoard` + `updateReviewSelectionStyles`) into a `review-render.js` sibling.
+5. **Promote `dashboard-secondary` opt-in to a documented pattern** — there are still cards that could be hidden under focus mode but aren't tagged.
+6. **Continue Tailwind ratchet selectively** — gate at 25, current 22. Pursue only when natural class extractions present themselves.
 
 ## 14. AI Guidance Section (For Future Assistants)
 
