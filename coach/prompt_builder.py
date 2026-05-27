@@ -43,13 +43,72 @@ COACH_MODE_POLICIES = {
 }
 
 
+MEMORY_SESSION_LIMIT = 8
+MEMORY_PREVIEW_CHARS = 240
+
+
 def normalize_coach_mode(mode: str | None) -> str:
     return mode if mode in COACH_MODE_POLICIES else "quick_answer"
+
+
+def build_coach_memory_preamble(limit: int = MEMORY_SESSION_LIMIT) -> str:
+    """
+    Returns a short, dated digest of recent coach sessions so the LLM has
+    continuity across chats. Highly-rated sessions are favored; thumbs-down
+    sessions are excluded so we don't reinforce advice the user rejected.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            """
+            SELECT
+                substr(created_at, 1, 10) AS day,
+                mode,
+                substr(user_message, 1, 160) AS user_excerpt,
+                substr(assistant_reply, 1, 240) AS assistant_excerpt,
+                COALESCE(user_rating, 0) AS rating
+            FROM coach_sessions
+            WHERE COALESCE(user_rating, 0) >= 0
+            ORDER BY rating DESC, created_at DESC
+            LIMIT ?
+            """,
+            (max(1, int(limit)),),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return ""
+    finally:
+        conn.close()
+
+    if not rows:
+        return ""
+
+    rows = sorted(rows, key=lambda r: r["day"])
+    lines = ["RECENT COACHING HISTORY (most recent last):"]
+    for row in rows:
+        user_text = (row["user_excerpt"] or "").replace("\n", " ").strip()
+        coach_text = (row["assistant_excerpt"] or "").replace("\n", " ").strip()
+        if len(coach_text) > MEMORY_PREVIEW_CHARS:
+            coach_text = coach_text[: MEMORY_PREVIEW_CHARS - 1].rstrip() + "…"
+        rating_marker = ""
+        if row["rating"] and row["rating"] > 0:
+            rating_marker = " [user found helpful]"
+        lines.append(
+            f"  [{row['day']} · {row['mode']}{rating_marker}] "
+            f"player: {user_text} | coach: {coach_text}"
+        )
+    lines.append(
+        "Use this history to keep advice consistent. "
+        "Reference prior topics naturally; do not invent details that aren't there."
+    )
+    return "\n".join(lines)
 
 
 def build_coach_system_prompt(context: str, mode: str | None = None) -> str:
     mode_key = normalize_coach_mode(mode)
     policy = COACH_MODE_POLICIES[mode_key]
+    memory_block = build_coach_memory_preamble()
+    memory_section = f"\n\n{memory_block}" if memory_block else ""
     return f"""You are a personalized chess improvement coach for a self-hosted chess analytics app.
 
 Use only the supplied player context and the user's question. If the data is insufficient, say what is missing.
@@ -68,11 +127,115 @@ QUALITY GUARDRAILS:
 - End with one measurable next-step.
 
 PLAYER CONTEXT:
-{context}""".strip()
+{context}{memory_section}""".strip()
 
 
 def coach_mode_num_predict(mode: str | None = None) -> int:
     return int(COACH_MODE_POLICIES[normalize_coach_mode(mode)]["num_predict"])
+
+
+def _recurring_motifs(limit: int = 4) -> list[dict]:
+    """
+    Fetch the latest mistake_motifs snapshot. Returns top-N by occurrence so
+    the coach can reference patterns the player has actually repeated.
+    """
+    try:
+        from api.services.mistake_motifs import get_latest_motifs
+
+        return get_latest_motifs(limit=limit)
+    except Exception:
+        return []
+
+
+def _repertoire_context(conn: sqlite3.Connection) -> dict:
+    try:
+        lines = conn.execute(
+            """
+            SELECT id, color, eco, name, priority,
+                   (SELECT MAX(trained_at)
+                    FROM opening_training_history h WHERE h.line_id = l.id) AS last_trained
+            FROM repertoire_lines l
+            WHERE active = 1
+            ORDER BY priority DESC, COALESCE(last_trained, '0') DESC
+            LIMIT 6
+            """
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return {"available": False}
+
+    missed_nodes = []
+    try:
+        missed_rows = conn.execute(
+            """
+            SELECT srs.node_id, srs.repetitions, srs.last_reviewed,
+                   n.move_san, n.ply, l.name AS line_name, l.color, l.eco
+            FROM repertoire_node_srs srs
+            JOIN repertoire_nodes n ON n.id = srs.node_id
+            JOIN repertoire_lines l ON l.id = n.line_id
+            WHERE srs.last_result = 'missed' AND l.active = 1
+            ORDER BY srs.last_reviewed DESC
+            LIMIT 4
+            """
+        ).fetchall()
+        missed_nodes = [dict(r) for r in missed_rows]
+    except sqlite3.OperationalError:
+        pass
+
+    return {
+        "available": bool(lines) or bool(missed_nodes),
+        "lines": [dict(r) for r in lines],
+        "missed_nodes": missed_nodes,
+    }
+
+
+def _time_pressure_stats(conn: sqlite3.Connection) -> dict:
+    """
+    Return blunder rate when the player had <60s on the clock vs >=60s.
+    Uses analyzed games only.
+    """
+    try:
+        stats = conn.execute(
+            """
+            SELECT
+              SUM(CASE WHEN clock_before IS NOT NULL AND clock_before < 60 THEN 1 ELSE 0 END) AS pressure_moves,
+              SUM(CASE WHEN clock_before IS NOT NULL AND clock_before < 60
+                       AND classification IN ('mistake','blunder') THEN 1 ELSE 0 END) AS pressure_blunders,
+              SUM(CASE WHEN clock_before IS NOT NULL AND clock_before >= 60 THEN 1 ELSE 0 END) AS calm_moves,
+              SUM(CASE WHEN clock_before IS NOT NULL AND clock_before >= 60
+                       AND classification IN ('mistake','blunder') THEN 1 ELSE 0 END) AS calm_blunders
+            FROM moves
+            WHERE color = (SELECT g.color FROM games g WHERE g.id = moves.game_id)
+            """
+        ).fetchone()
+    except sqlite3.OperationalError:
+        return {"available": False}
+
+    if not stats:
+        return {"available": False}
+
+    pressure_moves = (stats["pressure_moves"] or 0)
+    calm_moves = (stats["calm_moves"] or 0)
+    if pressure_moves == 0 and calm_moves == 0:
+        return {"available": False}
+
+    pressure_rate = (
+        (stats["pressure_blunders"] or 0) / pressure_moves if pressure_moves else None
+    )
+    calm_rate = (stats["calm_blunders"] or 0) / calm_moves if calm_moves else None
+    multiplier = None
+    if pressure_rate is not None and calm_rate and calm_rate > 0:
+        multiplier = pressure_rate / calm_rate
+
+    return {
+        "available": True,
+        "pressure_moves": pressure_moves,
+        "pressure_blunders": stats["pressure_blunders"] or 0,
+        "pressure_rate": pressure_rate,
+        "calm_moves": calm_moves,
+        "calm_blunders": stats["calm_blunders"] or 0,
+        "calm_rate": calm_rate,
+        "multiplier": multiplier,
+    }
 
 
 def build_player_context() -> str:
@@ -124,6 +287,10 @@ def build_player_context() -> str:
         "SELECT COUNT(*) FROM srs_items WHERE due_date <= date('now')"
     ).fetchone()[0]
 
+    pressure = _time_pressure_stats(conn)
+    repertoire = _repertoire_context(conn)
+    motifs = _recurring_motifs(limit=4)
+
     conn.close()
 
     r = dict(profile) if profile else {}
@@ -147,6 +314,51 @@ def build_player_context() -> str:
         f"{row['wins']}/{row['games']} wins"
         for row in worst_openings
     ]
+
+    if pressure.get("available"):
+        prate = pressure.get("pressure_rate") or 0
+        crate = pressure.get("calm_rate") or 0
+        mult = pressure.get("multiplier")
+        mult_text = f" ({mult:.1f}× more often than when calm)" if mult and mult > 1.1 else ""
+        lines += [
+            "",
+            "TIME-PRESSURE PROFILE:",
+            f"  Under 60s on clock: {prate:.1%} of moves are mistakes/blunders{mult_text}",
+            f"  60s+ on clock:      {crate:.1%} of moves are mistakes/blunders",
+            f"  Pressure sample: {pressure['pressure_moves']} moves, calm sample: {pressure['calm_moves']} moves",
+        ]
+
+    if repertoire.get("available"):
+        rep_lines = repertoire.get("lines") or []
+        missed = repertoire.get("missed_nodes") or []
+        lines += ["", "ACTIVE REPERTOIRE (what the player has chosen to learn):"]
+        if rep_lines:
+            for r in rep_lines:
+                eco = r.get("eco") or "—"
+                color = (r.get("color") or "").upper()[:1]
+                last = r.get("last_trained") or "never trained"
+                lines.append(
+                    f"  [{color}] {eco} {r.get('name')} · priority {r.get('priority')} · last trained {last}"
+                )
+        if missed:
+            lines += ["", "RECENTLY MISSED REPERTOIRE NODES (high-leverage prep targets):"]
+            for n in missed:
+                ply = int(n.get("ply") or 0)
+                move_label = f"move {ply // 2 + 1}{'.' if ply % 2 == 0 else '...'}" if ply else "early"
+                lines.append(
+                    f"  [{(n.get('color') or '').upper()[:1]}] {n.get('eco') or '—'} {n.get('line_name')} — "
+                    f"{move_label} {n.get('move_san') or '?'} (last reviewed {n.get('last_reviewed') or '—'})"
+                )
+
+    if motifs:
+        lines += ["", "RECURRING MOTIFS (clustered from recent mistakes; >=3 occurrences):"]
+        for m in motifs:
+            family = m.get("opening_family") or "?"
+            lines.append(
+                f"  {m['subtype']} in {m['phase']} (ECO family {family}): "
+                f"{m['occurrences']}× · avg eval loss {m.get('avg_eval_loss', 0)}cp · last seen {m.get('latest_date') or '—'}"
+            )
+
     lines += [f"", f"SRS DRILLS DUE TODAY: {srs_due}"]
 
     return "\n".join(lines)

@@ -1340,6 +1340,52 @@
 
   .coach-message-pending .coach-bubble { color: var(--muted); }
 
+  .coach-feedback {
+    margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .coach-feedback-label {
+    margin-right: 2px;
+  }
+
+  .coach-feedback-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-standard),
+      border-color var(--dur-fast) var(--ease-standard),
+      color var(--dur-fast) var(--ease-standard);
+  }
+
+  .coach-feedback-btn:hover {
+    border-color: var(--primary);
+    color: var(--text);
+  }
+
+  .coach-feedback-btn.is-active {
+    background: rgba(63, 185, 80, 0.18);
+    border-color: rgba(63, 185, 80, 0.4);
+    color: var(--text);
+  }
+
+  .coach-feedback-down.is-active {
+    background: rgba(248, 113, 113, 0.18);
+    border-color: rgba(248, 113, 113, 0.4);
+  }
+
   .opening-pill {
     display: inline-block;
     border: 1px solid var(--border);

@@ -7,6 +7,7 @@ export function createNavigationView({
   onEnterGames,
   onEnterMistakes,
   onEnterOpenings,
+  onEnterReports,
 }) {
   const dom = createDomCache();
   const SIDEBAR_PREF_KEY = 'cc.sidebar.collapsed';
@@ -18,6 +19,7 @@ export function createNavigationView({
     'openings',
     'drills',
     'coach',
+    'reports',
   ]);
   const scrollByView = new Map();
   let currentView = 'dashboard';
@@ -75,6 +77,7 @@ export function createNavigationView({
       openings: 'Opening Report',
       drills: 'Daily Drills',
       coach: 'Ask Coach',
+      reports: 'Weekly Report',
     };
     const breadcrumbs = {
       dashboard: 'Workspace / Dashboard',
@@ -84,6 +87,7 @@ export function createNavigationView({
       openings: 'Insights / Openings',
       drills: 'Training / Drills',
       coach: 'Training / Coach',
+      reports: 'Insights / Weekly',
     };
     dom.byId('topbar-title').textContent = titles[safeName] || safeName;
     const breadcrumbEl = dom.byId('topbar-breadcrumb');
@@ -114,6 +118,7 @@ export function createNavigationView({
     if (safeName === 'openings') onEnterOpenings();
     if (safeName === 'coach') onEnterCoach();
     if (safeName === 'drills') onEnterDrills();
+    if (safeName === 'reports' && typeof onEnterReports === 'function') onEnterReports();
   }
 
   function syncFromRoute() {

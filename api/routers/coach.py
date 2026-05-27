@@ -67,10 +67,10 @@ class ChatMessage(BaseModel):
         return value
 
 
-def save_coach_session(mode: str, message: str, response: str, context_digest: str) -> None:
+def save_coach_session(mode: str, message: str, response: str, context_digest: str) -> int:
     conn = sqlite3.connect(DB_PATH)
     try:
-        conn.execute(
+        cursor = conn.execute(
             """
             INSERT INTO coach_sessions (mode, user_message, assistant_reply, context_digest)
             VALUES (?, ?, ?, ?)
@@ -78,8 +78,32 @@ def save_coach_session(mode: str, message: str, response: str, context_digest: s
             (mode, message, response, context_digest),
         )
         conn.commit()
+        return int(cursor.lastrowid)
     finally:
         conn.close()
+
+
+class CoachFeedback(BaseModel):
+    session_id: int = Field(..., gt=0)
+    rating: int = Field(..., ge=-1, le=1)  # -1 down, 0 neutral, 1 up
+
+
+@router.post("/feedback")
+def coach_feedback(request: Request, body: CoachFeedback):
+    require_admin_if_configured(request)
+    enforce_rate_limit(request, bucket="coach-feedback", limit=60, window_sec=60)
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        result = conn.execute(
+            "UPDATE coach_sessions SET user_rating=? WHERE id=?",
+            (body.rating, body.session_id),
+        )
+        conn.commit()
+        if result.rowcount == 0:
+            raise HTTPException(404, "session not found")
+    finally:
+        conn.close()
+    return {"status": "ok", "session_id": body.session_id, "rating": body.rating}
 
 
 @router.post("/chat")
@@ -104,8 +128,8 @@ async def coach_chat(request: Request, body: ChatMessage, stream: bool = False):
         return StreamingResponse(generate_stream(), media_type="text/plain")
 
     reply = await chat(messages, context=context["text"], mode=body.mode)
-    save_coach_session(body.mode, normalized_message, reply, context["digest"])
-    return {"reply": reply, "mode": body.mode}
+    session_id = save_coach_session(body.mode, normalized_message, reply, context["digest"])
+    return {"reply": reply, "mode": body.mode, "session_id": session_id}
 
 
 @router.post("/batch")

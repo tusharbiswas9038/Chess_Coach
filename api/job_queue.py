@@ -1,13 +1,151 @@
-import queue
-import threading
+import json
 import logging
+import queue
+import sqlite3
+import threading
 import time
 from collections import deque
-from typing import Callable, Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 import config
 
 log = logging.getLogger("chess_coach.job_queue")
+
+
+def _ledger_kind(job_id: str) -> str:
+    if not job_id:
+        return "unknown"
+    return job_id.split("-", 1)[0]
+
+
+def _ledger_conn() -> sqlite3.Connection:
+    conn = sqlite3.connect(str(config.DB_PATH), timeout=30)
+    conn.execute("PRAGMA busy_timeout = 5000")
+    return conn
+
+
+def _ledger_insert_queued(job_id: str, payload: Optional[Dict[str, Any]] = None) -> None:
+    payload_json = json.dumps(payload, default=str) if payload else None
+    conn = _ledger_conn()
+    try:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO job_ledger
+                (job_id, kind, payload_json, status, enqueued_at)
+            VALUES (?, ?, ?, 'queued', datetime('now'))
+            """,
+            (job_id, _ledger_kind(job_id), payload_json),
+        )
+        conn.commit()
+    except sqlite3.OperationalError as e:
+        log.warning("job_ledger insert skipped (%s)", e)
+    finally:
+        conn.close()
+
+
+def _ledger_mark_running(job_id: str) -> None:
+    conn = _ledger_conn()
+    try:
+        conn.execute(
+            "UPDATE job_ledger SET status='running', started_at=datetime('now') WHERE job_id=?",
+            (job_id,),
+        )
+        conn.commit()
+    except sqlite3.OperationalError as e:
+        log.warning("job_ledger running update skipped (%s)", e)
+    finally:
+        conn.close()
+
+
+def _ledger_mark_finished(
+    job_id: str,
+    *,
+    status: str,
+    duration_ms: int,
+    error: Optional[str] = None,
+) -> None:
+    conn = _ledger_conn()
+    try:
+        conn.execute(
+            """
+            UPDATE job_ledger
+            SET status=?, finished_at=datetime('now'), duration_ms=?, error=?
+            WHERE job_id=?
+            """,
+            (status, duration_ms, error, job_id),
+        )
+        conn.commit()
+    except sqlite3.OperationalError as e:
+        log.warning("job_ledger finish update skipped (%s)", e)
+    finally:
+        conn.close()
+
+
+def recover_stale_jobs() -> List[Dict[str, Any]]:
+    """
+    Mark any queued or running rows as failed on startup. The in-memory queue
+    is rebuilt from scratch each run; durable rows in those states represent
+    work that was lost when the process exited. Returns the list of orphans
+    so the API can surface them.
+    """
+    conn = _ledger_conn()
+    try:
+        rows = conn.execute(
+            "SELECT job_id, kind, status, enqueued_at, started_at FROM job_ledger "
+            "WHERE status IN ('queued','running')"
+        ).fetchall()
+        if not rows:
+            return []
+        conn.execute(
+            """
+            UPDATE job_ledger
+            SET status='failed',
+                finished_at=datetime('now'),
+                error='lost on restart'
+            WHERE status IN ('queued','running')
+            """
+        )
+        conn.commit()
+        orphans = [
+            {
+                "job_id": r[0],
+                "kind": r[1],
+                "previous_status": r[2],
+                "enqueued_at": r[3],
+                "started_at": r[4],
+            }
+            for r in rows
+        ]
+        log.warning("Recovered %d orphan job(s) from ledger: %s", len(orphans), orphans)
+        return orphans
+    except sqlite3.OperationalError as e:
+        log.warning("job_ledger recovery skipped (%s)", e)
+        return []
+    finally:
+        conn.close()
+
+
+def get_recent_jobs_from_ledger(limit: int = 50) -> List[Dict[str, Any]]:
+    conn = _ledger_conn()
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            """
+            SELECT job_id, kind, status, enqueued_at, started_at, finished_at,
+                   duration_ms, error
+            FROM job_ledger
+            ORDER BY COALESCE(finished_at, started_at, enqueued_at) DESC
+            LIMIT ?
+            """,
+            (max(1, min(int(limit), 200)),),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except sqlite3.OperationalError as e:
+        log.warning("job_ledger read skipped (%s)", e)
+        return []
+    finally:
+        conn.close()
+
 
 class JobQueue:
     _instance = None
@@ -36,7 +174,8 @@ class JobQueue:
                 start_time = time.time()
                 with self._running_job_lock:
                     self._running_job_info = {"id": job_id, "status": "running", "start_time": start_time}
-                
+                _ledger_mark_running(job_id)
+
                 try:
                     result = job_func(*job_args, **job_kwargs)
                     elapsed = round(time.time() - start_time, 3)
@@ -50,6 +189,9 @@ class JobQueue:
                         "event": metadata.get("event"),
                         "source": metadata.get("source"),
                     })
+                    _ledger_mark_finished(
+                        job_id, status="completed", duration_ms=int(elapsed * 1000)
+                    )
                     log.info(f"Job {job_id} completed successfully.")
                 except Exception as e:
                     elapsed = round(time.time() - start_time, 3)
@@ -60,6 +202,12 @@ class JobQueue:
                         "finished_at": time.time(),
                         "error": str(e),
                     })
+                    _ledger_mark_finished(
+                        job_id,
+                        status="failed",
+                        duration_ms=int(elapsed * 1000),
+                        error=str(e)[:500],
+                    )
                     log.error(f"Job {job_id} failed with error: {e}", exc_info=True)
                 finally:
                     with self._running_job_lock:
@@ -93,12 +241,20 @@ class JobQueue:
         else:
             log.warning("JobQueue worker thread is not running.")
 
-    def enqueue_job(self, job_func: Callable, *args, job_id: str = None, **kwargs):
+    def enqueue_job(
+        self,
+        job_func: Callable,
+        *args,
+        job_id: str = None,
+        ledger_payload: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ):
         if not job_id:
             job_id = f"{job_func.__name__}-{time.time()}"
         if self._queue.full():
             raise RuntimeError("Job queue is full. Please retry later.")
         log.info(f"Enqueuing job {job_id}...")
+        _ledger_insert_queued(job_id, payload=ledger_payload)
         self._queue.put((job_func, args, kwargs, job_id))
         return job_id
 

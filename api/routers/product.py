@@ -107,3 +107,21 @@ def latest_insights(request: Request):
         snapshot = compute_and_store_analytics_snapshot(source="on-demand")
     _CACHE.set("insights_latest", snapshot)
     return snapshot
+
+
+@router.get("/motifs/latest")
+def latest_motifs(request: Request, limit: int = 8):
+    """Recent recurring-mistake clusters. Empty list when none yet computed."""
+    enforce_rate_limit(request, bucket="product-motifs", limit=60, window_sec=60)
+    from api.services.mistake_motifs import get_latest_motifs
+
+    safe_limit = max(1, min(int(limit), 25))
+    cache_key = f"motifs_latest_{safe_limit}"
+    cached = _CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    motifs = get_latest_motifs(limit=safe_limit)
+    payload = {"motifs": motifs, "count": len(motifs)}
+    _CACHE.set(cache_key, payload)
+    return payload

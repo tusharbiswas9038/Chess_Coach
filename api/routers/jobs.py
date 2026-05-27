@@ -13,7 +13,7 @@ from api.services.job_enqueue_helpers import (
     _enqueue_weekly_report,
     _enqueue_db_maintenance,
 )
-from api.job_queue import job_queue
+from api.job_queue import job_queue, get_recent_jobs_from_ledger
 
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
@@ -115,3 +115,13 @@ def jobs_status(
     _rl: None = Depends(rate_limit("jobs-read", 120, 60)),
 ):
     return job_queue.get_current_job_status()
+
+
+@router.get("/ledger")
+def jobs_ledger(
+    limit: int = 50,
+    _admin: None = Depends(require_admin),
+    _rl: None = Depends(rate_limit("jobs-read", 120, 60)),
+):
+    """Durable history from job_ledger. Survives restarts, unlike /status recent_jobs."""
+    return {"jobs": get_recent_jobs_from_ledger(limit=limit)}

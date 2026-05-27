@@ -34,6 +34,7 @@ export const endpoints = {
   openingTrainingResult: () => '/api/openings/training/result',
   coachChat: () => '/api/coach/chat',
   coachGame: (gameId) => `/api/coach/game/${gameId}`,
+  coachFeedback: () => '/api/coach/feedback',
   jobStatus: () => '/api/jobs/status',
   jobSync: () => '/api/jobs/sync',
   jobAnalyze: () => '/api/jobs/analyze',
@@ -41,12 +42,16 @@ export const endpoints = {
   jobDbMaintenance: () => '/api/jobs/db-maintenance',
   playerModelLatest: () => '/api/product/player-model/latest',
   insightsLatest: () => '/api/product/insights/latest',
+  motifsLatest: (limit = 8) => `/api/product/motifs/latest?limit=${limit}`,
   drillsResult: () => '/api/drills/result',
   drillsDue: (limit = 15, refresh = false, mode = 'adaptive', motif = '') =>
     `/api/drills/due?limit=${limit}${refresh ? '&refresh=true' : ''}&mode=${encodeURIComponent(mode)}${motif ? `&motif=${encodeURIComponent(motif)}` : ''}`,
   drillsSummary: () => '/api/drills/summary',
   drillsGeneratePuzzles: () => '/api/drills/generate-puzzles',
   drillsPuzzleSummary: () => '/api/drills/puzzles/summary',
+  reportsLatest: () => '/api/reports/weekly/latest',
+  reportsGenerate: () => '/api/reports/weekly',
+  reportByDate: (d) => `/api/reports/weekly/${encodeURIComponent(d)}`,
 };
 
 function fail(label, msg) {

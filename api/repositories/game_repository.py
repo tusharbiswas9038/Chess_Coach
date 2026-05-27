@@ -303,8 +303,71 @@ class GameRepository:
                 payload.get("notes"),
             ),
         )
+        history_id = cur.lastrowid
+
+        # Bridge to SRS: when a node is identified, update its SM-2 schedule.
+        # remembered → quality 2 (good); missed → quality 0 (fail); skipped → no-op.
+        node_id = payload.get("node_id")
+        line_id = payload.get("line_id")
+        result = payload["result"]
+        srs_update = None
+        if node_id and result in {"remembered", "missed"}:
+            from drills.srs_scheduler import sm2_update
+
+            row_existing = self.conn.execute(
+                "SELECT interval_days, ease_factor, repetitions FROM repertoire_node_srs WHERE node_id=?",
+                (node_id,),
+            ).fetchone()
+            if row_existing:
+                interval = float(row_existing["interval_days"] or 1)
+                ease = float(row_existing["ease_factor"] or 2.5)
+                reps = int(row_existing["repetitions"] or 0)
+            else:
+                interval, ease, reps = 1.0, 2.5, 0
+
+            quality = 2 if result == "remembered" else 0
+            new_interval, new_ease, new_reps = sm2_update(interval, ease, reps, quality)
+
+            self.conn.execute(
+                """
+                INSERT INTO repertoire_node_srs (
+                    node_id, line_id, interval_days, ease_factor, repetitions,
+                    due_date, last_reviewed, last_result, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, date('now', '+' || CAST(? AS TEXT) || ' days'), date('now'), ?, datetime('now'))
+                ON CONFLICT(node_id) DO UPDATE SET
+                    line_id=excluded.line_id,
+                    interval_days=excluded.interval_days,
+                    ease_factor=excluded.ease_factor,
+                    repetitions=excluded.repetitions,
+                    due_date=excluded.due_date,
+                    last_reviewed=excluded.last_reviewed,
+                    last_result=excluded.last_result,
+                    updated_at=excluded.updated_at
+                """,
+                (
+                    node_id,
+                    line_id,
+                    new_interval,
+                    new_ease,
+                    new_reps,
+                    int(round(new_interval)),
+                    result,
+                ),
+            )
+            srs_update = {
+                "node_id": node_id,
+                "interval_days": new_interval,
+                "ease_factor": new_ease,
+                "repetitions": new_reps,
+                "result": result,
+            }
+
         self.conn.commit()
-        return row(self.conn.execute("SELECT * FROM opening_training_history WHERE id=?", (cur.lastrowid,)).fetchone()) or {}
+        record = row(self.conn.execute("SELECT * FROM opening_training_history WHERE id=?", (history_id,)).fetchone()) or {}
+        if srs_update:
+            record["srs"] = srs_update
+        return record
 
     def get_opening_training_queue(self, color: Optional[str] = None, limit: int = 8) -> Dict[str, Any]:
         lines = self.get_repertoire_lines(color=color, active_only=True)
@@ -318,9 +381,41 @@ class GameRepository:
             reverse=True,
         )[: max(1, min(limit, 25))]
         weak_nodes = self.get_opening_weak_nodes(limit=5, color=color)
+
+        # SRS-due nodes: those whose schedule has matured. Bias surfacing
+        # toward the most recently missed lines to keep the bridge meaningful.
+        params: list = []
+        color_filter = ""
+        clean_color = (color or "").lower().strip()
+        if clean_color in {"white", "black"}:
+            color_filter = "AND l.color = ?"
+            params.append(clean_color)
+        params.append(max(1, min(limit, 25)))
+        due_rows = self.conn.execute(
+            f"""
+            SELECT n.id AS node_id, n.line_id, n.ply, n.move_san, n.move_uci,
+                   n.fen_after, n.note, n.is_key_node,
+                   l.name AS line_name, l.eco, l.color,
+                   srs.due_date, srs.last_result, srs.repetitions, srs.ease_factor
+            FROM repertoire_node_srs srs
+            JOIN repertoire_nodes n ON n.id = srs.node_id
+            JOIN repertoire_lines l ON l.id = n.line_id
+            WHERE srs.due_date <= date('now') AND l.active = 1
+              {color_filter}
+            ORDER BY
+                CASE srs.last_result WHEN 'missed' THEN 0 ELSE 1 END,
+                srs.due_date ASC,
+                srs.repetitions ASC
+            LIMIT ?
+            """,
+            params,
+        ).fetchall()
+        srs_due_nodes = [dict(r) for r in due_rows]
+
         return {
             "lines": lines,
             "weak_nodes": weak_nodes,
+            "srs_due_nodes": srs_due_nodes,
             "focus": weak_nodes[0] if weak_nodes else None,
         }
 

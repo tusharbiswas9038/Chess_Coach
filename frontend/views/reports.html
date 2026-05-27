@@ -1,0 +1,42 @@
+<section class="page-section view-reports">
+  <header class="hero hero-banner mb-6">
+    <div class="hero-content">
+      <div class="hero-kicker">Insights / Weekly</div>
+      <h2 class="hero-title">Weekly coaching report</h2>
+      <p class="hero-sub">
+        Generated from your last 7 days of analysis. Each report is a concrete plan, not a recap.
+        New reports replace stale ones; the previous week stays available for comparison.
+      </p>
+      <div class="hero-actions mt-3 flex flex-wrap gap-2">
+        <button id="reports-generate" class="btn btn-primary" type="button">
+          Generate this week
+        </button>
+        <button id="reports-refresh" class="btn btn-ghost" type="button">
+          Refresh
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div id="reports-status" class="reports-status mb-3 text-sm text-[var(--muted)]" role="status" aria-live="polite"></div>
+
+  <div class="grid gap-4 max-md:grid-cols-1 md:grid-cols-2">
+    <article class="card card-pad">
+      <div class="card-kicker">This week</div>
+      <h3 class="card-title" id="reports-latest-title">No report yet</h3>
+      <div class="card-meta" id="reports-latest-meta"></div>
+      <div id="reports-latest-body" class="report-markdown mt-3 prose-cc"></div>
+    </article>
+    <article class="card card-pad">
+      <div class="card-kicker">Last week</div>
+      <h3 class="card-title" id="reports-previous-title">—</h3>
+      <div class="card-meta" id="reports-previous-meta"></div>
+      <div id="reports-previous-body" class="report-markdown mt-3 prose-cc"></div>
+    </article>
+  </div>
+
+  <section class="mt-6">
+    <h4 class="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">History</h4>
+    <ul id="reports-history" class="mt-2 grid gap-2 max-md:grid-cols-1 md:grid-cols-3"></ul>
+  </section>
+</section>

@@ -1,4 +1,5 @@
 # reports/weekly_report.py
+import re
 import sqlite3
 import asyncio
 import threading
@@ -11,6 +12,36 @@ from api.dependencies import COACH_OK # New Import from dependencies
 
 REPORTS_DIR = Path("reports")
 REPORTS_DIR.mkdir(exist_ok=True)
+
+PREV_PLAN_MARKER = "## Study Plan for Next Week"
+
+
+def _previous_report_excerpt() -> str:
+    """
+    Returns the most recent prior weekly report's "Study Plan" section, if any.
+    Used to give the new report a reflection target instead of writing each week
+    in isolation.
+    """
+    if not REPORTS_DIR.exists():
+        return ""
+    files = sorted(REPORTS_DIR.glob("week-*.md"), reverse=True)
+    today_iso = date.today().isoformat()
+    for path in files:
+        # skip a report generated earlier today (we want the *previous* one)
+        if path.stem == f"week-{today_iso}":
+            continue
+        try:
+            text = path.read_text()
+        except OSError:
+            continue
+        if PREV_PLAN_MARKER in text:
+            after = text.split(PREV_PLAN_MARKER, 1)[1]
+            # Stop at next H2 or end of file.
+            next_h2 = re.search(r"\n##\s", after)
+            section = after[: next_h2.start()] if next_h2 else after
+            return section.strip()
+        return text.strip()[:600]
+    return ""
 
 def _run_async(coro):
     try:
@@ -81,6 +112,18 @@ def generate_weekly_report() -> str:
     )
     mistake_breakdown = ", ".join(f"{m['type']}: {m['cnt']}" for m in mistakes) or "none"
 
+    prior_plan = _previous_report_excerpt()
+    reflection_block = (
+        f"\nLAST WEEK'S COMMITTED PLAN (for reflection only — judge how it landed):\n{prior_plan}\n"
+        if prior_plan
+        else ""
+    )
+    reflection_section = (
+        "## Did Last Week's Plan Land?\n[2 sentences: which plan items showed up in the data this week, which didn't]\n\n"
+        if prior_plan
+        else ""
+    )
+
     summary_prompt = f"""
 Write a weekly chess improvement report for {CHESS_USERNAME}.
 
@@ -91,12 +134,12 @@ THIS WEEK:
 - Drills completed: {drills_reviewed}
 - Current rating: {rating}
 - Hanging piece rate: {hanging_rate}
-
-Write in this exact format (keep it under 200 words):
+{reflection_block}
+Write in this exact format (keep it under 220 words):
 ## Week Summary
 [2 sentences on overall performance]
 
-## Top Problem This Week
+{reflection_section}## Top Problem This Week
 [most critical mistake pattern with specific example advice]
 
 ## Study Plan for Next Week

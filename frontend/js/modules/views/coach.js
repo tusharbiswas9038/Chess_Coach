@@ -53,17 +53,32 @@ export function createCoachView({
     }
 
     container.textContent = '';
-    coachHistory.forEach((message) => {
+    coachHistory.forEach((message, index) => {
       const role = message?.role === 'user' ? 'user' : 'assistant';
       const row = document.createElement('div');
-      row.className = `coach-message coach-message-${role} mb-3 flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+      row.className = `coach-message coach-message-${role} mb-3 flex flex-col ${role === 'user' ? 'items-end' : 'items-start'}`;
 
       const bubble = document.createElement('div');
       bubble.className =
         'coach-bubble max-w-[92%] rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap';
       bubble.textContent = String(message?.content || '');
-
       row.appendChild(bubble);
+
+      if (role === 'assistant' && message?.sessionId) {
+        const fb = document.createElement('div');
+        fb.className = 'coach-feedback mt-1 flex items-center gap-1 text-xs text-[var(--muted)]';
+        fb.dataset.sessionId = String(message.sessionId);
+        const rated = message.rating;
+        const helpfulActive = rated === 1 ? ' is-active' : '';
+        const notHelpfulActive = rated === -1 ? ' is-active' : '';
+        fb.innerHTML = `
+          <span class="coach-feedback-label">Was this helpful?</span>
+          <button type="button" class="coach-feedback-btn coach-feedback-up${helpfulActive}" data-rating="1" aria-label="Helpful" aria-pressed="${rated === 1}">👍</button>
+          <button type="button" class="coach-feedback-btn coach-feedback-down${notHelpfulActive}" data-rating="-1" aria-label="Not helpful" aria-pressed="${rated === -1}">👎</button>
+        `;
+        row.appendChild(fb);
+      }
+
       container.appendChild(row);
     });
 
@@ -147,6 +162,8 @@ export function createCoachView({
       coachHistory.push({
         role: 'assistant',
         content: result.reply || 'No reply returned.',
+        sessionId: result.session_id || null,
+        rating: 0,
       });
     } catch (e) {
       coachHistory.push({
@@ -163,6 +180,32 @@ export function createCoachView({
   function bindEvents() {
     dom.byId('coach-form').addEventListener('submit', handleSubmit);
     dom.byId('btn-coach-clear').addEventListener('click', clearChat);
+    dom.byId('coach-messages')?.addEventListener('click', async (event) => {
+      const btn = event.target.closest('.coach-feedback-btn');
+      if (!btn) return;
+      const wrap = btn.closest('.coach-feedback');
+      const sessionId = Number(wrap?.dataset.sessionId || 0);
+      if (!sessionId) return;
+      const rating = Number(btn.dataset.rating);
+      const wasActive = btn.classList.contains('is-active');
+      const finalRating = wasActive ? 0 : rating;
+      try {
+        await apiPost(endpoints.coachFeedback(), { session_id: sessionId, rating: finalRating });
+      } catch (e) {
+        toast('Could not save feedback: ' + e.message);
+        return;
+      }
+      // mirror state into history so it sticks across re-renders
+      const target = coachHistory.find((m) => m?.sessionId === sessionId);
+      if (target) target.rating = finalRating;
+      // visual update without full re-render
+      wrap.querySelectorAll('.coach-feedback-btn').forEach((b) => {
+        const rate = Number(b.dataset.rating);
+        const active = rate === finalRating;
+        b.classList.toggle('is-active', active);
+        b.setAttribute('aria-pressed', String(active));
+      });
+    });
     dom.query('.coach-prompt-list')?.addEventListener('click', (event) => {
       const btn = event.target.closest('[data-coach-prompt]');
       if (!btn) return;

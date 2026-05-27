@@ -5,6 +5,7 @@ import { initChartDefaults } from './modules/charts.js';
 import { clearAllCaches } from './modules/cache.js';
 import { loadSectionTemplate } from './modules/viewLoader.js';
 import { createAuthGate } from './modules/auth.js';
+import { maybeShowOnboarding } from './modules/onboarding.js';
 
 if (typeof Chart === 'undefined') {
   document.body.innerHTML =
@@ -28,6 +29,7 @@ const views = {
   openings: null,
   drills: null,
   coach: null,
+  reports: null,
 };
 
 function getActionsView() {
@@ -58,7 +60,10 @@ async function ensureView(name) {
       onOpenGame: loadGameDetail,
       onOpenGames: () => showView('games'),
       onOpenMistakes: () => showView('mistakes'),
-      onStatsLoaded: () => views.coach?.updateContext?.(),
+      onStatsLoaded: () => {
+        views.coach?.updateContext?.();
+        maybeShowOnboarding({ statsData, apiPost, toast });
+      },
       setStatsData: (next) => {
         statsData = next;
       },
@@ -119,6 +124,13 @@ async function ensureView(name) {
       showView,
       toast,
     });
+  } else if (name === 'reports' && !views.reports) {
+    const { createReportsView } = await import('./modules/views/reports.js');
+    views.reports = createReportsView({
+      api,
+      apiPost,
+      toast,
+    });
   }
 }
 
@@ -137,6 +149,8 @@ function ensureViewBound(viewName) {
     views.drills?.bindEvents();
   } else if (viewName === 'coach') {
     views.coach?.bindEvents();
+  } else if (viewName === 'reports') {
+    views.reports?.bindEvents();
   }
   boundViews.add(viewName);
 }
@@ -153,6 +167,7 @@ navigationView = createNavigationView({
   onEnterGames: () => views.games?.ensureLoaded(),
   onEnterMistakes: () => views.mistakes?.load(),
   onEnterOpenings: () => views.openings?.load(),
+  onEnterReports: () => views.reports?.load(),
 });
 getActionsView().bindEvents();
 navigationView.bindEvents();

@@ -276,6 +276,80 @@ def _create_opening_repertoire_tables(conn: sqlite3.Connection) -> None:
     )
 
 
+def _create_mistake_motifs(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS mistake_motifs (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            computed_at     TEXT NOT NULL DEFAULT (datetime('now')),
+            window_days     INTEGER NOT NULL DEFAULT 30,
+            cluster_key     TEXT NOT NULL,
+            subtype         TEXT,
+            phase           TEXT,
+            opening_family  TEXT,
+            occurrences     INTEGER NOT NULL DEFAULT 0,
+            avg_eval_loss   REAL,
+            latest_date     TEXT,
+            example_game_id TEXT,
+            example_played  TEXT,
+            example_best    TEXT
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_mistake_motifs_recent ON mistake_motifs(computed_at DESC, occurrences DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_mistake_motifs_key ON mistake_motifs(cluster_key, computed_at DESC)"
+    )
+
+
+def _create_repertoire_node_srs(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS repertoire_node_srs (
+            node_id        INTEGER PRIMARY KEY REFERENCES repertoire_nodes(id) ON DELETE CASCADE,
+            line_id        INTEGER REFERENCES repertoire_lines(id) ON DELETE CASCADE,
+            interval_days  REAL NOT NULL DEFAULT 1,
+            ease_factor    REAL NOT NULL DEFAULT 2.5,
+            repetitions    INTEGER NOT NULL DEFAULT 0,
+            due_date       TEXT NOT NULL DEFAULT (date('now')),
+            last_reviewed  TEXT,
+            last_result    TEXT CHECK(last_result IN ('remembered','missed','skipped')),
+            updated_at     TEXT DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_repertoire_node_srs_due ON repertoire_node_srs(due_date, last_result)"
+    )
+
+
+def _create_coach_memory_and_job_ledger(conn: sqlite3.Connection) -> None:
+    _add_column_if_missing(conn, "coach_sessions", "user_rating", "INTEGER")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS job_ledger (
+            job_id        TEXT PRIMARY KEY,
+            kind          TEXT NOT NULL,
+            payload_json  TEXT,
+            status        TEXT NOT NULL CHECK(status IN ('queued','running','completed','failed')),
+            enqueued_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            started_at    TEXT,
+            finished_at   TEXT,
+            duration_ms   INTEGER,
+            error         TEXT
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_job_ledger_status_enqueued ON job_ledger(status, enqueued_at)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_job_ledger_finished ON job_ledger(finished_at DESC)"
+    )
+
+
 def _create_analytics_snapshot_tables(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
@@ -341,6 +415,9 @@ MIGRATIONS: List[Migration] = [
     ("007_create_puzzle_ecosystem", _create_puzzle_ecosystem),
     ("008_create_opening_repertoire_tables", _create_opening_repertoire_tables),
     ("009_create_analytics_snapshot_tables", _create_analytics_snapshot_tables),
+    ("010_create_coach_memory_and_job_ledger", _create_coach_memory_and_job_ledger),
+    ("011_create_repertoire_node_srs", _create_repertoire_node_srs),
+    ("012_create_mistake_motifs", _create_mistake_motifs),
 ]
 
 

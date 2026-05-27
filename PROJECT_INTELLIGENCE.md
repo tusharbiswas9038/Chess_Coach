@@ -1,5 +1,7 @@
 # PROJECT_INTELLIGENCE
 
+> **Last verified:** 2026-05-27 (Horizon 1 + Horizon 2 polish — coach memory, repertoire ↔ SRS bridge, opening-aware coaching, recurring motif clustering, weekly report reflection, hanging-rate bug fix).
+
 ## 1. Executive Summary
 - **Product**: Self-hosted AI chess coaching platform for a single player (`CHESS_USERNAME`, default `Tushar9038`) that syncs Chess.com rapid games, analyzes them with Stockfish, extracts mistakes, generates drills, and provides AI coaching/reports.
 - **Primary goals**: Convert raw game history into actionable improvement loops (analyze -> prioritize -> drill -> coach).
@@ -176,14 +178,15 @@ Core tables: `games`, `moves`, `mistakes`, `srs_items`, `player_profile`, `playe
 | Area | Features | Maturity |
 |---|---|---|
 | Dashboard | KPI cards, win/mistake charts, weekly focus, next best step, session flow, recent games | **Partial-complete** |
+| Onboarding | First-run modal detects empty `games`, prompts to start initial sync, dismissible state in localStorage ([frontend/js/modules/onboarding.js](/frontend/js/modules/onboarding.js)) | **Complete** |
 | Games | Server-side filter/sort/pagination, preset filters, save/load filter slots, CSV export, summary copy | **Complete** |
 | Game Review | Move-by-move workspace, board states, best move preview, critical mistakes panel, coach prompt handoff | **Partial-complete** |
 | Mistakes | By-phase chart, blunder trend, heatmap, recurring motifs, critical mistakes table, phase tabs | **Complete** |
 | Openings | Pre-aggregated summary, white/black charts, opening genome chart + insight, confidence badges | **Complete** |
 | Drills | Due queue, board interaction, hint, quality scoring, streak/progress updates | **Complete** |
-| Coach | Prompt chips, context panel, chat (stream-capable backend), report generation trigger | **Partial** |
-| Reports | Per-game journal entries + weekly markdown report generation | **Partial** |
-| Jobs/Automation | Sync/analyze/sessions/player-model/weekly-report/db-maintenance queue endpoints + status polling | **Complete** |
+| Coach | Prompt chips, context panel, chat (stream-capable backend), memory preamble from recent sessions, time-pressure profile, thumbs feedback writes `coach_sessions.user_rating` | **Partial-complete** |
+| Reports | Per-game journal entries + weekly markdown report generation. In-app `/reports` view shows latest + previous + history with markdown rendering ([frontend/js/modules/views/reports.js](/frontend/js/modules/views/reports.js)) | **Complete** |
+| Jobs/Automation | Sync/analyze/sessions/player-model/weekly-report/db-maintenance queue endpoints + status polling. Durable `job_ledger` table records every transition; orphan jobs are reconciled on startup. New `/api/jobs/ledger` exposes the durable history. | **Complete** |
 | Product analytics | Weekly focus API, player-model latest snapshot API | **Partial-complete** |
 
 ## 10. Current UX/UI State
@@ -211,21 +214,27 @@ Core tables: `games`, `moves`, `mistakes`, `srs_items`, `player_profile`, `playe
 - Stockfish and Ollama are local bottlenecks; analysis/chat throughput limited by host CPU/RAM.
 
 ## 12. Technical Debt & Risks
-- **High**: `coach/ollama_client.py` duplicate code blocks; cleanup risk and maintainability issue.
-- **High**: Job queue has no durable retries/state store; jobs can be lost on process restart.
+- **Resolved (2026-05-27):** durable `job_ledger` table now records every enqueue/start/finish; orphan `queued`/`running` rows are reconciled on startup ([api/job_queue.py](/api/job_queue.py), [api/main.py](/api/main.py), migration 010).
+- **Resolved (2026-05-27):** prior intel claim that `coach/ollama_client.py` had duplicate code blocks is incorrect — the file is ~100 lines, no duplication. Verified by direct read.
+- **Resolved (2026-05-27):** `player_profile.hanging_piece_rate` formula corrected to `COUNT(DISTINCT game_id where type='hanging_piece') / analyzed_games`, capped at 1.0. Was previously reading 4.5+ on the production DB.
+- **Resolved (2026-05-27):** repertoire ↔ SRS bridge (`repertoire_node_srs` table) — opening recall results now drive an SM-2 schedule. Coach context surfaces recently missed nodes.
+- **Resolved (2026-05-27):** recurring-mistake motif clustering — `mistake_motifs` snapshot table populated by sync/analyze/player-model jobs; rule-based on `(subtype, phase, eco_family)` with min-3-occurrences threshold.
+- **High**: Job retries are still single-attempt (ledger captures failures, but no automatic re-run policy).
 - **Medium**: Mixed sync/async boundaries and thread-based async wrappers in report generation.
-- **Medium**: Router-local caches (`stats`, `product`) are mutable globals without explicit locking.
+- **Medium**: Router-local caches (`stats`, `product`) are wrapped in `TTLCache` with `threading.Lock`, but `lru_cache` on `_get_cached_stats` is stdlib-thread-safe and unaudited for invalidation race semantics under heavy load.
 - **Medium**: Frontend large modules (`dashboard.js`, `review.js`) are feature-rich but harder to maintain.
 - **Low-medium**: Schema docs mostly aligned, but timestamp and data-retention policies are not standardized.
+- **Low**: `BackgroundTasks` import unused in [api/routers/reports.py](/api/routers/reports.py).
 
 ## 13. Recommended Next Priorities
-1. **Stability cleanup**: deduplicate/fix `coach/ollama_client.py`, remove unused imports/legacy branches.
-2. **Job reliability**: add persisted job ledger table (queued/running/completed/failed) and restart-safe recovery.
-3. **Auth hardening**: require admin token in production for all job/report/mutation endpoints; explicit startup warning if unset.
-4. **Frontend maintainability**: split `dashboard.js` and `review.js` into smaller submodules (render/state/actions).
-5. **AI safety/quality**: tighten chat input constraints and output handling; add timeout/fallback consistency for coach endpoints.
-6. **Data lifecycle**: retention policy for `player_model_snapshots`, reports, and stale SRS items.
-7. **Performance**: measure and optimize slow SQL endpoints (`critical mistakes`, `heatmap`) with query plans and targeted indexes if needed.
+1. **LLM-driven motif labeling**: current motif clustering is rule-based on `(subtype, phase, eco_family)`. Next pass: name each cluster with an LLM ("back-rank weakness in C-family middlegames") so dashboard surfacing reads like coaching, not telemetry.
+2. **Surface motifs and SRS-due nodes in the dashboard UI**: backend exposes `/api/product/motifs/latest` and `srs_due_nodes` in the training queue; the dashboard doesn't read them yet.
+3. **Job retry policy**: extend the durable `job_ledger` with retry counters and exponential backoff on transient failures.
+4. **Auth hardening**: deprecate the `ADMIN_TOKEN`-as-password fallback in [api/auth_service.py](/api/auth_service.py); require `ADMIN_PASSWORD_HASH` in production with a startup warning otherwise.
+5. **Frontend maintainability**: split `dashboard.js` and `review.js` into smaller submodules (render/state/actions).
+6. **AI safety/quality**: tighten chat input constraints; add per-mode timeouts and a fallback message when Ollama is slow.
+7. **Data lifecycle**: retention policy for `player_model_snapshots`, `analytics_snapshots`, and stale SRS items. (`mistake_motifs` already has a 5-snapshot rolling cap.)
+8. **Performance**: instrument slow SQL endpoints (`critical mistakes`, `heatmap`, `get_stats` bundle) with query plans before they degrade past 200k moves.
 
 ## 14. AI Guidance Section (For Future Assistants)
 

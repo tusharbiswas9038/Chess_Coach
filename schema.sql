@@ -229,7 +229,8 @@ CREATE TABLE coach_sessions (
     mode             TEXT NOT NULL DEFAULT 'quick_answer',
     user_message     TEXT NOT NULL,
     assistant_reply  TEXT NOT NULL,
-    context_digest   TEXT
+    context_digest   TEXT,
+    user_rating      INTEGER       -- thumbs feedback for memory weighting (NULL=unrated)
 );
 
 CREATE TABLE coach_feedback (
@@ -326,3 +327,51 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     id          TEXT PRIMARY KEY,
     applied_at  TEXT DEFAULT (datetime('now'))
 );
+
+-- ── JOB LEDGER (durable record of background jobs) ─────────────────
+CREATE TABLE IF NOT EXISTS job_ledger (
+    job_id        TEXT PRIMARY KEY,
+    kind          TEXT NOT NULL,
+    payload_json  TEXT,
+    status        TEXT NOT NULL CHECK(status IN ('queued','running','completed','failed')),
+    enqueued_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    started_at    TEXT,
+    finished_at   TEXT,
+    duration_ms   INTEGER,
+    error         TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_job_ledger_status_enqueued ON job_ledger(status, enqueued_at);
+CREATE INDEX IF NOT EXISTS idx_job_ledger_finished ON job_ledger(finished_at DESC);
+
+-- ── REPERTOIRE NODE SRS (SM-2 schedule for opening recall) ─────────
+CREATE TABLE IF NOT EXISTS repertoire_node_srs (
+    node_id        INTEGER PRIMARY KEY REFERENCES repertoire_nodes(id) ON DELETE CASCADE,
+    line_id        INTEGER REFERENCES repertoire_lines(id) ON DELETE CASCADE,
+    interval_days  REAL NOT NULL DEFAULT 1,
+    ease_factor    REAL NOT NULL DEFAULT 2.5,
+    repetitions    INTEGER NOT NULL DEFAULT 0,
+    due_date       TEXT NOT NULL DEFAULT (date('now')),
+    last_reviewed  TEXT,
+    last_result    TEXT CHECK(last_result IN ('remembered','missed','skipped')),
+    updated_at     TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_repertoire_node_srs_due ON repertoire_node_srs(due_date, last_result);
+
+-- ── MISTAKE MOTIFS (rule-based recurring-pattern clusters) ─────────
+CREATE TABLE IF NOT EXISTS mistake_motifs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    computed_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    window_days     INTEGER NOT NULL DEFAULT 30,
+    cluster_key     TEXT NOT NULL,
+    subtype         TEXT,
+    phase           TEXT,
+    opening_family  TEXT,
+    occurrences     INTEGER NOT NULL DEFAULT 0,
+    avg_eval_loss   REAL,
+    latest_date     TEXT,
+    example_game_id TEXT,
+    example_played  TEXT,
+    example_best    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_mistake_motifs_recent ON mistake_motifs(computed_at DESC, occurrences DESC);
+CREATE INDEX IF NOT EXISTS idx_mistake_motifs_key ON mistake_motifs(cluster_key, computed_at DESC);

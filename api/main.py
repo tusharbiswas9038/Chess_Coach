@@ -10,7 +10,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from api.db import db_conn
 from api.db_migrations import run_pending_migrations
 from api.dependencies import DRILLS_OK, COACH_OK
-from api.job_queue import job_queue
+from api.job_queue import job_queue, recover_stale_jobs
 from api.security import require_admin_if_configured
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -32,12 +32,23 @@ logging.basicConfig(
 async def startup_event():
     config.validate_startup_config()
     applied = run_pending_migrations()
+    orphans = recover_stale_jobs()
+    for orphan in orphans:
+        job_queue._recent_jobs.appendleft({
+            "id": orphan["job_id"],
+            "status": "failed",
+            "duration_sec": 0,
+            "finished_at": time.time(),
+            "error": "lost on restart",
+            "source": "recovery",
+        })
     log.info(
-        "startup env=%s queue_max=%s debug_routes=%s migrations_applied=%s",
+        "startup env=%s queue_max=%s debug_routes=%s migrations_applied=%s orphan_jobs=%s",
         config.APP_ENV,
         config.JOB_QUEUE_MAX_SIZE,
         config.ENABLE_DEBUG_ROUTES,
         applied,
+        len(orphans),
     )
     job_queue.start_worker()
 
@@ -140,6 +151,7 @@ async def serve_dashboard():
 @app.get("/openings", include_in_schema=False)
 @app.get("/drills", include_in_schema=False)
 @app.get("/coach", include_in_schema=False)
+@app.get("/reports", include_in_schema=False)
 async def serve_spa_routes():
     return _serve_index()
 

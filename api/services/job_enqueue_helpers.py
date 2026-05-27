@@ -10,6 +10,7 @@ from scripts.db_maintenance import run_maintenance
 from api.dependencies import COACH_OK # New Import from dependencies
 from api.services.player_model import compute_and_store_player_model_snapshot
 from api.services.analytics import compute_and_store_analytics_snapshot
+from api.services.mistake_motifs import compute_mistake_motifs
 
 log = logging.getLogger("chess_coach.api.jobs")
 
@@ -74,6 +75,10 @@ def run_analysis_worker_and_clear_cache() -> None:
     run_analysis_worker()
     compute_and_store_player_model_snapshot(source="analysis")
     compute_and_store_analytics_snapshot(source="analysis")
+    try:
+        compute_mistake_motifs()
+    except Exception as e:
+        log.warning("mistake_motifs compute skipped after analysis: %s", e)
     clear_analytics_caches()
     log.info("Cleared analytics caches after analysis job.")
     return _completion_payload("analyze")
@@ -87,6 +92,10 @@ def compute_sessions_and_clear_cache() -> None:
 def compute_player_model_and_clear_cache() -> None:
     compute_and_store_player_model_snapshot(source="manual")
     compute_and_store_analytics_snapshot(source="manual")
+    try:
+        compute_mistake_motifs()
+    except Exception as e:
+        log.warning("mistake_motifs compute skipped after manual player-model: %s", e)
     clear_analytics_caches()
     log.info("Cleared analytics caches after player model job.")
     return _completion_payload("player-model")

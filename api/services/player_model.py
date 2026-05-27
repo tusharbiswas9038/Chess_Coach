@@ -68,6 +68,7 @@ def _build_snapshot_payload(conn) -> Dict[str, Any]:
             COUNT(*) AS total_mistakes,
             SUM(CASE WHEN type IN ('blunder', 'hanging_piece') THEN 1 ELSE 0 END) AS severe_mistakes,
             SUM(CASE WHEN type = 'hanging_piece' THEN 1 ELSE 0 END) AS hanging_piece_mistakes,
+            COUNT(DISTINCT CASE WHEN type = 'hanging_piece' THEN game_id END) AS hanging_games,
             AVG(COALESCE(eval_loss, 0)) AS avg_eval_loss
         FROM mistakes
         """
@@ -133,10 +134,16 @@ def _build_snapshot_payload(conn) -> Dict[str, Any]:
     analyzed_games = int(totals["analyzed_games"] or 0)
     severe_mistakes = int(mistakes["severe_mistakes"] or 0)
     hanging_mistakes = int(mistakes["hanging_piece_mistakes"] or 0)
+    hanging_games = int(mistakes["hanging_games"] or 0)
     total_mistakes = int(mistakes["total_mistakes"] or 0)
 
     blunders_per_game = round(severe_mistakes / analyzed_games, 2) if analyzed_games else 0.0
-    hanging_piece_rate = round(hanging_mistakes / analyzed_games, 4) if analyzed_games else 0.0
+    # hanging_piece_rate is the fraction of analyzed games that contain >= 1 hanging
+    # piece — clamp to 1.0 because a game can only count once even if it has multiple
+    # hanging pieces (older snapshots used a buggy divisor and could exceed 1.0).
+    hanging_piece_rate = (
+        round(min(hanging_games, analyzed_games) / analyzed_games, 4) if analyzed_games else 0.0
+    )
     tactical_style = _score_ratio(total_mistakes - hanging_mistakes, max(total_mistakes, 1))
     solid_style = round(1.0 - min(1.0, blunders_per_game / 3.0), 3)
     attacking_style = _score_ratio(int(recent["wins"] or 0), int(recent["games"] or 0))
