@@ -305,8 +305,8 @@ export function createReviewView({ api, apiContract, apiPost, generateReport, on
     evalEl.className = `review-summary-value ${evalClass}`;
 
     dom.byId('review-badges').innerHTML = `
-    <span class="quality-pill">${move.phase || 'phase unknown'}</span>
-    <span class="quality-pill">${move.classification || 'unclassified'}</span>
+    <cc-stat-pill tone="quality" label="${esc(move.phase || 'phase unknown')}"></cc-stat-pill>
+    <cc-stat-pill tone="quality" label="${esc(move.classification || 'unclassified')}"></cc-stat-pill>
     <span class="${move.is_hanging_piece ? 'eval-pill text-[var(--warning)]' : 'quality-pill'}">${move.is_hanging_piece ? 'hanging piece' : 'piece safe'}</span>
     ${subtypeChip(currentMistake?.mistake_subtype)}
     ${currentMistake?.time_pressure_flag ? '<span class="quality-pill text-[var(--warning)]">time pressure</span>' : ''}

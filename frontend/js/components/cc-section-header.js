@@ -23,6 +23,8 @@
 //   variant="hero"      — large workspace hero (default).
 //   variant="card"      — card-header style.
 //   variant="compact"   — small section opener inside an existing card.
+//   variant="toolbar"   — drill-toolbar style (20px title), used in hero-banners
+//                         that pair the header with action buttons.
 
 import { LitElement, html, nothing } from 'https://cdn.jsdelivr.net/npm/lit@3/+esm';
 
@@ -50,12 +52,14 @@ export class CCSectionHeader extends LitElement {
   _titleClass() {
     if (this.variant === 'card') return 'card-title';
     if (this.variant === 'compact') return 'text-base font-semibold text-[var(--text)]';
+    if (this.variant === 'toolbar') return 'drill-toolbar-title mt-1 text-[20px] font-bold text-[var(--text)]';
     return 'workspace-hero-title section-title mt-1 text-[var(--text)]';
   }
 
   _subtitleClass() {
     if (this.variant === 'card') return 'card-subtitle';
     if (this.variant === 'compact') return 'mt-1 text-xs text-[var(--muted)]';
+    if (this.variant === 'toolbar') return 'drill-toolbar-subtitle mt-1 text-sm text-[var(--muted)]';
     return 'workspace-hero-summary mt-2 max-w-[58ch] text-[var(--muted)]';
   }
 

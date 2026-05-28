@@ -16,6 +16,7 @@ import { createCache } from '../cache.js';
 import { baseCartesianOptions, chartPalette, doughnutOptions } from '../charts.js';
 import { createDashboardMotifsView } from './dashboard-motifs.js';
 import { createDashboardInsightsView } from './dashboard-insights.js';
+import { buildNextSteps } from './dashboard-next-steps.js';
 
 export function createDashboardView({
   api,
@@ -68,12 +69,13 @@ export function createDashboardView({
     const streak = Number(drillSummary.streak) || 0;
     const achievement =
       streak >= 10 ? 'On Fire' : streak >= 5 ? 'Consistent' : streak >= 2 ? 'Starter' : 'New';
-    const goalEl = dom.byId('kpi-drill-goal-value');
-    const streakEl = dom.byId('kpi-streak-value');
-    const achievementEl = dom.byId('kpi-streak-sub');
-    if (goalEl) goalEl.textContent = `${todayDone}/${goalTarget}`;
-    if (streakEl) streakEl.textContent = `${streak} day${streak === 1 ? '' : 's'}`;
-    if (achievementEl) achievementEl.textContent = achievement;
+    const goalCard = dom.byId('kpi-drill-goal');
+    const streakCard = dom.byId('kpi-streak');
+    if (goalCard) goalCard.setAttribute('value', `${todayDone}/${goalTarget}`);
+    if (streakCard) {
+      streakCard.setAttribute('value', `${streak} day${streak === 1 ? '' : 's'}`);
+      streakCard.setAttribute('sub', achievement);
+    }
   }
 
   function getWeekKey() {
@@ -142,85 +144,6 @@ export function createDashboardView({
         saveWeeklyPlanState(actions, checked);
       });
     });
-  }
-
-  function buildNextSteps(statsData, weeklyFocus = null) {
-    const dueCount = Number(statsData?.drills_due || 0);
-    const pending = Number(statsData?.games?.pending || 0);
-    const hRate = Number(statsData?.hanging_piece_rate || 0) * 100;
-    const bpg = Number(statsData?.blunders_per_game || 0);
-    const primaryFocus = weeklyFocus?.primary_focus;
-    const focusType = primaryFocus?.type ? primaryFocus.type.replace('_', ' ') : null;
-    const focusPhase = primaryFocus?.phase || 'all phases';
-
-    const candidates = [];
-    if (dueCount > 0) {
-      candidates.push({
-        title: `Clear ${Math.min(dueCount, 15)} due drill${dueCount === 1 ? '' : 's'}`,
-        rationale:
-          dueCount > 10
-            ? 'Your review queue is large enough to block new learning. Finish the due items first.'
-            : 'Spaced-repetition positions are time-sensitive and come from your own mistakes.',
-        target: 'drills',
-        score: 100 + dueCount,
-        badge: 'Drills',
-      });
-    }
-    if (primaryFocus) {
-      candidates.push({
-        title: `Attack ${focusType} in ${focusPhase}`,
-        rationale: weeklyFocus?.actions?.[0] || 'This is the strongest current pattern in your recent games.',
-        target: 'mistakes',
-        score: 86,
-        badge: 'Focus',
-      });
-    }
-    if (hRate >= 40) {
-      candidates.push({
-        title: 'Run a piece-safety review',
-        rationale: `${hRate.toFixed(1)}% hanging-piece rate is high enough to cost games before strategy matters.`,
-        target: 'mistakes',
-        score: 82,
-        badge: 'Leak',
-      });
-    }
-    if (bpg >= 3) {
-      candidates.push({
-        title: 'Practice a one-move blunder check',
-        rationale: `${bpg.toFixed(1)} blunders per game means the fastest gain is reducing one tactical miss.`,
-        target: 'drills',
-        score: 78,
-        badge: 'Tactics',
-      });
-    }
-    if (pending > 0) {
-      candidates.push({
-        title: `Analyze ${pending} pending game${pending === 1 ? '' : 's'}`,
-        rationale: 'The dashboard is missing fresh signals from games that are already in the database.',
-        target: 'games',
-        score: 62 + Math.min(pending, 20),
-        badge: 'Backlog',
-      });
-    }
-    candidates.push({
-      title: 'Review the latest critical game',
-      rationale: 'One concrete mistake reviewed deeply is better than scanning ten games loosely.',
-      target: 'games',
-      score: 50,
-      badge: 'Review',
-    });
-    candidates.push({
-      title: 'Ask coach for one correction rule',
-      rationale: 'Convert the pattern into a short rule you can use before your next game.',
-      target: 'coach',
-      score: 42,
-      badge: 'Coach',
-    });
-
-    return candidates
-      .sort((a, b) => b.score - a.score)
-      .filter((step, index, arr) => arr.findIndex((item) => item.title === step.title) === index)
-      .slice(0, 3);
   }
 
   function renderNextBestStep(statsData, weeklyFocus = null) {
@@ -608,18 +531,14 @@ export function createDashboardView({
                  value="${weeklyWinFmt ? weeklyWinFmt.value : '—'}"
                  severity="${weeklyWinFmt ? weeklyWinFmt.severity : ''}"
                  sub="${esc(weeklyWinFmt?.label || 'this week')}"></cc-kpi-card>
-    <div class="kpi-card p-4">
-      <div class="mb-2 text-lg text-[var(--primary)]">✓</div>
-      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Drill Goal</div>
-      <div class="kpi-value kpi-good mt-2 text-2xl font-semibold" id="kpi-drill-goal-value">${todayDone}/${goalTarget}</div>
-      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">daily target progress</div>
-    </div>
-    <div class="kpi-card p-4">
-      <div class="mb-2 text-lg text-[var(--analytics)]">◆</div>
-      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Streak / Achievement</div>
-      <div class="kpi-value kpi-blue mt-2 text-2xl font-semibold" id="kpi-streak-value">${streak} day${streak === 1 ? '' : 's'}</div>
-      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]" id="kpi-streak-sub">${achievement}</div>
-    </div>
+    <cc-kpi-card id="kpi-drill-goal" icon="✓" tone="good" icon-tone="good"
+                 label="Drill Goal"
+                 value="${todayDone}/${goalTarget}"
+                 sub="daily target progress"></cc-kpi-card>
+    <cc-kpi-card id="kpi-streak" icon="◆" tone="blue" icon-tone="analytics"
+                 label="Streak / Achievement"
+                 value="${streak} day${streak === 1 ? '' : 's'}"
+                 sub="${esc(achievement)}"></cc-kpi-card>
     <cc-kpi-card icon="◍" tone="warn" icon-tone="warn"
                  label="Total Mistakes"
                  value="${totalMistakes.toLocaleString()}"

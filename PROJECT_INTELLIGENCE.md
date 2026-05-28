@@ -239,17 +239,15 @@ Core tables: `games`, `moves`, `mistakes`, `srs_items`, `player_profile`, `playe
 
 ## 13. Recommended Next Priorities
 
-Phase C of the H14 redesign blueprint complete. The Lit component layer + design tokens are mature enough for a future React Native port to consume directly. Remaining priorities are independent of the redesign blueprint:
-
-**Polish**
-1. **`<cc-stat-pill>` migrations in JS templates.** review.js still hand-rolls `quality-pill` markup in 4–5 template literals (`renderReviewModeConfig`, `renderMistakesTable`). Migrating those reduces inline arbitrary-value drift.
-2. **Migrate dashboard.js KPIs that have dynamic-update children** (drill goal, streak) — requires `<cc-kpi-card>` to expose addressable child slots or for the handlers to switch from element-ID lookup to attribute setters.
-3. **Drills hero `<cc-section-header>` migration** — needs a new `variant="toolbar"` since the existing hero/card/compact variants don't match the 20px `drill-toolbar-title` typography.
+Phase C of the H14 redesign blueprint complete and the residual polish from H18 has been swept. The Lit component layer + design tokens are mature enough for a future React Native port to consume directly. What's left is opportunistic only:
 
 **Always-on**
-4. **Continue dashboard module split.** Session-flow controller, game-meta-row + KPI grid renderer, weekly-focus card.
-5. **Continue Tailwind ratchet selectively.** Gate at 25, current 19. Pursue only when natural class extractions present themselves.
-6. **`<cc-kpi-card>` for review summary metrics.** review.js' `eval-pill` block could use cc-stat-pill (small) but the larger summary metrics pattern (Inaccuracies/Mistakes/Blunders count blocks) might warrant another `<cc-kpi-card>` variant.
+1. **Continue Tailwind ratchet selectively.** Gate at 25, current **18**. Pursue only when natural class extractions present themselves.
+2. **`<cc-kpi-card>` variant for review summary metrics.** review.js' eval-pill summary block (Inaccuracies / Mistakes / Blunders / Avg loss, lines ~624–627) is a label+value pattern that doesn't fit cc-stat-pill (it's a small KPI, not a tag) and doesn't fit cc-kpi-card (no icon + tighter layout). Worth a small `<cc-stat-row>` primitive when another caller appears.
+3. **Decorate the residual `quality-pill` / `eval-pill` sites in review.js.** Five sites stay inline because they carry extra utility classes (`text-[var(--warning)]`), `mtag-*` modifiers, or `title` attributes. Migrating them needs a richer pill component — defer until a second caller wants the same shape.
+
+**Deferred (pre-RN port)**
+4. **`<cc-board-arrow>` and `<cc-promotion-picker>`** Lit primitives — gated on the chess-board migration. Don't pursue until the board itself moves.
 
 ## 14. AI Guidance Section (For Future Assistants)
 
