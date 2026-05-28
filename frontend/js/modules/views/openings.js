@@ -108,7 +108,7 @@ export function createOpeningsView({ api, apiContract, apiDelete, apiPost, apiPu
                 </div>
                 <h3 class="text-sm font-semibold text-[var(--text)]">${truncate(line.name, 56)}</h3>
               </div>
-              <button class="btn btn-ghost btn-xs" type="button" data-repertoire-delete="${Number(line.id)}">Remove</button>
+              <button class="btn btn-ghost btn-sm" type="button" data-repertoire-delete="${Number(line.id)}">Remove</button>
             </div>
             <p class="mt-2 text-xs leading-relaxed text-[var(--muted)]">${truncate(line.line_moves, 160)}</p>
             ${line.notes ? `<p class="mt-2 rounded-xl bg-[rgba(255,255,255,0.03)] px-3 py-2 text-xs text-[var(--text-soft)]">${truncate(line.notes, 160)}</p>` : ''}
@@ -147,7 +147,7 @@ export function createOpeningsView({ api, apiContract, apiDelete, apiPost, apiPu
               </div>
               <div class="text-sm font-semibold text-[var(--text)]">${truncate(node.name, 48)}</div>
             </div>
-            <button class="btn btn-ghost btn-xs" type="button"
+            <button class="btn btn-ghost btn-sm" type="button"
               data-add-weak-node
               data-color="${esc(node.color)}"
               data-eco="${esc(node.eco || '')}"
@@ -205,9 +205,9 @@ export function createOpeningsView({ api, apiContract, apiDelete, apiPost, apiPu
             </div>
             <p class="mt-2 text-xs leading-relaxed text-[var(--text-soft)]">${truncate(line.line_moves, 140)}</p>
             <div class="mt-3 grid grid-cols-3 gap-2">
-              <button class="btn btn-ghost btn-xs" type="button" data-training-result="remembered" data-line-id="${Number(line.id)}">Remembered</button>
-              <button class="btn btn-ghost btn-xs" type="button" data-training-result="missed" data-line-id="${Number(line.id)}">Missed</button>
-              <button class="btn btn-ghost btn-xs" type="button" data-training-result="skipped" data-line-id="${Number(line.id)}">Skip</button>
+              <button class="btn btn-ghost btn-sm" type="button" data-training-result="remembered" data-line-id="${Number(line.id)}">Remembered</button>
+              <button class="btn btn-ghost btn-sm" type="button" data-training-result="missed" data-line-id="${Number(line.id)}">Missed</button>
+              <button class="btn btn-ghost btn-sm" type="button" data-training-result="skipped" data-line-id="${Number(line.id)}">Skip</button>
             </div>
           </article>
         `)

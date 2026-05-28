@@ -6,6 +6,30 @@ The original product audit framed this app as "self-hosted single-user, no SaaS 
 
 ---
 
+## H18.1 — Button system + hover identity sweep (2026-05-29)
+
+Tail end of H18. The button surface had drifted: per-view inconsistencies (Sync/Analyze missing on some pages, yellow flash on dashboard refresh), no hover differentiation, daisyUI's default focus ring fighting the green-as-action rule, and CSS edits not landing in browsers because the service worker was running stale-while-revalidate on the shell.
+
+- **Hover identity matrix.** Five hover roles, each with its own colour story so a user can read the kind of action from the hover alone:
+  - Ghost / topbar (`btn-ghost`, `topbar-action-btn`) → **neutral lift** (no saturated colour). Routine actions like Sync, Analyze, filter toggles.
+  - Primary (`btn-primary`) → **green CTA** with glow ring. Save, Generate, Add a line.
+  - Filter chips (`preset-btn`) → **purple wash** (analytics tone, data-vis adjacency).
+  - Flip-board (`flip-btn`) → **teal-blue** ring + tint.
+  - Drill quality (`quality-btn[data-q]`) → **per-grade** red/yellow/blue/green matching the SM-2 grade.
+  - Documented in `frontend/STYLING_CONTRACT.md` "Button & Hover System".
+- **`--hover-*` token group** in `@layer base :root` — `--hover-bg`, `--hover-border`, `--hover-fg`, `--hover-shadow` for ghost; `--hover-cta-*` for primary; `--hover-chip-*` for chips; `--focus-ring` for all roles. Future theme swaps touch one block.
+- **DaisyUI cascade workaround.** DaisyUI emits `.btn:hover` in `@layer utilities` which beats `@layer components` regardless of specificity. Hover declarations now use `!important` *and* set daisyUI's own variables (`--btn-bg`, `--btn-fg`, `--btn-border`, `--btn-color`) at the same selector so the cascade can't fight us. Documented in STYLING_CONTRACT so the next contributor doesn't burn an hour rediscovering it.
+- **Service worker shell strategy → `networkFirstShell`** (`frontend/sw.js`). Was stale-while-revalidate; CSS/JS edits used to land on the *second* reload, not the first. Bumped `CACHE_VERSION` to `v4` to invalidate older shell caches on next sw boot.
+- **CSP `connect-src` allows Google Fonts.** SW prefetched Manrope from `fonts.gstatic.com` / `fonts.googleapis.com`; CSP was rejecting the connection. Added both hosts to `connect-src` in `config.py`.
+- **No-inline-style rule for Lit components.** CSP forbids `'unsafe-inline'`; `cc-kpi-card` and `cc-skeleton` previously wrote `style="color: …"` / `style="width: …"` and the styles silently dropped. Replaced with class+attribute selectors (`cc-kpi-icon-{tone}`, `cc-skel-text-line[data-line="N"]`) defined in `tailwind.input.css`. Added to COMPONENT_CONTRACTS conventions.
+- **`<cc-section-header variant="toolbar">`** — 20px title for hero-banner panels that pair the header with action buttons. Documented.
+- **Topbar buttons standardized.** All views now show Sync + Analyze in the topbar; the per-view allowlist in `navigation.js:updateTopbarActionsForView` was hiding them on mistakes/drills/coach. Mobile Actions menu inline `style.display = 'none'` was also unconditionally set at startup, beating the CSS toggle and breaking the click handler — removed.
+- **Dashboard yellow-flash on refresh** — `dashboard.js` was adding `btn-warning` to the Sync button when work was pending, which painted yellow on first paint and then re-painted ghost on hydration. Removed the class addition; kept the tooltip.
+- **`view-hero` shell standardized.** All 8 views wrap their hero in `<section class="view-hero">` with `<cc-section-header>`. Coach view's hero was previously nested inside the wizard-shell 2-col grid and read as empty space; lifted out.
+- **Docs refreshed:** STYLING_CONTRACT (Button & Hover System), COMPONENT_CONTRACTS (toolbar variant + no-inline-style rule), CHANGELOG.
+
+---
+
 ## H18 — Phase C completion: offline drills, cc-stat-pill, more headers (2026-05-28)
 
 Closes Phase C from the H14 redesign blueprint. Three work streams ran in parallel via subagents; orchestrator finished what didn't land cleanly.

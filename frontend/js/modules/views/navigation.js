@@ -286,29 +286,15 @@ export function createNavigationView({
     handleViewportMode();
   }
 
-  function updateTopbarActionsForView(viewName) {
+  function updateTopbarActionsForView(_viewName) {
     const btnSync = dom.byId('btn-sync');
     const btnAnalyze = dom.byId('btn-analyze');
     const btnDb = dom.byId('btn-db-maintenance');
-    const visibleByView = {
-      dashboard: ['sync', 'analyze', 'db'],
-      games: ['sync', 'analyze', 'db'],
-      openings: ['sync', 'analyze', 'db'],
-      mistakes: ['analyze', 'db'],
-      drills: ['db'],
-      coach: ['db'],
-      'game-detail': ['analyze', 'db'],
-    };
-    const visible = new Set(visibleByView[viewName] || ['sync', 'analyze', 'db']);
-    const apply = (el, key) => {
+    [btnSync, btnAnalyze, btnDb].forEach((el) => {
       if (!el) return;
-      const show = visible.has(key);
-      el.hidden = !show;
-      el.setAttribute('aria-hidden', String(!show));
-    };
-    apply(btnSync, 'sync');
-    apply(btnAnalyze, 'analyze');
-    apply(btnDb, 'db');
+      el.hidden = false;
+      el.setAttribute('aria-hidden', 'false');
+    });
   }
 
   return {

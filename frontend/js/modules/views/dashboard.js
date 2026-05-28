@@ -285,13 +285,10 @@ export function createDashboardView({
 
   function updateSyncButtonWarning(dueDrillsWarning) {
     if (btnSyncGames) {
-      if (dueDrillsWarning) {
-        btnSyncGames.classList.add('btn-warning');
-        btnSyncGames.title = 'Review your drills first!';
-      } else {
-        btnSyncGames.classList.remove('btn-warning');
-        btnSyncGames.title = 'Sync new games from Chess.com';
-      }
+      btnSyncGames.classList.remove('btn-warning');
+      btnSyncGames.title = dueDrillsWarning
+        ? 'Review your drills first!'
+        : 'Sync new games from Chess.com';
     }
   }
 

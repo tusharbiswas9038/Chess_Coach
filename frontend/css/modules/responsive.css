@@ -212,8 +212,8 @@
     flex-basis: 86vw;
   }
 
-  .drill-toolbar-actions .btn,
-  .drill-toolbar-actions .flip-btn {
+  .view-hero-actions .btn,
+  .view-hero-actions .flip-btn {
     min-height: 34px;
     padding: 6px 8px;
     font-size: 12px;

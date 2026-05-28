@@ -1,18 +1,15 @@
-            <section class="hero-banner mb-4 flex items-start justify-between gap-3 p-4 max-md:flex-col max-md:items-stretch max-sm:gap-[10px]">
-              <div class="drill-toolbar-copy min-w-0">
-                <cc-section-header
-                  variant="toolbar"
-                  kicker="Training Track"
-                  title="Daily Drills"
-                  subtitle="Positions from your own mistakes — spaced repetition"
-                ></cc-section-header>
-              </div>
-              <div class="drill-toolbar-actions flex flex-wrap justify-end gap-1 max-md:justify-start max-sm:w-full">
-                <button class="flip-btn inline-flex items-center max-sm:flex-1 max-sm:justify-center max-sm:tap-44" type="button" aria-label="Flip drill board orientation">⟳ Flip Board</button>
-                <button class="btn btn-ghost max-sm:flex-1 max-sm:justify-center max-sm:tap-44" id="btn-reload-drills" type="button">
+            <section class="view-hero mb-4">
+              <cc-section-header
+                kicker="Training Track"
+                title="Daily Drills"
+                subtitle="Positions from your own mistakes — spaced repetition"
+              ></cc-section-header>
+              <div class="view-hero-actions">
+                <button class="flip-btn inline-flex items-center" type="button" aria-label="Flip drill board orientation">⟳ Flip Board</button>
+                <button class="btn btn-ghost btn-sm" id="btn-reload-drills" type="button">
                   Reload Queue
                 </button>
-                <button class="btn btn-ghost max-sm:flex-1 max-sm:justify-center max-sm:tap-44" id="btn-generate-puzzles" type="button">
+                <button class="btn btn-ghost btn-sm" id="btn-generate-puzzles" type="button">
                   Generate Puzzles
                 </button>
               </div>

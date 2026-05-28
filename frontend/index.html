@@ -230,7 +230,7 @@
           </div>
           <div class="topbar-actions relative z-[140] flex items-center gap-1 pointer-events-auto">
             <button
-              class="btn btn-ghost topbar-actions-toggle hidden max-sm:inline-flex pointer-events-auto"
+              class="btn btn-ghost topbar-actions-toggle"
               id="btn-actions-menu"
               type="button"
               aria-expanded="false"
@@ -238,8 +238,8 @@
             >
               Actions
             </button>
-            <div class="topbar-actions-list flex gap-1 rounded-[calc(var(--radius)+4px)] border border-[var(--border)] bg-[rgba(22,27,34,0.9)] p-[2px] shadow-cc-soft max-sm:absolute max-sm:right-0 max-sm:top-[calc(100%+8px)] max-sm:z-[130] max-sm:hidden max-sm:min-w-[180px] max-sm:flex-col max-sm:p-1 max-sm:data-[open=true]:flex" id="topbar-actions-list" data-open="false">
-              <button class="btn btn-ghost max-sm:w-full max-sm:justify-start" id="btn-sync" type="button">
+            <div class="topbar-actions-list" id="topbar-actions-list" data-open="false">
+              <button class="btn btn-ghost topbar-action-btn" id="btn-sync" type="button">
                 <svg
                   width="14"
                   height="14"
@@ -251,10 +251,10 @@
                   <polyline points="23 4 23 10 17 10" />
                   <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
                 </svg>
-                Sync
+                <span>Sync</span>
               </button>
               <button
-                class="btn btn-ghost max-sm:w-full max-sm:justify-start"
+                class="btn btn-ghost topbar-action-btn"
                 id="btn-analyze"
                 type="button"
               >
@@ -269,19 +269,19 @@
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
-                Analyze
+                <span>Analyze</span>
               </button>
-              <button class="btn btn-ghost max-sm:w-full max-sm:justify-start" id="btn-db-maintenance" type="button">
-                DB Optimize
+              <button class="btn btn-ghost topbar-action-btn" id="btn-db-maintenance" type="button">
+                <span>DB Optimize</span>
               </button>
-              <button class="btn btn-ghost max-sm:w-full max-sm:justify-start" id="btn-clear-motif-labels" type="button">
-                Refresh Motif Labels
+              <button class="btn btn-ghost topbar-action-btn" id="btn-clear-motif-labels" type="button">
+                <span>Refresh Motif Labels</span>
               </button>
-              <button class="btn btn-primary max-sm:w-full max-sm:justify-start" id="btn-install-app" type="button" hidden>
-                Install Chess Coach
+              <button class="btn btn-primary topbar-action-btn" id="btn-install-app" type="button" hidden>
+                <span>Install Chess Coach</span>
               </button>
-              <button class="btn btn-ghost max-sm:w-full max-sm:justify-start" id="btn-logout" type="button" hidden>
-                Sign Out
+              <button class="btn btn-ghost topbar-action-btn" id="btn-logout" type="button" hidden>
+                <span>Sign Out</span>
               </button>
             </div>
           </div>

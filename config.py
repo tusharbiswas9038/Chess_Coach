@@ -113,6 +113,7 @@ def get_csp_header() -> str:
         "style-src 'self' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data:; "
-        "connect-src 'self' https://personalvm.duckdns.org https://cdn.jsdelivr.net; "
+        "connect-src 'self' https://personalvm.duckdns.org https://cdn.jsdelivr.net "
+        "https://fonts.gstatic.com https://fonts.googleapis.com; "
         "frame-ancestors 'none';"
     )

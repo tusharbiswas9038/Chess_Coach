@@ -475,7 +475,8 @@
 }
 
 .quality-btn {
-  min-height: 44px;
+  display: block;
+  min-height: 60px;
   padding: var(--space-1);
   border-radius: var(--radius);
   font-size: var(--text-sm);
@@ -485,15 +486,61 @@
   background: var(--surface-2);
   color: var(--text);
   text-align: center;
+  -webkit-tap-highlight-color: transparent;
   transition:
     border-color var(--dur-fast) var(--ease-standard),
     color var(--dur-fast) var(--ease-standard),
     background-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard),
     filter var(--dur-fast) var(--ease-standard);
 }
 
-.quality-btn:hover {
+.quality-btn:hover:not(:disabled) {
   filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+
+.quality-btn[data-q="0"]:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px var(--error), 0 8px 22px color-mix(in srgb, var(--error) 28%, transparent);
+}
+
+.quality-btn[data-q="1"]:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px var(--warning), 0 8px 22px color-mix(in srgb, var(--warning) 28%, transparent);
+}
+
+.quality-btn[data-q="2"]:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px var(--blue), 0 8px 22px color-mix(in srgb, var(--blue) 28%, transparent);
+}
+
+.quality-btn[data-q="3"]:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px var(--primary), 0 8px 22px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+.quality-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.quality-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 60%, white);
+  outline-offset: 2px;
+}
+
+.quality-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (hover: none) {
+  .quality-btn:hover {
+    transform: none;
+    filter: none;
+  }
+}
+
+@media (max-width: 40rem) {
+  .quality-btn {
+    min-height: 56px;
+  }
 }
 
 .quality-btn[data-q="0"] {
@@ -529,18 +576,54 @@
 }
 
 .flip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   min-height: 40px;
   padding: 0 var(--space-2);
   font-size: var(--text-sm);
+  font-weight: 600;
   color: var(--muted);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard);
 }
 
-.flip-btn:hover {
+.flip-btn:hover:not(:disabled) {
   color: var(--text);
+  border-color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 18%, var(--surface-2));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--blue) 60%, transparent), 0 6px 18px color-mix(in srgb, var(--blue) 28%, transparent);
+  transform: translateY(-1px);
+}
+
+.flip-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 60%, white);
+  outline-offset: 2px;
+}
+
+.flip-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (hover: none) {
+  .flip-btn:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 40rem) {
+  .flip-btn {
+    min-height: 44px;
+  }
 }
 
 .heatmap-square {

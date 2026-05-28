@@ -114,7 +114,7 @@ export function createReportsView({ api, apiPost, toast }) {
         <li>
           <button
             type="button"
-            class="report-history-item btn btn-ghost w-full justify-between rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left text-sm"
+            class="report-history-item btn btn-ghost btn-sm w-full justify-between"
             data-report-date="${esc(item.date)}"
           >
             <span class="font-medium text-[var(--text)]">Week of ${fmt(item.date)}</span>

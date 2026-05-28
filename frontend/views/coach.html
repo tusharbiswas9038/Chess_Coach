@@ -1,16 +1,18 @@
+            <header class="view-hero mb-3">
+              <cc-section-header
+                kicker="Skill Level Calibration"
+                title="Turn your data into a training decision."
+                subtitle="Ask about your recent games, recurring mistakes, openings, or what to study before the next rapid session."
+              ></cc-section-header>
+              <div class="view-hero-actions">
+                <button class="btn btn-ghost btn-sm" id="btn-coach-clear" type="button">
+                  Clear Chat
+                </button>
+              </div>
+            </header>
+
             <section class="coach-workspace wizard-shell">
               <div class="coach-main panel-primary overflow-hidden">
-                <div class="coach-hero flex items-start justify-between gap-3 border-b border-[var(--border)] bg-[radial-gradient(circle_at_top_right,rgba(63,185,80,0.1),transparent_34%),var(--surface)] p-6 max-sm:flex-col max-sm:items-start max-sm:p-3">
-                  <cc-section-header
-                    kicker="Skill Level Calibration"
-                    title="Turn your data into a training decision."
-                    subtitle="Ask about your recent games, recurring mistakes, openings, or what to study before the next rapid session."
-                  ></cc-section-header>
-                  <button class="btn btn-ghost max-sm:tap-40 max-sm:w-full max-sm:justify-center" id="btn-coach-clear" type="button">
-                    Clear Chat
-                  </button>
-                </div>
-
                 <div class="coach-messages coach-pane flex flex-col gap-2 overflow-y-auto p-5 max-sm:p-3" id="coach-messages" aria-live="polite">
                   <div class="coach-empty space-y-3">
                     <div class="empty alert alert-neutral border border-[var(--border)] bg-[var(--surface-2)] py-4 text-[var(--text)]" role="status">
@@ -51,7 +53,7 @@
                     <div class="meta-label" id="coach-status" role="status" aria-live="polite">
                       Ready
                     </div>
-                    <button class="btn btn-primary w-full max-w-[240px] tracking-kicker max-sm:max-w-none" id="btn-coach-send" type="submit">
+                    <button class="btn btn-primary tracking-kicker" id="btn-coach-send" type="submit">
                       Ask Coach
                     </button>
                   </div>
@@ -89,16 +91,16 @@
                 <div class="coach-panel panel-quiet p-3">
                   <div class="coach-panel-title mb-2 text-md font-bold">Quick Questions</div>
                   <div class="coach-prompt-list grid grid-cols-1 gap-1">
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-sm" data-coach-mode="quick_answer" data-coach-prompt="What should I study today based on my recent games?" type="button">
+                    <button class="coach-prompt btn btn-ghost btn-sm justify-start text-left normal-case w-full" data-coach-mode="quick_answer" data-coach-prompt="What should I study today based on my recent games?" type="button">
                       What should I study today?
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-sm" data-coach-mode="deep_lesson" data-coach-prompt="What is my biggest recurring weakness and how do I fix it in one week?" type="button">
+                    <button class="coach-prompt btn btn-ghost btn-sm justify-start text-left normal-case w-full" data-coach-mode="deep_lesson" data-coach-prompt="What is my biggest recurring weakness and how do I fix it in one week?" type="button">
                       Biggest recurring weakness
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-sm" data-coach-mode="pre_game_prep" data-coach-prompt="Give me a 20 minute warm-up routine before I play rapid chess." type="button">
+                    <button class="coach-prompt btn btn-ghost btn-sm justify-start text-left normal-case w-full" data-coach-mode="pre_game_prep" data-coach-prompt="Give me a 20 minute warm-up routine before I play rapid chess." type="button">
                       20 minute warm-up
                     </button>
-                    <button class="coach-prompt btn btn-ghost w-full justify-start rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left normal-case text-sm" data-coach-mode="pre_game_prep" data-coach-prompt="Which openings are currently hurting my results most?" type="button">
+                    <button class="coach-prompt btn btn-ghost btn-sm justify-start text-left normal-case w-full" data-coach-mode="pre_game_prep" data-coach-prompt="Which openings are currently hurting my results most?" type="button">
                       Opening weaknesses
                     </button>
                   </div>

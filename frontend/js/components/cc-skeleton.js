@@ -69,11 +69,10 @@ export class CCSkeleton extends LitElement {
 
   _text() {
     const lines = Math.max(1, Math.min(Number(this.lines) || 1, 8));
-    const widths = ['100%', '92%', '88%', '95%', '78%', '90%', '70%', '82%'];
     return html`
       <div class="grid gap-2">
         ${Array.from({ length: lines }).map(
-          (_, i) => html`<div class="skeleton h-3 rounded-cc" style="width: ${widths[i % widths.length]}"></div>`
+          (_, i) => html`<div class="skeleton h-3 rounded-cc cc-skel-text-line" data-line="${i % 8}"></div>`
         )}
       </div>
     `;

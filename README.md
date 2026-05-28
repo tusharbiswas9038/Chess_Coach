@@ -116,13 +116,11 @@ Everything is at the repo root or one level down. Pick the doc that matches your
 |---|---|
 | **[README.md](README.md)** (this file) | First time here; want the elevator pitch, stack, and how to run |
 | **[CHANGELOG.md](CHANGELOG.md)** | What changed and when, organized by polish horizon |
-| **[AGENTS.md](AGENTS.md)** | Working on the codebase: the doc-update contract, smoke checklist, agent conventions |
 | **[PROJECT_INTELLIGENCE.md](PROJECT_INTELLIGENCE.md)** | Architecture deep-dive: data flow, schema, services, technical debt, next priorities |
 | **[OPERATIONS_RUNBOOK.md](OPERATIONS_RUNBOOK.md)** | Production deploy, systemd hardening, incident response, backup/restore |
 | **[API_SECURITY_GUIDE.md](API_SECURITY_GUIDE.md)** | Security posture: auth, rate limits, CSP, threat model |
 | **[frontend/STYLING_CONTRACT.md](frontend/STYLING_CONTRACT.md)** | Design system rules: token authority, color discipline, what NOT to add |
 | **[frontend/design/COMPONENT_CONTRACTS.md](frontend/design/COMPONENT_CONTRACTS.md)** | Lit primitive props/events — also the contract a future RN port consumes |
-| `GEMINI.md` | Legacy minimal env-var note; superseded by `.env.example` and this README |
 
 If you can't find what you need from one of these, prefer adding a section to the existing closest-fit doc over creating a new file. Doc proliferation is its own kind of decay.
 

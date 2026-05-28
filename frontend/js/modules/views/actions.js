@@ -11,12 +11,7 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
     const list = dom.byId('topbar-actions-list');
     if (!container || !toggle) return;
     container.classList.remove('is-open');
-    if (list) {
-      list.dataset.open = 'false';
-      if (window.matchMedia('(max-width: 640px)').matches) {
-        list.style.display = 'none';
-      }
-    }
+    if (list) list.dataset.open = 'false';
     toggle.setAttribute('aria-expanded', 'false');
   }
 
@@ -27,19 +22,24 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
     if (!container || !toggle) return;
     const nextOpen = !container.classList.contains('is-open');
     container.classList.toggle('is-open', nextOpen);
-    if (list) {
-      list.dataset.open = nextOpen ? 'true' : 'false';
-      if (window.matchMedia('(max-width: 640px)').matches) {
-        list.style.display = nextOpen ? 'flex' : 'none';
-      }
-    }
+    if (list) list.dataset.open = nextOpen ? 'true' : 'false';
     toggle.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+  }
+
+  function setActionLabel(btn, text) {
+    if (!btn) return;
+    const label = btn.querySelector('span');
+    if (label) {
+      label.textContent = text;
+    } else {
+      btn.textContent = text;
+    }
   }
 
   async function triggerSync() {
     const btn = dom.byId('btn-sync');
     btn.disabled = true;
-    btn.textContent = 'Syncing…';
+    setActionLabel(btn, 'Syncing…');
     try {
       const startedAtSec = Date.now() / 1000;
       await apiPost(endpoints.jobSync());
@@ -56,7 +56,7 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
       toast(`Sync failed: ${e.message}`);
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Sync';
+      setActionLabel(btn, 'Sync');
       closeActionsMenu();
     }
   }
@@ -64,7 +64,7 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
   async function triggerAnalyze() {
     const btn = dom.byId('btn-analyze');
     btn.disabled = true;
-    btn.textContent = 'Analyzing…';
+    setActionLabel(btn, 'Analyzing…');
     try {
       const startedAtSec = Date.now() / 1000;
       await apiPost(endpoints.jobAnalyze());
@@ -84,7 +84,7 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
       toast(`Analyze failed: ${e.message}`);
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Analyze';
+      setActionLabel(btn, 'Analyze');
       closeActionsMenu();
     }
   }
@@ -92,7 +92,7 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
   async function triggerDbMaintenance() {
     const btn = dom.byId('btn-db-maintenance');
     btn.disabled = true;
-    btn.textContent = 'Optimizing…';
+    setActionLabel(btn, 'Optimizing…');
     try {
       const startedAtSec = Date.now() / 1000;
       await apiPost(endpoints.jobDbMaintenance(), { vacuum: false });
@@ -109,7 +109,7 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
       toast(`DB optimization failed: ${e.message}`);
     } finally {
       btn.disabled = false;
-      btn.textContent = 'DB Optimize';
+      setActionLabel(btn, 'DB Optimize');
       closeActionsMenu();
     }
   }
@@ -118,8 +118,9 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
     const btn = dom.byId('btn-clear-motif-labels');
     if (!btn) return;
     btn.disabled = true;
-    const original = btn.textContent;
-    btn.textContent = 'Clearing…';
+    const label = btn.querySelector('span');
+    const original = label ? label.textContent : btn.textContent;
+    setActionLabel(btn, 'Clearing…');
     try {
       const result = await apiPost(endpoints.motifsClearLabels(), {});
       const rows = Number(result?.rows ?? 0);
@@ -132,7 +133,7 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
       toast(`Could not clear motif labels: ${e.message}`);
     } finally {
       btn.disabled = false;
-      btn.textContent = original;
+      setActionLabel(btn, original);
       closeActionsMenu();
     }
   }
@@ -164,8 +165,8 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
     const actionsToggleBtn = dom.byId('btn-actions-menu');
     const actionsList = dom.byId('topbar-actions-list');
 
-    if (actionsList && window.matchMedia('(max-width: 640px)').matches) {
-      actionsList.style.display = 'none';
+    if (actionsList) {
+      actionsList.dataset.open = 'false';
     }
 
     if (actionsToggleBtn) {

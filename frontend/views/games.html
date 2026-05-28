@@ -1,9 +1,11 @@
             <section class="games-workspace mb-4">
-              <cc-section-header
-                kicker="Study Queue"
-                title="Find the right game to review next."
-                subtitle="Filter by result, opening, mistakes, and analysis status so the game list behaves like a study tool instead of a raw archive."
-              ></cc-section-header>
+              <header class="view-hero mb-3">
+                <cc-section-header
+                  kicker="Study Queue"
+                  title="Find the right game to review next."
+                  subtitle="Filter by result, opening, mistakes, and analysis status so the game list behaves like a study tool instead of a raw archive."
+                ></cc-section-header>
+              </header>
 
               <div class="games-preset-row mt-2 flex flex-wrap gap-1 max-sm:grid max-sm:grid-cols-2" id="games-preset-row">
                 <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" data-preset="recent-losses" type="button">
@@ -23,7 +25,7 @@
               <div class="mt-2 flex items-center gap-2">
                 <button
                   id="btn-toggle-games-filters"
-                  class="btn btn-ghost btn-sm tap-40"
+                  class="btn btn-ghost btn-sm"
                   type="button"
                   aria-expanded="false"
                   aria-controls="games-filter-panel"

@@ -1,20 +1,17 @@
 <section class="page-section view-reports">
-  <header class="hero hero-banner mb-6">
-    <div class="hero-content">
-      <div class="hero-kicker">Insights / Weekly</div>
-      <h2 class="hero-title">Weekly coaching report</h2>
-      <p class="hero-sub">
-        Generated from your last 7 days of analysis. Each report is a concrete plan, not a recap.
-        New reports replace stale ones; the previous week stays available for comparison.
-      </p>
-      <div class="hero-actions mt-3 flex flex-wrap gap-2">
-        <button id="reports-generate" class="btn btn-primary" type="button">
-          Generate this week
-        </button>
-        <button id="reports-refresh" class="btn btn-ghost" type="button">
-          Refresh
-        </button>
-      </div>
+  <header class="view-hero mb-6">
+    <cc-section-header
+      kicker="Insights / Weekly"
+      title="Weekly coaching report"
+      subtitle="Generated from your last 7 days of analysis. Each report is a concrete plan, not a recap. New reports replace stale ones; the previous week stays available for comparison."
+    ></cc-section-header>
+    <div class="view-hero-actions">
+      <button id="reports-generate" class="btn btn-primary" type="button">
+        Generate this week
+      </button>
+      <button id="reports-refresh" class="btn btn-ghost" type="button">
+        Refresh
+      </button>
     </div>
   </header>
 

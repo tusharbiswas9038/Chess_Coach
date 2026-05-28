@@ -11,7 +11,7 @@
 //
 // Bumping CACHE_VERSION invalidates the shell cache on the next sw boot.
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v4';
 const SHELL_CACHE = `cc-shell-${CACHE_VERSION}`;
 const FONT_CACHE = `cc-fonts-${CACHE_VERSION}`;
 const API_CACHE = `cc-api-${CACHE_VERSION}`;
@@ -89,6 +89,21 @@ async function staleWhileRevalidate(event, cacheName) {
   return cached || networkPromise;
 }
 
+async function networkFirstShell(event, cacheName) {
+  const cache = await caches.open(cacheName);
+  try {
+    const response = await fetch(event.request);
+    if (response && response.ok) {
+      cache.put(event.request, response.clone());
+    }
+    return response;
+  } catch (err) {
+    const cached = await cache.match(event.request);
+    if (cached) return cached;
+    throw err;
+  }
+}
+
 async function cacheFirst(event, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(event.request);
@@ -133,7 +148,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isShellRequest(url)) {
-    event.respondWith(staleWhileRevalidate(event, SHELL_CACHE));
+    event.respondWith(networkFirstShell(event, SHELL_CACHE));
   }
 });
 

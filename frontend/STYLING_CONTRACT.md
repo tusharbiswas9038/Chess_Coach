@@ -85,28 +85,68 @@ Existing primitives already follow this — `.active-pill`, `.quality-pill`,
 `.btn-primary`, `.tap-44` active states, drill-feedback green flashes. The
 discipline applies to new code, not a bulk recolor.
 
-## Color Discipline
+## Button & Hover System
 
-The dark theme has three saturated colors at near-equal weight: `--primary`
-(green), `--info` / `--blue` (#58a6ff), and `--analytics` (#a855f7). When all
-three appear in the same view at similar saturation they fight for attention
-and the screen reads "dashboard" instead of "premium product."
+Every interactive button in the app maps to one of five hover identities.
+The identity is what colour wins on hover — it tells the user what *kind*
+of action they're about to take. A primary CTA hovers green. A routine
+ghost button hovers neutral. They should never feel the same.
 
-Rules going forward:
+### Hover identity matrix
 
-- **Green = action.** Primary CTAs, active nav state, "improving" trend
-  arrows, drill-correct feedback, success badges. If something is green in
-  the UI chrome, it should mean "do this" or "this got better."
-- **Blue and purple are data-vis only.** Use them inside chart series,
-  heatmap legends, and the analytics surface (`.analytics-panel`,
-  trend-deltas, opening genome). Avoid them on buttons, pills, status
-  text, or border accents.
-- **Errors and warnings stay semantic.** Use `--error` and `--warning`;
-  do not improvise red/amber accents.
-- **Neutral grays carry density.** When in doubt, reach for `--muted`,
-  `--faint`, or `--surface-2` before a saturated accent.
+| Class / role | Resting | Hover identity | Token group |
+|---|---|---|---|
+| `.btn-ghost`, `.topbar-action-btn` (Sync, Analyze, filter toggles) | surface-3 fill, dim border | **Neutral lift** — surface-3 mixed with white, stronger border, soft drop shadow. No saturated colour. | `--hover-bg`, `--hover-border`, `--hover-fg`, `--hover-shadow` |
+| `.btn-primary` (Save, Generate, Add a line) | `--primary` green | **Green CTA** — primary lifted, glow ring, dark-on-green text. | `--hover-cta-bg`, `--hover-cta-fg`, `--hover-cta-shadow` |
+| `.preset-btn`, filter chips | `--surface` outline | **Purple chip** — analytics wash + analytics border. | `--hover-chip-bg`, `--hover-chip-border`, `--hover-chip-fg`, `--hover-chip-shadow` |
+| `.flip-btn` | board surface | **Teal-blue** — `var(--blue)` ring + tint. | inline (board-domain) |
+| `.quality-btn[data-q]` | grade-coloured outline | **Per-grade** — red / yellow / blue / green ring + glow matching the SM-2 grade. | inline (drill-domain) |
 
-Existing primitives already follow this — `.active-pill`, `.quality-pill`,
-`.btn-primary`, `.tap-44` active states, drill-feedback green flashes. The
-discipline applies to new code, not a bulk recolor.
+Adding a new button? Pick the identity it belongs to. Don't invent a sixth.
+If a CTA needs to read as primary, use `btn-primary`. If it's routine, use
+`btn-ghost` or `topbar-action-btn` and inherit the neutral lift.
+
+### The daisyUI cascade gotcha (read this before editing hover styles)
+
+DaisyUI emits `.btn:hover` declarations in `@layer utilities`, and that layer
+beats `@layer components` regardless of selector specificity. If you write
+`.btn-ghost:hover { background: …; }` in components, daisyUI's utilities-layer
+rule still wins and your hover will not appear.
+
+Two-part workaround in `tailwind.input.css`:
+
+1. Use `!important` on the hover declarations (`background: var(--hover-bg) !important;` etc.).
+2. Also redirect daisyUI's own variables — `--btn-bg`, `--btn-fg`, `--btn-border`, `--btn-color` — at the same hover selector. DaisyUI's utility rule reads these vars, so feeding them the right values keeps the cascade from fighting us.
+
+`.btn-ghost:hover`, `.btn-primary:hover`, and `.topbar-action-btn:hover` all
+follow this pattern. If you add a new hover identity, copy it.
+
+`.btn:focus { outline: none }` is intentional — daisyUI's default focus ring
+is yellow and clashes with the green-as-action rule. Focus state is conveyed
+by `--focus-ring` on each role's `:focus-visible` selector.
+
+### `--hover-*` token group
+
+All hover values live in `@layer base :root` of `tailwind.input.css` so a
+future theme swap touches one block:
+
+```
+--hover-border, --hover-bg, --hover-fg, --hover-shadow            (ghost)
+--hover-cta-bg, --hover-cta-fg, --hover-cta-shadow                (primary)
+--hover-chip-border, --hover-chip-bg, --hover-chip-fg,
+  --hover-chip-shadow                                             (chip)
+--focus-ring                                                      (all roles)
+```
+
+If you find yourself reaching for a hex code in a `:hover` selector, stop and
+add a token instead.
+
+### Service-worker cache strategy for CSS edits
+
+The shell strategy in `frontend/sw.js` is **`networkFirstShell`**, not
+stale-while-revalidate. CSS and JS edits land on the user's first reload
+instead of the second. Bump `CACHE_VERSION` in `sw.js` whenever you ship
+a token rename, a structural CSS change, or anything else that would be
+confusing to see "half-applied" while clients catch up. Current version is
+`v4`.
 

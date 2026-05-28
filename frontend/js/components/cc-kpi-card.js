@@ -38,13 +38,7 @@ const TONE_CLASS = {
   blue: 'kpi-blue',
 };
 
-const ICON_TONE_VAR = {
-  good: 'var(--primary)',
-  warn: 'var(--warning)',
-  bad: 'var(--error)',
-  blue: 'var(--blue)',
-  analytics: 'var(--analytics)',
-};
+const ICON_TONE_FALLBACK = 'analytics';
 
 export class CCKpiCard extends LitElement {
   // Light DOM so utility classes from tailwind.css apply.
@@ -59,7 +53,7 @@ export class CCKpiCard extends LitElement {
     icon: { type: String },
     tone: { type: String, reflect: true },
     severity: { type: String, reflect: true },
-    iconTone: { type: String, attribute: 'icon-tone' },
+    iconTone: { type: String, attribute: 'icon-tone', reflect: true },
   };
 
   constructor() {
@@ -79,9 +73,9 @@ export class CCKpiCard extends LitElement {
     return '';
   }
 
-  _iconColor() {
-    const which = this.iconTone || this._resolveTone() || 'analytics';
-    return ICON_TONE_VAR[which] || ICON_TONE_VAR.analytics;
+  _iconClass() {
+    const which = this.iconTone || this._resolveTone() || ICON_TONE_FALLBACK;
+    return `cc-kpi-icon cc-kpi-icon-${which}`;
   }
 
   render() {
@@ -89,7 +83,7 @@ export class CCKpiCard extends LitElement {
     return html`
       <div class="kpi-card p-4">
         ${this.icon
-          ? html`<div class="mb-2 text-lg" style="color: ${this._iconColor()}">${this.icon}</div>`
+          ? html`<div class="${this._iconClass()} mb-2 text-lg">${this.icon}</div>`
           : nothing}
         <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
           ${this.label}
