@@ -11,6 +11,11 @@ import { esc, setBadgeCount } from '../ui.js';
 import { createDomCache } from '../dom.js';
 import { endpoints, normalize } from '../contracts.js';
 import { waitForJobByPrefix } from '../jobs.js';
+import {
+  enqueueDrillResult,
+  flushDrillResults,
+  isTransientNetworkError,
+} from '../offline-queue.js';
 
 export function createDrillsView({ api, apiContract, apiPost, toast }) {
   const dom = createDomCache();
@@ -117,6 +122,29 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
     submitMove(from, to);
   }
 
+  // Briefly flash the destination square green after a correct answer. The
+  // pulse class is removed after the animation so a subsequent correct on
+  // the same square retriggers it cleanly.
+  function pulseDestinationSquare(sq) {
+    const cell = document.querySelector(`#drill-board .sq[data-sq="${sq}"]`);
+    if (!cell) return;
+    cell.classList.remove('drill-correct-pulse');
+    // Re-add on next frame so removal + addition register as a fresh animation.
+    requestAnimationFrame(() => cell.classList.add('drill-correct-pulse'));
+    setTimeout(() => cell.classList.remove('drill-correct-pulse'), 360);
+  }
+
+  // Apply a brief scale animation to the streak number whenever it changes.
+  // Listening on `drill-progress-text` because that element is rebuilt every
+  // render, so we toggle a class on whichever node is currently in the DOM.
+  function bumpStreakNumber() {
+    const el = dom.byId('drill-progress-text');
+    if (!el) return;
+    el.classList.remove('streak-bump');
+    requestAnimationFrame(() => el.classList.add('streak-bump'));
+    setTimeout(() => el.classList.remove('streak-bump'), 360);
+  }
+
   async function submitMove(from, to) {
     const piece = boardPosition[from];
     let uci = from + to;
@@ -161,6 +189,7 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
     answered = true;
     const correct = parseUCI(correctUCI);
     const isCorrect = from === correct.from && to === correct.to;
+    const previousStreak = sessionCorrectStreak;
 
     lastFrom = from;
     lastTo = to;
@@ -178,11 +207,15 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
         'Correct. ' + correctUCI.toUpperCase() + ' was the best move.' + streakNote;
       sessionCorrect++;
       sessionCorrectStreak += 1;
+      pulseDestinationSquare(correct.to);
     } else {
       renderBoard();
       fb.className = 'drill-feedback wrong';
       const acc = sessionDone > 0 ? Math.round((sessionCorrect / sessionDone) * 100) : 0;
-      fb.textContent = `Not the best. You played ${uci.toUpperCase()}, but ${correctUCI.toUpperCase()} was correct. Accuracy ${acc}%. Slow down and check forcing moves.`;
+      const breakNote = previousStreak >= 5
+        ? ` (Streak of ${previousStreak} broken — back to building.)`
+        : '';
+      fb.textContent = `Not the best. You played ${uci.toUpperCase()}, but ${correctUCI.toUpperCase()} was correct. Accuracy ${acc}%. Slow down and check forcing moves.${breakNote}`;
       sessionWrong++;
       sessionCorrectStreak = 0;
       setTimeout(() => {
@@ -202,6 +235,7 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
 
     sessionDone++;
     updateSessionStats();
+    if (isCorrect) bumpStreakNumber();
     dom.byId('quality-section').hidden = false;
     dom.byId('drill-hint-card').hidden = true;
     updateQueueList();
@@ -222,10 +256,14 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
     const item = drillQueue[drillIdx];
     if (!item) return;
 
+    const payload = { item_id: item.id, quality: q };
+    const endpoint = endpoints.drillsResult();
+    const localResult = { 0: 'fail', 1: 'hard', 2: 'good', 3: 'easy' }[q];
+
     try {
-      const result = await apiPost(endpoints.drillsResult(), { item_id: item.id, quality: q });
+      const result = await apiPost(endpoint, payload);
       item.completed_today = 1;
-      item.last_result = { 0: 'fail', 1: 'hard', 2: 'good', 3: 'easy' }[q] || item.last_result;
+      item.last_result = localResult || item.last_result;
       if (result?.summary) {
         drillSummary = normalize.drillsSummary(result.summary);
         updateDrillBadge();
@@ -233,8 +271,26 @@ export function createDrillsView({ api, apiContract, apiPost, toast }) {
       } else {
         await refreshDrillSummary();
       }
+      // Opportunistic flush — if any earlier offline submits are queued,
+      // a successful online call is a good moment to drain them.
+      flushDrillResults(apiPost).then((r) => {
+        if (r.flushed > 0) toast?.(`Synced ${r.flushed} offline drill${r.flushed === 1 ? '' : 's'}.`);
+      });
     } catch (e) {
-      console.error('Failed to submit drill result:', e);
+      if (isTransientNetworkError(e)) {
+        // Network is down or unreachable. Queue the payload locally and
+        // tell the user — the online event handler in app.js will flush.
+        const queuedId = await enqueueDrillResult(payload, endpoint);
+        if (queuedId != null) {
+          item.completed_today = 1;
+          item.last_result = localResult || item.last_result;
+          toast?.('Saved offline — will sync when reconnected.');
+        } else {
+          toast?.('Offline and storage is unavailable. Result lost.');
+        }
+      } else {
+        console.error('Failed to submit drill result:', e);
+      }
     }
 
     drillIdx++;

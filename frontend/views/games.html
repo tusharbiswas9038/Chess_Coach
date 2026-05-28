@@ -1,12 +1,9 @@
             <section class="games-workspace mb-4">
-              <div class="games-workspace-copy workspace-hero">
-                <div class="section-kicker">Study Queue</div>
-                <h2 class="games-workspace-title section-title workspace-hero-title mt-1 text-[var(--text)]">Find the right game to review next.</h2>
-                <p class="games-workspace-summary workspace-hero-summary mt-2 max-w-[58ch] text-[var(--muted)]">
-                  Filter by result, opening, mistakes, and analysis status so the
-                  game list behaves like a study tool instead of a raw archive.
-                </p>
-              </div>
+              <cc-section-header
+                kicker="Study Queue"
+                title="Find the right game to review next."
+                subtitle="Filter by result, opening, mistakes, and analysis status so the game list behaves like a study tool instead of a raw archive."
+              ></cc-section-header>
 
               <div class="games-preset-row mt-2 flex flex-wrap gap-1 max-sm:grid max-sm:grid-cols-2" id="games-preset-row">
                 <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" data-preset="recent-losses" type="button">
@@ -23,7 +20,20 @@
                 </button>
               </div>
 
-              <div class="games-filter-panel filter-bar mt-3 p-4 max-sm:p-3">
+              <div class="mt-2 flex items-center gap-2">
+                <button
+                  id="btn-toggle-games-filters"
+                  class="btn btn-ghost btn-sm tap-40"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="games-filter-panel"
+                >
+                  <span>Filters</span>
+                  <span id="games-filters-active-count" class="text-xs text-[var(--muted)]"></span>
+                </button>
+              </div>
+
+              <div class="games-filter-panel filter-bar mt-3 p-4 max-sm:p-3" id="games-filter-panel" hidden>
                 <div class="games-filter-grid grid grid-cols-4 gap-2 max-md:grid-cols-2 max-sm:grid-cols-1">
                   <label class="field">
                     <span class="field-label">Search</span>

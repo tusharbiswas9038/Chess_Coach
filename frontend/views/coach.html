@@ -1,14 +1,11 @@
             <section class="coach-workspace wizard-shell">
               <div class="coach-main panel-primary overflow-hidden">
                 <div class="coach-hero flex items-start justify-between gap-3 border-b border-[var(--border)] bg-[radial-gradient(circle_at_top_right,rgba(63,185,80,0.1),transparent_34%),var(--surface)] p-6 max-sm:flex-col max-sm:items-start max-sm:p-3">
-                  <div class="workspace-hero">
-                    <div class="section-kicker">Skill Level Calibration</div>
-                    <h2 class="coach-title section-title workspace-hero-title mt-1 max-w-[16ch] text-[var(--text)]">Turn your data into a training decision.</h2>
-                    <p class="coach-summary workspace-hero-summary mt-1 max-w-[58ch] text-[var(--muted)]">
-                      Ask about your recent games, recurring mistakes, openings, or
-                      what to study before the next rapid session.
-                    </p>
-                  </div>
+                  <cc-section-header
+                    kicker="Skill Level Calibration"
+                    title="Turn your data into a training decision."
+                    subtitle="Ask about your recent games, recurring mistakes, openings, or what to study before the next rapid session."
+                  ></cc-section-header>
                   <button class="btn btn-ghost max-sm:tap-40 max-sm:w-full max-sm:justify-center" id="btn-coach-clear" type="button">
                     Clear Chat
                   </button>

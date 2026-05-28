@@ -6,7 +6,44 @@ The original product audit framed this app as "self-hosted single-user, no SaaS 
 
 ---
 
-## H14 — Premium foundations & PWA (2026-05-28)
+## H18 — Phase C completion: offline drills, cc-stat-pill, more headers (2026-05-28)
+
+Closes Phase C from the H14 redesign blueprint. Three work streams ran in parallel via subagents; orchestrator finished what didn't land cleanly.
+
+- **Offline drill buffering.** New `frontend/js/modules/offline-queue.js` — IndexedDB wrapper with one `drill-results` store, `enqueueDrillResult` / `flushDrillResults` / `pendingDrillCount`. Distinguishes transient network errors from real HTTP errors via `isTransientNetworkError` (uses `navigator.onLine` and the `TypeError without .status` heuristic for fetch failures). `drills.js` `submitQuality` now enqueues on transient failure and toasts "Saved offline — will sync when reconnected." `app.js` listens for the `online` event and opportunistically flushes; successful flushes toast the count. No-IndexedDB browsers (Safari private) no-op gracefully.
+- **`<cc-stat-pill>` Lit primitive** in `frontend/js/components/cc-stat-pill.js`. Props: `tone` (`active`/`quality`/`eval`/`opening`), `label`, optional `value`. Light DOM, side-effect registered. Migrated 6 inline pills: 3 dashboard hero (Analytics/Drills/Coach) + 3 review hero (You/Opponent/opening ECO).
+- **More `<cc-section-header>` migrations.** Coach hero and games hero migrated. Mistakes and openings already done in H17. Drills hero intentionally skipped — its custom `drill-toolbar-title` typography (20px) doesn't fit the standard hero variants without a visible regression.
+- **Tailwind ratchet drift down.** Cap stays 25, current 22 → **19** (cc-stat-pill migrations removed three inline `active-pill` literal references that the gate counted).
+- **Docs refreshed** per AGENTS.md contract: CHANGELOG, PROJECT_INTELLIGENCE, COMPONENT_CONTRACTS.
+
+Three Lit migrations + the matching dashboard-motifs cleanup.
+
+- **Mistakes KPIs migrated to `<cc-kpi-card>`.** Three inline `.kpi-card` blocks replaced with cc-kpi-card elements. JS now sets `value`, `sub`, `severity` attributes on the elements; severity-toned subs ("8.2 per game · high blunder rate") flow through formatStat when `games.analyzed > 0` and fall back to the static educational copy otherwise.
+- **`<cc-section-header>` Lit primitive** in `frontend/js/components/cc-section-header.js`. Props: `kicker`, `title`, `subtitle`, `variant` (hero/card/compact). Light DOM, no slot — when callers need an action button next to the header, they wrap both in a flex container at the call site (avoids the slot-redistribution gotcha that comes with light-DOM Lit). Mistakes and openings hero sections migrated as proof.
+- **`<cc-motif-row>` Lit primitive** in `frontend/js/components/cc-motif-row.js`. Props: `subtype`, `phase`, `family`, `occurrences`, `avg-eval-loss`, `latest-date`, `coach-label`, `example-game-id`. Emits an `open-game` CustomEvent (with `detail.gameId`) instead of using the previous `data-open-game-id` button delegation. Dashboard motifs panel migrated — `dashboard-motifs.js` now maps API payload into element attributes and listens for `open-game` instead of carrying the row markup itself.
+- **Docs refreshed** per AGENTS.md contract: CHANGELOG, PROJECT_INTELLIGENCE, COMPONENT_CONTRACTS.
+
+First half of Phase C from the H14 redesign blueprint. Visible coach voice across KPIs and PWA install discovery.
+
+- **`<cc-kpi-card>` Lit primitive** in `frontend/js/components/cc-kpi-card.js`. Props: `label`, `value`, `sub`, `icon`, `tone`, `severity`, `icon-tone`. Severity wins over tone when both are given. Light DOM, side-effect registered. Documented in `frontend/design/COMPONENT_CONTRACTS.md`.
+- **Dashboard KPI grid migrated.** 5 of 7 cards now `<cc-kpi-card>`; the 2 with dynamically-updated children (drill goal, streak) stay inline because their handlers depend on `kpi-drill-goal-value`, `kpi-streak-value`, `kpi-streak-sub` IDs. Hanging-rate, blunders/game, win-rate now drive `severity` from `formatStat` so the kpi-sub line reads "piece-safety leak" / "high blunder rate" / "winning more than losing" instead of static "target: below 3" copy.
+- **`formatStat` wired into coach context** (`frontend/js/modules/views/coach.js`). The hanging / blunders / drills-due rows now show value + coach-voice label + severity-toned color. Rating and games-analyzed rows stay raw (they're identifiers, not metrics with severity bands).
+- **`formatStat` wired into mistakes KPIs**. Subs gained `id`s (`m-blunders-sub`, `m-hanging-sub`, `m-mistakes-sub`). When `games.analyzed > 0`, JS computes blunders/game and mistakes/game from totals, runs them through `formatStat`, and rewrites the sub from "eval swing > 300cp" to "8.2 per game · high blunder rate". Falls back to the static educational copy when there's no data yet.
+- **PWA install-prompt chip** in `frontend/js/modules/install-prompt.js`. Captures `beforeinstallprompt`, counts unique calendar days in localStorage (`cc.pwa.sessions`, `cc.pwa.lastDay`), reveals `#btn-install-app` after 3 distinct days. Click triggers `.prompt()`; dismissed users get marked declined and the chip stops appearing. Listens for `appinstalled` to hide cleanly. Quiet failures when localStorage is off or the browser doesn't support the event (Safari).
+
+Quick-wins from Phase B of the H14 redesign blueprint. Visual upgrade pass; no new infrastructure.
+
+- **`formatStat(metric, value)` helper** in `frontend/js/modules/ui.js` — translates raw stats into coach-voice trios `{value, label, severity}`. Supports `hanging_piece_rate`, `blunders_per_game`, `win_rate`, `mistakes_per_game`, `time_pressure_blunder_rate`, `drills_due`, `streak`. Plus `statSeverityToneClass(severity)` for centralized color mapping. Falls through gracefully on unknown metrics.
+- **Progressive disclosure on form-heavy views.**
+  - Openings repertoire form is hidden by default behind an "Add a line" button. The form expands on click, on weak-node `data-add-weak-node`, on training-list/repertoire-list `data-focus-repertoire-form` paths, and collapses back after a successful save.
+  - Games filter panel is hidden by default behind a "Filters" toggle that displays `· N active` when any field diverges from the resting defaults. Presets and saved-filter slots stay primary.
+- **Drill micro-feedback.**
+  - Correct answer pulses the destination square green for ~360ms (`drill-correct-pulse` keyframe).
+  - Streak counter scales briefly on increment (`streak-bump` keyframe).
+  - Wrong answer breaking a streak ≥5 appends "(Streak of N broken — back to building.)" to the feedback note.
+  - Both keyframes collapse via `prefers-reduced-motion: reduce`.
+- **View-transition motion.** `navigation.showView` wraps the active-class swap in `document.startViewTransition` when supported and reduced-motion is off. CSS owns the timing — 120ms fade-out / 160ms fade-in with a 4px upward translate. Falls through unwrapped when the API is missing.
+- **Docs refreshed** per AGENTS.md contract: CHANGELOG, PROJECT_INTELLIGENCE.
 
 Quick-wins phase from the redesign blueprint.
 

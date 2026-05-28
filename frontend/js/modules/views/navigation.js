@@ -61,19 +61,39 @@ export function createNavigationView({
       scrollByView.set(previousView, window.scrollY || 0);
     }
 
-    dom.queryAll('.view').forEach((v) => v.classList.remove('active'));
-    dom.queryAll('.nav-item').forEach((n) => {
-      n.classList.remove('active');
-      n.removeAttribute('aria-current');
-    });
+    // View-transition motion (H15.4): use the View Transitions API to
+    // cross-fade the DOM mutation. CSS in tailwind.input.css owns the
+    // exact timing; here we only gate the API call. Honors
+    // prefers-reduced-motion by falling through to the unwrapped path.
+    const supportsTransition =
+      typeof document.startViewTransition === 'function' &&
+      !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-    const viewEl = dom.byId(`view-${safeName}`);
-    if (viewEl) viewEl.classList.add('active');
+    const swap = () => {
+      dom.queryAll('.view').forEach((v) => v.classList.remove('active'));
+      dom.queryAll('.nav-item').forEach((n) => {
+        n.classList.remove('active');
+        n.removeAttribute('aria-current');
+      });
 
-    const navEl = dom.query(`[data-view="${safeName}"]`);
-    if (navEl) {
-      navEl.classList.add('active');
-      navEl.setAttribute('aria-current', 'page');
+      const viewEl = dom.byId(`view-${safeName}`);
+      if (viewEl) viewEl.classList.add('active');
+
+      const navEl = dom.query(`[data-view="${safeName}"]`);
+      if (navEl) {
+        navEl.classList.add('active');
+        navEl.setAttribute('aria-current', 'page');
+      }
+    };
+
+    if (supportsTransition && previousView !== safeName) {
+      try {
+        document.startViewTransition(swap);
+      } catch (_) {
+        swap();
+      }
+    } else {
+      swap();
     }
 
     const titles = {

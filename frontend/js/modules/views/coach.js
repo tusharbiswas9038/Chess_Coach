@@ -1,5 +1,6 @@
 import { createDomCache } from '../dom.js';
 import { endpoints } from '../contracts.js';
+import { formatStat, statSeverityToneClass } from '../ui.js';
 
 export function createCoachView({
   apiPost,
@@ -20,16 +21,40 @@ export function createCoachView({
   function updateContext() {
     const statsData = getStatsData();
     const profile = statsData?.profile || {};
-    const hRate = statsData ? (statsData.hanging_piece_rate * 100).toFixed(1) + '%' : '—';
-    dom.byId('coach-context-rating').textContent =
-      profile.current_rating || '—';
-    dom.byId('coach-context-games').textContent =
-      statsData?.games?.analyzed?.toLocaleString?.() || '—';
-    dom.byId('coach-context-hanging').textContent = hRate;
-    dom.byId('coach-context-blunders').textContent =
-      statsData?.blunders_per_game ?? '—';
-    dom.byId('coach-context-drills').textContent =
-      statsData?.drills_due ?? '—';
+    setContextRow('coach-context-rating', profile.current_rating, null);
+    setContextRow(
+      'coach-context-games',
+      statsData?.games?.analyzed?.toLocaleString?.(),
+      null
+    );
+    setContextRow('coach-context-hanging', null, formatStat('hanging_piece_rate', statsData?.hanging_piece_rate));
+    setContextRow('coach-context-blunders', null, formatStat('blunders_per_game', statsData?.blunders_per_game));
+    setContextRow('coach-context-drills', null, formatStat('drills_due', statsData?.drills_due));
+  }
+
+  // Render a context row's `<strong>` value and an inline coach-voice label
+  // beneath it. When `formatted` is provided, value + label come from
+  // formatStat; when only `rawValue` is given, we render the value alone.
+  function setContextRow(id, rawValue, formatted) {
+    const strongEl = dom.byId(id);
+    if (!strongEl) return;
+    if (formatted) {
+      strongEl.textContent = formatted.value;
+      // Place the label as a small secondary line in the same row. The
+      // .coach-context-row layout already supports a sibling element next
+      // to <strong>; we inject a span so existing markup keeps working.
+      let labelEl = strongEl.nextElementSibling;
+      if (!labelEl || labelEl.dataset.coachStatLabel !== '1') {
+        labelEl = document.createElement('span');
+        labelEl.dataset.coachStatLabel = '1';
+        labelEl.className = 'block w-full mt-0.5 text-[11px] leading-tight';
+        strongEl.parentElement?.appendChild(labelEl);
+      }
+      labelEl.className = `block w-full mt-0.5 text-[11px] leading-tight ${statSeverityToneClass(formatted.severity)}`;
+      labelEl.textContent = formatted.label || '';
+    } else {
+      strongEl.textContent = rawValue ?? '—';
+    }
   }
 
   function renderMessages(pending = false) {

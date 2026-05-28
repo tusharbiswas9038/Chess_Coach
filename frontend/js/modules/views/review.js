@@ -537,10 +537,10 @@ export function createReviewView({ api, apiContract, apiPost, generateReport, on
     container.innerHTML = `
     <div class="game-meta-row hero-banner mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <span class="active-pill">You · ${esc(g.color)}</span>
-        <span class="quality-pill">Opponent ${esc(g.opponent_rating || '?')}</span>
+        <cc-stat-pill tone="active" label="You" value="${esc(g.color)}"></cc-stat-pill>
+        <cc-stat-pill tone="quality" label="Opponent" value="${esc(g.opponent_rating || '?')}"></cc-stat-pill>
         ${resultBadge(g.result)}
-        <span class="opening-pill badge badge-outline badge-sm">${esc(g.opening_eco || '?')}</span>
+        <cc-stat-pill tone="opening" label="${esc(g.opening_eco || '?')}"></cc-stat-pill>
         <span class="game-meta-detail text-[13px]">${
   esc(g.opening_name || 'Unknown opening')
 }</span>

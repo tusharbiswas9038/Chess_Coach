@@ -2,6 +2,7 @@ import {
   colorBadge,
   esc,
   fmt,
+  formatStat,
   mistakeCountClass,
   resultBadge,
   setBadgeCount,
@@ -579,37 +580,34 @@ export function createDashboardView({
     const achievement =
       streak >= 10 ? 'On Fire' : streak >= 5 ? 'Consistent' : streak >= 2 ? 'Starter' : 'New';
 
+    const hangingFmt = formatStat('hanging_piece_rate', statsData.hanging_piece_rate);
+    const blundersFmt = formatStat('blunders_per_game', statsData.blunders_per_game);
+    const weeklyWinPctRaw = statsData.weekly_stats[0]?.win_pct;
+    const weeklyWinFmt = weeklyWinPctRaw == null
+      ? null
+      : formatStat('win_rate', Number(weeklyWinPctRaw));
+    const totalMistakes = statsData.mistake_breakdown.reduce((a, m) => a + m.count, 0);
+
     dom.byId('kpi-grid').innerHTML = `
-    <div class="kpi-card p-4">
-      <div class="mb-2 text-lg text-[var(--analytics)]">▣</div>
-      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Games Analyzed</div>
-      <div class="kpi-value kpi-blue mt-2 text-2xl font-semibold">${analyzed.toLocaleString()}</div>
-      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">${total} total, ${
-  statsData.games.pending
-} pending</div>
-    </div>
-    <div class="kpi-card p-4">
-      <div class="mb-2 text-lg text-[var(--error)]">!</div>
-      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Hanging Piece Rate</div>
-      <div class="kpi-value kpi-bad mt-2 text-2xl font-semibold">${hRate}%</div>
-      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">pieces left en prise</div>
-    </div>
-    <div class="kpi-card p-4">
-      <div class="mb-2 text-lg text-[var(--warning)]">△</div>
-      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Blunders / Game</div>
-      <div class="kpi-value kpi-bad mt-2 text-2xl font-semibold">${bpg}</div>
-      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">target: below 3</div>
-    </div>
-    <div class="kpi-card p-4">
-      <div class="mb-2 text-lg text-[var(--primary)]">↗</div>
-      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Current Win Rate</div>
-      <div class="kpi-value kpi-good mt-2 text-2xl font-semibold">${
-  statsData.weekly_stats[0]
-    ? statsData.weekly_stats[0].win_pct + '%'
-    : '—'
-}</div>
-      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">this week</div>
-    </div>
+    <cc-kpi-card icon="▣" tone="blue" icon-tone="analytics"
+                 label="Games Analyzed"
+                 value="${analyzed.toLocaleString()}"
+                 sub="${total} total, ${statsData.games.pending} pending"></cc-kpi-card>
+    <cc-kpi-card icon="!"
+                 label="Hanging Piece Rate"
+                 value="${hRate}%"
+                 severity="${hangingFmt.severity}"
+                 sub="${esc(hangingFmt.label || 'pieces left en prise')}"></cc-kpi-card>
+    <cc-kpi-card icon="△"
+                 label="Blunders / Game"
+                 value="${bpg}"
+                 severity="${blundersFmt.severity}"
+                 sub="${esc(blundersFmt.label || 'target: below 3')}"></cc-kpi-card>
+    <cc-kpi-card icon="↗"
+                 label="Current Win Rate"
+                 value="${weeklyWinFmt ? weeklyWinFmt.value : '—'}"
+                 severity="${weeklyWinFmt ? weeklyWinFmt.severity : ''}"
+                 sub="${esc(weeklyWinFmt?.label || 'this week')}"></cc-kpi-card>
     <div class="kpi-card p-4">
       <div class="mb-2 text-lg text-[var(--primary)]">✓</div>
       <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Drill Goal</div>
@@ -622,14 +620,10 @@ export function createDashboardView({
       <div class="kpi-value kpi-blue mt-2 text-2xl font-semibold" id="kpi-streak-value">${streak} day${streak === 1 ? '' : 's'}</div>
       <div class="kpi-sub mt-1 text-xs text-[var(--muted)]" id="kpi-streak-sub">${achievement}</div>
     </div>
-    <div class="kpi-card p-4">
-      <div class="mb-2 text-lg text-[var(--warning)]">◍</div>
-      <div class="kpi-label text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Total Mistakes</div>
-      <div class="kpi-value kpi-warn mt-2 text-2xl font-semibold">${statsData.mistake_breakdown
-    .reduce((a, m) => a + m.count, 0)
-    .toLocaleString()}</div>
-      <div class="kpi-sub mt-1 text-xs text-[var(--muted)]">across all analyzed games</div>
-    </div>
+    <cc-kpi-card icon="◍" tone="warn" icon-tone="warn"
+                 label="Total Mistakes"
+                 value="${totalMistakes.toLocaleString()}"
+                 sub="across all analyzed games"></cc-kpi-card>
   `;
 
     renderTiltWarning(Boolean(latestSession && latestSession.tilt_detected));

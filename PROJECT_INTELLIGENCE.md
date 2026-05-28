@@ -216,14 +216,20 @@ Core tables: `games`, `moves`, `mistakes`, `srs_items`, `player_profile`, `playe
 - Stockfish and Ollama are local bottlenecks; analysis/chat throughput limited by host CPU/RAM.
 
 ## 12. Technical Debt & Risks
-- **Resolved (2026-05-28, H14):** PWA installable — `manifest.webmanifest` + `sw.js` at root scope, 3-tier cache strategy (shell stale-while-revalidate, fonts cache-first, drill-queue network-first-with-fallback), service worker registered lazily on `load` so it never blocks first paint.
-- **Resolved (2026-05-28, H14):** design token pipeline — `frontend/design/tokens.json` is single source; `build-tokens.mjs` generates RN-shape `theme.ts`. Style Dictionary deferred until needed.
-- **Resolved (2026-05-28, H14):** Lit primitives introduced — `<cc-empty-state>` and `<cc-skeleton>` as proof-of-shape; APIs documented in `frontend/design/COMPONENT_CONTRACTS.md`. Audit gate updated to require `@source "../js/components/**/*.js"`.
-- **Resolved (2026-05-28, H14):** dashboard focus mode now defaults on for new sessions; session-flow + charts row tagged `dashboard-secondary` so above-the-fold drops from 7+ sections to 4.
-- **Resolved (2026-05-28, H14):** color discipline (green=action, blue/purple=data-vis only) documented in STYLING_CONTRACT.md.
-- **Resolved (2026-05-28, H13):** dashboard module split — `dashboard-motifs.js` (87 lines) and `dashboard-insights.js` (139 lines) extracted. `dashboard.js` dropped from 970 → 770 lines.
-- **Resolved (2026-05-28, H13):** cache-warm critical position on review entry.
-- **Resolved (2026-05-28, H12):** what-if LRU cache (256 entries, depth-aware), click-to-move parity, review-whatif extraction.
+- **Resolved (2026-05-28, H18):** offline drill buffering — IndexedDB queue (`offline-queue.js`) with `enqueueDrillResult` / `flushDrillResults` / `pendingDrillCount`. `drills.js` enqueues on transient network failure; `app.js` flushes on `online` event. Gracefully no-ops without IndexedDB.
+- **Resolved (2026-05-28, H18):** `<cc-stat-pill>` Lit primitive (sixth) + 6 inline-pill migrations across dashboard + review hero.
+- **Resolved (2026-05-28, H18):** coach + games hero markup migrated to `<cc-section-header>`. Drills hero intentionally left inline (different typography rules).
+- **Resolved (2026-05-28, H17):** `<cc-section-header>` + `<cc-motif-row>` Lit primitives. Mistakes KPIs migrated to `<cc-kpi-card>`; mistakes + openings hero migrated to `<cc-section-header>`.
+- **Resolved (2026-05-28, H16):** `<cc-kpi-card>` Lit primitive — first non-stub primitive. Dashboard KPI grid migrated (5/7 cards; 2 with dynamic-update IDs stay inline).
+- **Resolved (2026-05-28, H16):** `formatStat` wired into coach context, mistakes KPI subs.
+- **Resolved (2026-05-28, H16):** PWA install-prompt chip — captures `beforeinstallprompt`, gates on 3 distinct calendar days, listens for `appinstalled`, remembers declined.
+- **Resolved (2026-05-28, H15):** `formatStat(metric, value)` helper in ui.js — 7 metrics with 3–4 severity bands each.
+- **Resolved (2026-05-28, H15):** progressive disclosure on openings repertoire form + games filter panel.
+- **Resolved (2026-05-28, H15):** drill micro-feedback (correct-pulse, streak-bump, streak-break note).
+- **Resolved (2026-05-28, H15):** view-transition motion via `document.startViewTransition`.
+- **Resolved (2026-05-28, H14):** PWA installable, design token pipeline, Lit primitives, dashboard focus-mode default-on, color discipline doc.
+- **Resolved (2026-05-28, H13):** dashboard module split, cache-warm critical position on review entry.
+- **Resolved (2026-05-28, H12):** what-if LRU cache, click-to-move parity, review-whatif extraction.
 - **Resolved (2026-05-28, H11):** what-if Stockfish pool, depth slider, hero typography, what-if best-move arrow + persistence.
 - **Resolved (2026-05-27/28, H1–H10):** durable `job_ledger`, retry policy, Ollama timeouts + circuit breaker, retention policy, URL state, accessibility, motif clustering + LLM labels, repertoire ↔ SRS bridge, hanging-rate fix, dashboard motifs panel, drag-and-drop board, promotion UI, weekly-report reflection, auth hardening, slow-query instrumentation @ 250ms.
 - **Medium**: Mixed sync/async boundaries in report generation (thread-wrapped async).
@@ -233,22 +239,17 @@ Core tables: `games`, `moves`, `mistakes`, `srs_items`, `player_profile`, `playe
 
 ## 13. Recommended Next Priorities
 
-The H14 plan defines Phase B (visual upgrade) and Phase C (component contract migration). These are the active queue:
+Phase C of the H14 redesign blueprint complete. The Lit component layer + design tokens are mature enough for a future React Native port to consume directly. Remaining priorities are independent of the redesign blueprint:
 
-**Phase B — Visual upgrade**
-1. **`formatStat(metric, value)` helper** — translate raw stats to coach voice (e.g., "81.1% · piece-safety risk" instead of "81.1%"). Reuse in coach context, KPI subtitles, mistakes header.
-2. **Progressive disclosure** — collapse the openings repertoire form behind "Add a line" CTA; collapse games filter panel to "Filters (N active)" pill.
-3. **Drill micro-feedback** — green pulse on destination square + streak counter scale animation on correct; confirm modal before breaking streaks ≥5.
-4. **View-transition motion** — 120ms cross-fade on view switches (View Transitions API where supported, fall back to opacity).
-
-**Phase C — Component contract migration**
-5. **More Lit primitives** — `<cc-kpi-card>`, `<cc-section-header>`, `<cc-stat-pill>`, `<cc-motif-row>`. Each documented in COMPONENT_CONTRACTS.md.
-6. **Install-prompt chip** — capture `beforeinstallprompt`, show "Install Chess Coach" in actions menu after 3 sessions.
-7. **Offline drill buffering** — IndexedDB queue for drill results posted while offline; flush on `online` event.
+**Polish**
+1. **`<cc-stat-pill>` migrations in JS templates.** review.js still hand-rolls `quality-pill` markup in 4–5 template literals (`renderReviewModeConfig`, `renderMistakesTable`). Migrating those reduces inline arbitrary-value drift.
+2. **Migrate dashboard.js KPIs that have dynamic-update children** (drill goal, streak) — requires `<cc-kpi-card>` to expose addressable child slots or for the handlers to switch from element-ID lookup to attribute setters.
+3. **Drills hero `<cc-section-header>` migration** — needs a new `variant="toolbar"` since the existing hero/card/compact variants don't match the 20px `drill-toolbar-title` typography.
 
 **Always-on**
-8. **Continue dashboard module split** — session-flow controller, game-meta-row + KPI grid renderer, weekly-focus card.
-9. **Continue Tailwind ratchet selectively** — gate at 25, current 22. Pursue only when natural class extractions present themselves.
+4. **Continue dashboard module split.** Session-flow controller, game-meta-row + KPI grid renderer, weekly-focus card.
+5. **Continue Tailwind ratchet selectively.** Gate at 25, current 19. Pursue only when natural class extractions present themselves.
+6. **`<cc-kpi-card>` for review summary metrics.** review.js' `eval-pill` block could use cc-stat-pill (small) but the larger summary metrics pattern (Inaccuracies/Mistakes/Blunders count blocks) might warrant another `<cc-kpi-card>` variant.
 
 ## 14. AI Guidance Section (For Future Assistants)
 

@@ -510,7 +510,37 @@ export function createOpeningsView({ api, apiContract, apiDelete, apiPost, apiPu
       loadedAtMs = Date.now();
   }
 
+  function setRepertoireFormVisible(visible) {
+    const form = dom.byId('repertoire-form');
+    const toggle = dom.byId('btn-toggle-repertoire-form');
+    if (!form) return;
+    if (visible) {
+      form.hidden = false;
+      toggle?.setAttribute('aria-expanded', 'true');
+      if (toggle) toggle.textContent = 'Cancel';
+    } else {
+      form.hidden = true;
+      toggle?.setAttribute('aria-expanded', 'false');
+      if (toggle) toggle.textContent = 'Add a line';
+    }
+  }
+
+  function revealRepertoireForm() {
+    setRepertoireFormVisible(true);
+    // Defer focus until after the hidden→visible flip so the input is in the
+    // tree and scrollIntoView has something to anchor to.
+    requestAnimationFrame(() => {
+      const nameInput = dom.byId('repertoire-name');
+      nameInput?.focus();
+      nameInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+
   function bindEvents() {
+    dom.byId('btn-toggle-repertoire-form')?.addEventListener('click', () => {
+      const form = dom.byId('repertoire-form');
+      setRepertoireFormVisible(!!form?.hidden);
+    });
     dom.byId('select-eco-genome')?.addEventListener('change', (e) => {
       selectedEco = e.target.value;
       renderOpeningGenomeChart();
@@ -545,12 +575,16 @@ export function createOpeningsView({ api, apiContract, apiDelete, apiPost, apiPu
       } catch (e) {
         console.error('Create repertoire line failed:', e);
         toast?.(e.message || 'Unable to save repertoire line.');
+        return;
       }
+      // Successful save — collapse back to the resting state so the user
+      // sees the freshly-saved row in the list, not the empty form.
+      setRepertoireFormVisible(false);
     });
     dom.byId('repertoire-list')?.addEventListener('click', async (event) => {
       const focusBtn = event.target.closest('[data-focus-repertoire-form]');
       if (focusBtn) {
-        dom.byId('repertoire-name')?.focus();
+        revealRepertoireForm();
         return;
       }
       const deleteBtn = event.target.closest('[data-repertoire-delete]');
@@ -570,6 +604,7 @@ export function createOpeningsView({ api, apiContract, apiDelete, apiPost, apiPu
     dom.byId('opening-weak-nodes')?.addEventListener('click', (event) => {
       const btn = event.target.closest('[data-add-weak-node]');
       if (!btn) return;
+      revealRepertoireForm();
       const color = dom.byId('repertoire-color');
       const eco = dom.byId('repertoire-eco');
       const name = dom.byId('repertoire-name');
@@ -587,7 +622,7 @@ export function createOpeningsView({ api, apiContract, apiDelete, apiPost, apiPu
     dom.byId('opening-training-list')?.addEventListener('click', async (event) => {
       const focusBtn = event.target.closest('[data-focus-repertoire-form]');
       if (focusBtn) {
-        dom.byId('repertoire-name')?.focus();
+        revealRepertoireForm();
         return;
       }
       const resultBtn = event.target.closest('[data-training-result]');

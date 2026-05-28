@@ -1,4 +1,4 @@
-import { esc, fmt, mistakeTag, statePanelMarkup, subtypeChip, subtypeLabel, tableStateRowMarkup } from '../ui.js';
+import { esc, fmt, formatStat, mistakeTag, statePanelMarkup, subtypeChip, subtypeLabel, tableStateRowMarkup } from '../ui.js';
 import { createDomCache } from '../dom.js';
 import { endpoints } from '../contracts.js';
 import { createCache } from '../cache.js';
@@ -177,15 +177,39 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
       byType[m.type] = m.count;
     });
 
-    dom.byId('m-blunders').textContent = (
-      byType.blunder || 0
-    ).toLocaleString();
-    dom.byId('m-hanging').textContent = (
-      byType.hanging_piece || 0
-    ).toLocaleString();
-    dom.byId('m-mistakes').textContent = (
-      byType.mistake || 0
-    ).toLocaleString();
+    const blunderCount = byType.blunder || 0;
+    const hangingCount = byType.hanging_piece || 0;
+    const mistakeCount = byType.mistake || 0;
+    const blundersCard = dom.byId('kpi-blunders');
+    const hangingCard = dom.byId('kpi-hanging');
+    const mistakesCard = dom.byId('kpi-mistakes');
+    blundersCard?.setAttribute('value', blunderCount.toLocaleString());
+    hangingCard?.setAttribute('value', hangingCount.toLocaleString());
+    mistakesCard?.setAttribute('value', mistakeCount.toLocaleString());
+
+    // Coach-voice subtitles: rates pulled through formatStat. The static
+    // educational text on the cc-kpi-card stays as a fallback when we don't
+    // have enough data to compute a rate yet.
+    const analyzedCount = Number(statsData.games?.analyzed) || 0;
+    if (analyzedCount > 0) {
+      const blundersPerGame = blunderCount / analyzedCount;
+      const mistakesPerGame = mistakeCount / analyzedCount;
+      const blundersFmt = formatStat('blunders_per_game', blundersPerGame);
+      const mistakesFmt = formatStat('mistakes_per_game', mistakesPerGame);
+      const hangingFmt = formatStat('hanging_piece_rate', statsData.hanging_piece_rate);
+      if (blundersFmt.label && blundersCard) {
+        blundersCard.setAttribute('sub', `${blundersFmt.value} per game · ${blundersFmt.label}`);
+        blundersCard.setAttribute('severity', blundersFmt.severity);
+      }
+      if (mistakesFmt.label && mistakesCard) {
+        mistakesCard.setAttribute('sub', `${mistakesFmt.value} per game · ${mistakesFmt.label}`);
+        mistakesCard.setAttribute('severity', mistakesFmt.severity);
+      }
+      if (hangingFmt.label && hangingCard) {
+        hangingCard.setAttribute('sub', `${hangingFmt.value} of analyzed games · ${hangingFmt.label}`);
+        hangingCard.setAttribute('severity', hangingFmt.severity);
+      }
+    }
 
     const tbody = dom.byId('critical-mistakes-body');
     const criticalMeta = dom.byId('mistakes-critical-meta');

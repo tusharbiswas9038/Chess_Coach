@@ -205,6 +205,36 @@ export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
     syncFiltersFromControls();
     gamesPage = 0;
     loadGames();
+    updateFiltersToggleLabel();
+  }
+
+  // Count filters that diverge from the resting defaults. Used to label the
+  // collapsed toggle button so the user can see "Filters · 3 active" without
+  // expanding the panel.
+  function countActiveFilters() {
+    let n = 0;
+    for (const [k, def] of Object.entries(DEFAULT_GAMES_FILTERS)) {
+      const cur = gamesFilters[k];
+      if (cur === undefined || cur === null) continue;
+      if (String(cur).trim() === String(def ?? '').trim()) continue;
+      n += 1;
+    }
+    return n;
+  }
+
+  function setFiltersPanelVisible(visible) {
+    const panel = dom.byId('games-filter-panel');
+    const toggle = dom.byId('btn-toggle-games-filters');
+    if (!panel) return;
+    panel.hidden = !visible;
+    toggle?.setAttribute('aria-expanded', String(!!visible));
+  }
+
+  function updateFiltersToggleLabel() {
+    const countEl = dom.byId('games-filters-active-count');
+    if (!countEl) return;
+    const n = countActiveFilters();
+    countEl.textContent = n ? `· ${n} active` : '';
   }
 
   function readFilterSlots() {
@@ -393,6 +423,11 @@ export function createGamesView({ api, apiContract, toast, loadGameDetail }) {
     dom.byId('btn-load-filter-slot-3')?.addEventListener('click', () => loadFilterSlot('s3'));
     dom.byId('btn-export-games-csv')?.addEventListener('click', exportCurrentPageCsv);
     dom.byId('btn-copy-games-summary')?.addEventListener('click', copyQueueSummary);
+    dom.byId('btn-toggle-games-filters')?.addEventListener('click', () => {
+      const panel = dom.byId('games-filter-panel');
+      setFiltersPanelVisible(!!panel?.hidden);
+    });
+    updateFiltersToggleLabel();
     dom.byId('games-preset-row')?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-preset]');
       if (!btn) return;

@@ -1,11 +1,12 @@
 // dashboard-motifs.js
 //
 // Renders the "Recurring mistake motifs" panel on the dashboard. Owns the
-// motif list markup and the click handler that opens a game from a motif's
-// example. Kept separate from dashboard.js so dashboard stays focused on
-// session orchestration and KPIs.
+// motif list and the click handler that opens a game from a motif's
+// example. The row markup itself lives in <cc-motif-row> — this module
+// just maps the API payload onto component attributes and listens for the
+// `open-game` event the component emits.
 
-import { esc, statePanelMarkup } from '../ui.js';
+import { statePanelMarkup, esc } from '../ui.js';
 
 export function createDashboardMotifsView({ dom, onOpenGame }) {
   const LIST_ID = 'dashboard-motifs-list';
@@ -31,51 +32,34 @@ export function createDashboardMotifsView({ dom, onOpenGame }) {
   }
 
   function renderMotifRow(m) {
-    const subtype = String(m.subtype || 'mistake').replace(/_/g, ' ');
-    const phase = m.phase || 'unknown';
-    const family = m.opening_family && m.opening_family !== '?'
-      ? `ECO ${m.opening_family}`
-      : 'mixed openings';
-    const occurrences = Number(m.occurrences || 0);
-    const avg = Number(m.avg_eval_loss || 0);
-    const latest = m.latest_date ? String(m.latest_date).slice(0, 10) : '-';
-    const exampleId = m.example_game_id;
-    const exampleBtn = exampleId
-      ? `<button class="btn btn-ghost btn-sm" type="button" data-open-game-id="${esc(exampleId)}">Open example</button>`
-      : '';
+    // <cc-motif-row> reads scalar attributes; we still escape any string
+    // that lands in an attribute to keep injection out of the template
+    // literal. Numeric attributes are converted directly.
+    const subtype = String(m.subtype || 'mistake');
+    const phase = String(m.phase || 'unknown');
+    const family = String(m.opening_family || '');
+    const latest = m.latest_date ? String(m.latest_date) : '';
     const coachLabel = (m.coach_label || '').trim();
-    const labelLine = coachLabel
-      ? `<div class="text-sm text-[var(--text)] mb-1">${esc(coachLabel)}</div>`
-      : '';
+    const exampleId = m.example_game_id || '';
     return `
-      <li class="motif-row rounded-cc border border-[var(--border)] bg-[var(--surface-2)] p-3">
-        <div class="flex items-start justify-between gap-3 max-sm:flex-col">
-          <div class="min-w-0">
-            ${labelLine}
-            <div class="text-sm font-semibold text-[var(--text)]">
-              ${esc(subtype)} <span class="text-[var(--muted)]">in</span> ${esc(phase)}
-            </div>
-            <div class="mt-1 text-xs text-[var(--muted)]">
-              ${esc(family)} &middot; last seen ${esc(latest)}
-            </div>
-          </div>
-          <div class="flex shrink-0 items-center gap-3 text-right">
-            <div>
-              <div class="text-lg font-bold text-[var(--text)]">${occurrences}x</div>
-              <div class="text-xs text-[var(--muted)]">avg ${avg.toFixed(0)}cp lost</div>
-            </div>
-            ${exampleBtn}
-          </div>
-        </div>
-      </li>
+      <cc-motif-row
+        subtype="${esc(subtype)}"
+        phase="${esc(phase)}"
+        family="${esc(family)}"
+        occurrences="${Number(m.occurrences || 0)}"
+        avg-eval-loss="${Number(m.avg_eval_loss || 0)}"
+        latest-date="${esc(latest)}"
+        ${coachLabel ? `coach-label="${esc(coachLabel)}"` : ''}
+        ${exampleId ? `example-game-id="${esc(exampleId)}"` : ''}
+      ></cc-motif-row>
     `;
   }
 
   function bindEvents() {
-    dom.byId(LIST_ID)?.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-open-game-id]');
-      if (btn && typeof onOpenGame === 'function') {
-        onOpenGame(btn.dataset.openGameId);
+    dom.byId(LIST_ID)?.addEventListener('open-game', (e) => {
+      const gameId = e.detail?.gameId;
+      if (gameId && typeof onOpenGame === 'function') {
+        onOpenGame(gameId);
       }
     });
   }
