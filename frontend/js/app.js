@@ -30,8 +30,7 @@ if ('serviceWorker' in navigator) {
 }
 
 if (typeof Chart === 'undefined') {
-  document.body.innerHTML =
-    '<div class="load-error">Chart library failed to load. Check your network connection.</div>';
+  console.warn('Chart.js not loaded yet — charts will be unavailable.');
 }
 initChartDefaults();
 // ── STATE ──
