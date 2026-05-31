@@ -99,17 +99,28 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
     }
   }
 
-  // Re-attach to a job that was running before a page refresh
+  // Re-attach to any job that was running — works across devices and page refreshes.
+  // Checks the server directly rather than relying on sessionStorage.
   async function resumePersistedJob() {
-    const persisted = getPersistedJob();
-    if (!persisted) return;
-    const { prefix, startedAtSec } = persisted;
-    const btn = prefix === 'sync' ? dom.byId('btn-sync') : dom.byId('btn-analyze');
-    if (!btn) return;
-    btn.disabled = true;
-    setActionLabel(btn, prefix === 'sync' ? 'Syncing…' : 'Analyzing…');
-    toast(`${prefix === 'sync' ? 'Sync' : 'Analysis'} still running — reconnected.`);
     try {
+      const { normalize, endpoints: ep } = await import('../contracts.js');
+      const status = normalize.jobStatus(await api(ep.jobStatus()));
+      const runningId = String(status?.id || '');
+      if (!runningId || status?.status !== 'running') return;
+
+      const prefix = runningId.startsWith('sync') ? 'sync'
+        : runningId.startsWith('analyze') ? 'analyze'
+        : null;
+      if (!prefix) return;
+
+      // Use a startedAtSec far in the past so we match any recent completion
+      const startedAtSec = (Date.now() / 1000) - 3600;
+      const btn = prefix === 'sync' ? dom.byId('btn-sync') : dom.byId('btn-analyze');
+      if (!btn) return;
+
+      btn.disabled = true;
+      setActionLabel(btn, prefix === 'sync' ? 'Syncing…' : 'Analyzing…');
+
       const result = await waitForJobByPrefix(api, prefix, {
         startedAtSec,
         timeoutMs: prefix === 'analyze' ? 480000 : 180000,
@@ -118,16 +129,17 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
           if (label) setActionLabel(btn, `${prefix === 'sync' ? 'Syncing' : 'Analyzing'} ${label}`);
         },
       });
+
       if (result.ok) {
         toast(`${prefix === 'sync' ? 'Sync' : 'Analysis'} completed.`);
-      } else if (!result.timeout) {
+      } else if (result.timeout) {
+        // still running, leave button in disabled state — next poll will update
+      } else if (result.job) {
         toast(`${prefix === 'sync' ? 'Sync' : 'Analysis'} job failed: ${result.job?.error || 'unknown error'}`);
       }
-    } catch (_) {}
-    finally {
       btn.disabled = false;
       setActionLabel(btn, prefix === 'sync' ? 'Sync' : 'Analyze');
-    }
+    } catch (_) {}
   }
 
   async function triggerDbMaintenance() {
