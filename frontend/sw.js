@@ -11,7 +11,7 @@
 //
 // Bumping CACHE_VERSION invalidates the shell cache on the next sw boot.
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const SHELL_CACHE = `cc-shell-${CACHE_VERSION}`;
 const FONT_CACHE = `cc-fonts-${CACHE_VERSION}`;
 const API_CACHE = `cc-api-${CACHE_VERSION}`;

@@ -242,8 +242,8 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
       }
     });
 
-    dom.byId('btn-sync').addEventListener('click', triggerSync);
-    dom.byId('btn-analyze').addEventListener('click', triggerAnalyze);
+    dom.byId('btn-sync')?.addEventListener('click', triggerSync);
+    dom.byId('btn-analyze')?.addEventListener('click', triggerAnalyze);
     dom.byId('btn-db-maintenance')?.addEventListener('click', triggerDbMaintenance);
     dom.byId('btn-clear-motif-labels')?.addEventListener('click', triggerClearMotifLabels);
     dom.byId('btn-logout')?.addEventListener('click', async () => {
