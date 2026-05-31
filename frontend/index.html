@@ -38,42 +38,6 @@
       </div>
     </noscript>
 
-    <div
-      id="auth-gate"
-      aria-modal="true"
-      role="dialog"
-      hidden
-    >
-      <form
-        id="auth-form"
-        class="auth-card"
-      >
-        <div class="mb-5">
-          <div class="mb-2 inline-flex rounded-full border border-[rgba(63,185,80,0.25)] bg-[rgba(63,185,80,0.08)] px-3 py-1 text-xs font-semibold uppercase auth-kicker text-[var(--primary)]">
-            Private workspace
-          </div>
-          <h1 class="text-2xl font-bold tracking-tight text-[var(--text)]">
-            Sign in to Chess Coach
-          </h1>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-            Use your configured admin account. Your session is stored in a secure HTTP-only cookie.
-          </p>
-        </div>
-        <label class="mb-3 block">
-          <span class="mb-1 block text-xs font-semibold uppercase tracking-label text-[var(--muted)]">Username</span>
-          <input id="auth-username" class="field-input w-full" autocomplete="username" value="admin" required />
-        </label>
-        <label class="mb-4 block">
-          <span class="mb-1 block text-xs font-semibold uppercase tracking-label text-[var(--muted)]">Password</span>
-          <input id="auth-password" class="field-input w-full" type="password" autocomplete="current-password" required />
-        </label>
-        <button id="auth-submit" class="btn btn-primary w-full justify-center" type="submit">
-          Sign in
-        </button>
-        <p id="auth-error" class="mt-3 min-h-5 text-sm text-[var(--error)]" role="alert"></p>
-      </form>
-    </div>
-
     <div class="app app-shell flex min-h-dvh max-sm:pb-[calc(64px+env(safe-area-inset-bottom))]">
       <!-- ── SIDEBAR ── -->
       <aside class="sidebar fixed inset-y-0 left-0 z-[100] flex h-dvh flex-col border-r border-[var(--border)] shadow-cc-soft max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:z-[120] max-sm:h-auto max-sm:w-full max-sm:border-r-0 max-sm:border-t" id="sidebar" aria-label="Navigation">
