@@ -430,9 +430,9 @@ class GameRepository:
         totals = self.conn.execute("""
             SELECT
                 COUNT(*) AS total,
-                SUM(CASE WHEN analyzed=1 THEN 1 ELSE 0 END) AS analyzed,
-                SUM(CASE WHEN analyzed=0 THEN 1 ELSE 0 END) AS pending,
-                SUM(CASE WHEN analyzed=2 THEN 1 ELSE 0 END) AS errors
+                COALESCE(SUM(CASE WHEN analyzed=1 THEN 1 ELSE 0 END), 0) AS analyzed,
+                COALESCE(SUM(CASE WHEN analyzed=0 THEN 1 ELSE 0 END), 0) AS pending,
+                COALESCE(SUM(CASE WHEN analyzed=2 THEN 1 ELSE 0 END), 0) AS errors
             FROM games
         """).fetchone()
 

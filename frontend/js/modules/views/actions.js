@@ -251,8 +251,9 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
       await onLogout?.();
     });
 
-    // Re-attach to any job that was running before a page refresh
-    resumePersistedJob();
+    // Re-attach to any job that was running — delay until after auth so the
+    // /api/jobs/status call doesn't fire as an unauthenticated 403.
+    setTimeout(() => resumePersistedJob(), 1500);
 
     document.addEventListener('click', (event) => {
       const container = dom.query('.topbar-actions');
