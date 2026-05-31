@@ -30,11 +30,12 @@ def _apply_base_schema_if_needed(conn: sqlite3.Connection) -> None:
     # If it's missing, some tables weren't created yet.
     if 'sessions' not in tables:
         log.info("Applying base schema (schema.sql) — missing tables detected")
+        import re
         sql = SCHEMA_SQL.read_text()
-        # Make every CREATE TABLE idempotent so existing tables are skipped.
-        sql = sql.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
-        sql = sql.replace("CREATE INDEX ", "CREATE INDEX IF NOT EXISTS ")
-        sql = sql.replace("CREATE UNIQUE INDEX ", "CREATE UNIQUE INDEX IF NOT EXISTS ")
+        # Only add IF NOT EXISTS where it isn't already present
+        sql = re.sub(r'CREATE TABLE (?!IF NOT EXISTS)', 'CREATE TABLE IF NOT EXISTS ', sql)
+        sql = re.sub(r'CREATE UNIQUE INDEX (?!IF NOT EXISTS)', 'CREATE UNIQUE INDEX IF NOT EXISTS ', sql)
+        sql = re.sub(r'CREATE INDEX (?!IF NOT EXISTS)', 'CREATE INDEX IF NOT EXISTS ', sql)
         conn.executescript(sql)
 
 

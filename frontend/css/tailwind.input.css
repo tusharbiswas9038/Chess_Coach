@@ -1443,10 +1443,13 @@
 
     .topbar-main {
       gap: 8px;
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
     }
 
     .topbar-title {
-      max-width: 58vw;
+      max-width: 42vw;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -1844,6 +1847,21 @@
     );
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
     padding: var(--space-3);
+  }
+
+  #auth-gate:not([hidden]) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: var(--space-3);
+    background:
+      radial-gradient(ellipse at 60% 20%, rgba(63, 185, 80, 0.06), transparent 60%),
+      var(--bg);
+  }
+
+  #auth-gate[hidden] {
+    display: none !important;
   }
 
   .auth-kicker {

@@ -23,8 +23,8 @@ function buildMarkup({ username, totalGames }) {
   const display = username || 'your Chess.com account';
   const empty = !totalGames;
   return `
-    <div id="${MODAL_ID}" class="onboarding-modal fixed inset-0 z-[200] flex items-center justify-center bg-[rgba(8,11,15,0.7)] p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
-      <div class="onboarding-card w-full max-w-[520px] rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-cc-md">
+    <div id="${MODAL_ID}" class="onboarding-modal fixed inset-0 z-[200] flex items-center justify-center bg-[rgba(8,11,15,0.7)] p-4 backdrop-blur-sm overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+      <div class="onboarding-card w-full max-w-[520px] rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-cc-md my-auto max-h-[90dvh] overflow-y-auto">
         <div class="mb-3 inline-flex rounded-full border border-[rgba(63,185,80,0.25)] bg-[rgba(63,185,80,0.08)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">
           Welcome
         </div>
@@ -63,12 +63,12 @@ function buildMarkup({ username, totalGames }) {
 
         <div id="onboarding-status" class="mt-3 min-h-5 text-sm text-[var(--muted)]" role="status" aria-live="polite"></div>
 
-        <div class="onboarding-actions mt-4 flex flex-wrap items-center justify-end gap-2">
-          <button id="onboarding-skip" class="btn btn-ghost" type="button">
-            I’ll explore on my own
+        <div class="onboarding-actions mt-4 flex flex-wrap items-center justify-end gap-2 max-sm:flex-col max-sm:items-stretch">
+          <button id="onboarding-skip" class="btn btn-ghost max-sm:w-full max-sm:justify-center" type="button">
+            Skip for now
           </button>
-          <button id="onboarding-start" class="btn btn-primary" type="button" ${empty ? '' : 'data-mode="dismiss"'}>
-            ${empty ? 'Start first sync' : 'Got it'}
+          <button id="onboarding-start" class="btn btn-primary max-sm:w-full max-sm:justify-center" type="button" ${empty ? ‘’ : ‘data-mode="dismiss"’}>
+            ${empty ? ‘Start first sync’ : ‘Got it’}
           </button>
         </div>
       </div>
