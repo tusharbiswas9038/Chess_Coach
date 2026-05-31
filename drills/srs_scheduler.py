@@ -165,14 +165,14 @@ def _due_item_ids(
         params.extend(priority_motifs)
     params.append(limit)
     rows = conn.execute(f"""
-        SELECT s.id
+        SELECT s.id, {priority_case} AS _priority
         FROM srs_items s
         JOIN mistakes m ON s.mistake_id = m.id
         JOIN games g ON m.game_id = g.id
         LEFT JOIN puzzles p ON p.id = s.puzzle_id
         WHERE {' AND '.join(where)}
         ORDER BY
-            {priority_case},
+            _priority,
             CASE WHEN s.last_result IN ('fail', 'hard') THEN 0 ELSE 1 END,
             s.due_date ASC,
             CASE COALESCE(p.difficulty, 'medium') WHEN 'easy' THEN 2 WHEN 'medium' THEN 1 ELSE 0 END,
