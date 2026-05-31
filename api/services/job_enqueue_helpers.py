@@ -64,6 +64,17 @@ def _enqueue_db_maintenance(vacuum: bool = False) -> None:
 
 # Wrapper functions to clear cache after job completion
 def sync_all_and_clear_cache(full: bool) -> None:
+    # On a blank DB (no games yet) always do a full historical sync
+    from api.db import get_db
+    try:
+        conn = get_db()
+        count = conn.execute("SELECT COUNT(*) FROM games").fetchone()[0]
+        conn.close()
+        if count == 0:
+            full = True
+            log.info("[job:sync] blank DB detected — forcing full historical sync")
+    except Exception:
+        pass
     sync_all(full)
     compute_and_store_player_model_snapshot(source="sync")
     compute_and_store_analytics_snapshot(source="sync")

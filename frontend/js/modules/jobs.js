@@ -1,6 +1,8 @@
 import { endpoints, normalize } from './contracts.js';
 import { clearAllCaches } from './cache.js';
 
+const JOB_SESSION_KEY = 'cc.active_job';
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -36,12 +38,39 @@ function emitInvalidation(job) {
   }
 }
 
+// Persist active job across page refreshes
+function saveActiveJob(prefix, startedAtSec) {
+  try {
+    sessionStorage.setItem(JOB_SESSION_KEY, JSON.stringify({ prefix, startedAtSec }));
+  } catch (_) {}
+}
+
+function clearActiveJob() {
+  try { sessionStorage.removeItem(JOB_SESSION_KEY); } catch (_) {}
+}
+
+export function getPersistedJob() {
+  try {
+    const raw = sessionStorage.getItem(JOB_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+
+export function formatProgress(progress) {
+  if (!progress || !progress.total) return null;
+  const pct = Math.round((progress.done / progress.total) * 100);
+  return `${progress.done}/${progress.total} (${pct}%)`;
+}
+
 export async function waitForJobByPrefix(api, prefix, options = {}) {
   const {
     startedAtSec = Date.now() / 1000,
     timeoutMs = 180000,
     pollMs = 2500,
+    onProgress = null,
   } = options;
+
+  saveActiveJob(prefix, startedAtSec);
 
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -50,18 +79,27 @@ export async function waitForJobByPrefix(api, prefix, options = {}) {
     const isActive = runningId.startsWith(prefix);
     const recent = findRecentJob(status, prefix, startedAtSec);
 
+    // Report progress to caller
+    if (isActive && status?.progress && onProgress) {
+      onProgress(status.progress);
+    }
+
     if (recent?.status === 'completed') {
+      clearActiveJob();
       emitInvalidation(recent);
       return { ok: true, job: recent, status };
     }
     if (recent?.status === 'failed') {
+      clearActiveJob();
       return { ok: false, job: recent, status };
     }
     if (!isActive && status?.status === 'idle' && status?.queue_size === 0 && recent) {
+      clearActiveJob();
       return { ok: recent.status === 'completed', job: recent, status };
     }
 
     await sleep(pollMs);
   }
+  clearActiveJob();
   return { ok: false, timeout: true };
 }

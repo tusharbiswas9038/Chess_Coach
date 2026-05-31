@@ -240,8 +240,14 @@ class JobQueue:
                     cls._instance._running_job_lock = threading.Lock()
                     cls._instance._running_job_info: Dict[str, Any] = {}
                     cls._instance._recent_jobs = deque(maxlen=50)
+                    cls._instance._progress: Dict[str, Any] = {}  # {done, total, step}
                     log.info("JobQueue initialized.")
         return cls._instance
+
+    def set_progress(self, done: int, total: int, step: str = "") -> None:
+        """Called from within a running job to report progress."""
+        with self._running_job_lock:
+            self._progress = {"done": done, "total": total, "step": step}
 
     def _worker(self):
         log.info("JobQueue worker started.")
@@ -252,12 +258,15 @@ class JobQueue:
                 start_time = time.time()
                 with self._running_job_lock:
                     self._running_job_info = {"id": job_id, "status": "running", "start_time": start_time}
+                    self._progress = {}
                 _ledger_mark_running(job_id)
 
                 try:
                     result = job_func(*job_args, **job_kwargs)
                     elapsed = round(time.time() - start_time, 3)
                     metadata = result if isinstance(result, dict) else {}
+                    with self._running_job_lock:
+                        self._progress = {}
                     self._recent_jobs.appendleft({
                         "id": job_id,
                         "status": "completed",
@@ -387,6 +396,7 @@ class JobQueue:
             if self._running_job_info:
                 return {
                     **self._running_job_info,
+                    "progress": dict(self._progress),
                     "queue_size": self._queue.qsize(),
                     "queue_max_size": self._queue.maxsize,
                     "worker_running": self.is_worker_running(),
@@ -394,6 +404,7 @@ class JobQueue:
                 }
             return {
                 "status": "idle",
+                "progress": {},
                 "queue_size": self._queue.qsize(),
                 "queue_max_size": self._queue.maxsize,
                 "worker_running": self.is_worker_running(),

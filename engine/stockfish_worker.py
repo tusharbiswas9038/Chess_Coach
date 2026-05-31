@@ -428,6 +428,15 @@ def run_analysis_worker():
     total = len(pending)
     print(f"Analyzing {total} game(s) at depth {DEPTH} using {STOCKFISH_THREADS} threads...")
 
+    # Report progress to job queue if available
+    try:
+        from api.job_queue import job_queue as _jq
+        _report = lambda done, step="": _jq.set_progress(done, total, step)
+    except Exception:
+        _report = lambda done, step="": None
+
+    _report(0, "starting Stockfish")
+
     try:
         engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
         engine.configure({"Threads": STOCKFISH_THREADS, "Hash": STOCKFISH_HASH_MB})
@@ -442,6 +451,7 @@ def run_analysis_worker():
     try:
         for i, row in enumerate(pending, 1):
             t0 = time.time()
+            _report(i - 1, f"game {i}/{total}")
             try:
                 conn.execute("BEGIN")
                 ok = analyze_game(row["id"], row["pgn"], row["color"], engine, conn)
@@ -465,6 +475,7 @@ def run_analysis_worker():
                 print(f"  [unexpected error] {row['id'][:16]}... {e}")
 
             print(f"  [{i}/{total}] {row['id'][:16]}... {status}")
+            _report(i, f"game {i}/{total}")
 
     finally:
         engine.quit()

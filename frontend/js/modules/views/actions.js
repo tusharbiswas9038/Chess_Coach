@@ -1,6 +1,6 @@
 import { createDomCache } from '../dom.js';
 import { endpoints } from '../contracts.js';
-import { waitForJobByPrefix } from '../jobs.js';
+import { waitForJobByPrefix, getPersistedJob, formatProgress } from '../jobs.js';
 
 export function createActionsView({ api, apiPost, onLogout, onReportReady, toast }) {
   const dom = createDomCache();
@@ -43,8 +43,14 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
     try {
       const startedAtSec = Date.now() / 1000;
       await apiPost(endpoints.jobSync());
-      toast('Sync started. Check back in a minute.');
-      const result = await waitForJobByPrefix(api, 'sync', { startedAtSec });
+      toast('Sync started — fetching all your rapid games.');
+      const result = await waitForJobByPrefix(api, 'sync', {
+        startedAtSec,
+        onProgress: (p) => {
+          const label = formatProgress(p);
+          if (label) setActionLabel(btn, `Syncing ${label}`);
+        },
+      });
       if (result.ok) {
         toast('Sync completed.');
       } else if (result.timeout) {
@@ -72,6 +78,10 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
       const result = await waitForJobByPrefix(api, 'analyze', {
         startedAtSec,
         timeoutMs: 480000,
+        onProgress: (p) => {
+          const label = formatProgress(p);
+          if (label) setActionLabel(btn, `Analyzing ${label}`);
+        },
       });
       if (result.ok) {
         toast('Analysis completed.');
@@ -86,6 +96,37 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
       btn.disabled = false;
       setActionLabel(btn, 'Analyze');
       closeActionsMenu();
+    }
+  }
+
+  // Re-attach to a job that was running before a page refresh
+  async function resumePersistedJob() {
+    const persisted = getPersistedJob();
+    if (!persisted) return;
+    const { prefix, startedAtSec } = persisted;
+    const btn = prefix === 'sync' ? dom.byId('btn-sync') : dom.byId('btn-analyze');
+    if (!btn) return;
+    btn.disabled = true;
+    setActionLabel(btn, prefix === 'sync' ? 'Syncing…' : 'Analyzing…');
+    toast(`${prefix === 'sync' ? 'Sync' : 'Analysis'} still running — reconnected.`);
+    try {
+      const result = await waitForJobByPrefix(api, prefix, {
+        startedAtSec,
+        timeoutMs: prefix === 'analyze' ? 480000 : 180000,
+        onProgress: (p) => {
+          const label = formatProgress(p);
+          if (label) setActionLabel(btn, `${prefix === 'sync' ? 'Syncing' : 'Analyzing'} ${label}`);
+        },
+      });
+      if (result.ok) {
+        toast(`${prefix === 'sync' ? 'Sync' : 'Analysis'} completed.`);
+      } else if (!result.timeout) {
+        toast(`${prefix === 'sync' ? 'Sync' : 'Analysis'} job failed: ${result.job?.error || 'unknown error'}`);
+      }
+    } catch (_) {}
+    finally {
+      btn.disabled = false;
+      setActionLabel(btn, prefix === 'sync' ? 'Sync' : 'Analyze');
     }
   }
 
@@ -197,6 +238,9 @@ export function createActionsView({ api, apiPost, onLogout, onReportReady, toast
       closeActionsMenu();
       await onLogout?.();
     });
+
+    // Re-attach to any job that was running before a page refresh
+    resumePersistedJob();
 
     document.addEventListener('click', (event) => {
       const container = dom.query('.topbar-actions');
