@@ -6,68 +6,88 @@
               ></cc-section-header>
             </section>
 
-            <div class="grid grid-cols-[1.15fr_0.85fr] gap-3 max-lg:grid-cols-1">
-              <section class="card panel-primary overflow-hidden">
-                <div class="card-header flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3 max-sm:flex-col">
+            <div class="openings-main-grid">
+              <!-- Repertoire card -->
+              <section class="openings-repertoire-card card panel-primary overflow-hidden">
+                <div class="openings-card-header">
                   <div>
-                    <div class="card-title">Personal Repertoire</div>
-                    <div class="card-subtitle">Save white/black line sets and rehearse the branches that matter.</div>
+                    <div class="openings-card-kicker">Preparation</div>
+                    <div class="openings-card-title">Personal Repertoire</div>
+                    <div class="openings-card-sub">Save white/black line sets and rehearse the branches that matter.</div>
                   </div>
-                  <div class="flex items-center gap-2 max-sm:w-full">
-                    <select id="repertoire-color-filter" class="field-input select select-bordered min-h-10 w-32 max-sm:w-full">
+                  <div class="openings-card-actions">
+                    <select id="repertoire-color-filter" class="field-input select select-bordered openings-color-select">
                       <option value="">All colors</option>
                       <option value="white">White</option>
                       <option value="black">Black</option>
                     </select>
-                    <button id="btn-toggle-repertoire-form" class="btn btn-primary max-sm:w-full" type="button" aria-expanded="false" aria-controls="repertoire-form">
-                      Add a line
+                    <button id="btn-toggle-repertoire-form" class="btn btn-primary" type="button" aria-expanded="false" aria-controls="repertoire-form">
+                      + Add a line
                     </button>
                   </div>
                 </div>
-                <form id="repertoire-form" class="grid grid-cols-[110px_90px_1fr] gap-2 border-b border-[var(--border)] p-4 max-md:grid-cols-2 max-sm:grid-cols-1" hidden>
-                  <select id="repertoire-color" class="field-input select select-bordered min-h-10" required>
-                    <option value="white">White</option>
-                    <option value="black">Black</option>
-                  </select>
-                  <input id="repertoire-eco" class="field-input input input-bordered min-h-10 uppercase" maxlength="12" placeholder="ECO" />
-                  <input id="repertoire-name" class="field-input input input-bordered min-h-10" maxlength="120" placeholder="Line name, e.g. Sicilian Alapin" required />
-                  <input id="repertoire-line" class="field-input input input-bordered col-span-2 min-h-10 max-md:col-span-1" maxlength="1000" placeholder="Moves, e.g. 1.e4 c5 2.c3 d5 3.exd5 Qxd5" required />
-                  <div class="flex gap-2">
-                    <select id="repertoire-priority" class="field-input select select-bordered min-h-10 flex-1">
-                      <option value="5">P5</option>
-                      <option value="4">P4</option>
-                      <option value="3" selected>P3</option>
-                      <option value="2">P2</option>
-                      <option value="1">P1</option>
+                <form id="repertoire-form" class="openings-form" hidden>
+                  <div class="openings-form-grid">
+                    <select id="repertoire-color" class="field-input select select-bordered min-h-10" required>
+                      <option value="white">White</option>
+                      <option value="black">Black</option>
                     </select>
-                    <button class="btn btn-primary" type="submit">Add</button>
+                    <input id="repertoire-eco" class="field-input input input-bordered min-h-10 uppercase" maxlength="12" placeholder="ECO" />
+                    <input id="repertoire-name" class="field-input input input-bordered min-h-10 openings-form-name" maxlength="120" placeholder="Line name, e.g. Sicilian Alapin" required />
+                    <input id="repertoire-line" class="field-input input input-bordered min-h-10 openings-form-line" maxlength="1000" placeholder="Moves, e.g. 1.e4 c5 2.c3 d5 3.exd5 Qxd5" required />
+                    <div class="openings-form-submit">
+                      <select id="repertoire-priority" class="field-input select select-bordered min-h-10 flex-1">
+                        <option value="5">P5</option>
+                        <option value="4">P4</option>
+                        <option value="3" selected>P3</option>
+                        <option value="2">P2</option>
+                        <option value="1">P1</option>
+                      </select>
+                      <button class="btn btn-primary" type="submit">Add</button>
+                    </div>
+                    <textarea id="repertoire-notes" class="field-input textarea textarea-bordered min-h-20 openings-form-notes" maxlength="2000" placeholder="Plan, traps, or memory cue"></textarea>
                   </div>
-                  <textarea id="repertoire-notes" class="field-input textarea textarea-bordered col-span-3 min-h-20 max-md:col-span-2 max-sm:col-span-1" maxlength="2000" placeholder="Plan, traps, or memory cue"></textarea>
                 </form>
-                <div id="repertoire-list" class="grid gap-2 p-4"></div>
+                <div id="repertoire-list" class="openings-list-body">
+                  <cc-skeleton variant="row"></cc-skeleton>
+                  <cc-skeleton variant="row"></cc-skeleton>
+                </div>
               </section>
 
-              <aside class="grid gap-3">
+              <!-- Right sidebar -->
+              <aside class="openings-sidebar">
                 <section class="card panel-quiet overflow-hidden">
-                  <div class="card-header border-b border-[var(--border)] px-4 py-3">
-                    <div class="card-title">Weak Opening Nodes</div>
-                    <div class="card-subtitle">Branches where your results, mistakes, or eval trend collapse.</div>
-                  </div>
-                  <div id="opening-weak-nodes" class="grid gap-2 p-4"></div>
-                </section>
-                <section class="card panel-quiet overflow-hidden">
-                  <div class="card-header flex items-start justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
+                  <div class="openings-card-header openings-card-header-sm">
                     <div>
-                      <div class="card-title">Opening Training</div>
-                      <div class="card-subtitle">Recall saved lines and mark misses for future review.</div>
+                      <div class="openings-card-kicker">Weak Spots</div>
+                      <div class="openings-card-title">Weak Opening Nodes</div>
+                      <div class="openings-card-sub">Branches where results, mistakes, or eval trend collapse.</div>
+                    </div>
+                  </div>
+                  <div id="opening-weak-nodes" class="openings-list-body">
+                    <cc-skeleton variant="row"></cc-skeleton>
+                    <cc-skeleton variant="row"></cc-skeleton>
+                  </div>
+                </section>
+
+                <section class="card panel-quiet overflow-hidden">
+                  <div class="openings-card-header openings-card-header-sm">
+                    <div>
+                      <div class="openings-card-kicker">Recall Training</div>
+                      <div class="openings-card-title">Opening Training</div>
+                      <div class="openings-card-sub">Recall saved lines and mark misses for future review.</div>
                     </div>
                     <button id="btn-refresh-opening-training" class="btn btn-ghost min-h-10" type="button">Refresh</button>
                   </div>
-                  <div id="opening-training-list" class="grid gap-2 p-4"></div>
+                  <div id="opening-training-list" class="openings-list-body">
+                    <cc-skeleton variant="row"></cc-skeleton>
+                    <cc-skeleton variant="row"></cc-skeleton>
+                  </div>
                 </section>
               </aside>
             </div>
 
+            <!-- Charts row -->
             <div class="charts-row charts-row-openings mb-5 grid gap-2 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:[grid-template-columns:1fr] max-sm:gap-2">
               <div class="chart-card analytics-panel">
                 <div class="chart-head">
@@ -89,57 +109,68 @@
               </div>
             </div>
 
-            <div class="card panel-primary mt-2 overflow-hidden">
-              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
-                <div class="card-title">Opening Genome</div>
-                <button class="btn btn-ghost max-sm:tap-40" id="btn-refresh-openings" type="button">
-                  Refresh
-                </button>
+            <!-- Opening Genome card -->
+            <div class="card panel-primary overflow-hidden mb-4">
+              <div class="openings-card-header openings-card-header-row">
+                <div>
+                  <div class="openings-card-kicker">Depth Analysis</div>
+                  <div class="openings-card-title">Opening Genome</div>
+                  <div class="openings-card-sub">Win rate plotted by ply depth — lower values reveal weak nodes in the chosen line.</div>
+                </div>
+                <button class="btn btn-ghost" id="btn-refresh-openings" type="button">Refresh</button>
               </div>
-              <div class="filters-grid filter-bar m-3 grid grid-cols-2 gap-2 p-3 max-sm:grid-cols-1">
+              <div class="openings-genome-filters filter-bar m-3 grid grid-cols-2 gap-2 p-3 max-sm:grid-cols-1">
                 <div class="field">
-                  <label class="label" for="select-eco-genome">ECO</label>
+                  <label class="field-label" for="select-eco-genome">ECO</label>
                   <select id="select-eco-genome" class="field-input select select-bordered w-full">
                     <option value="">-- Select ECO --</option>
                   </select>
                 </div>
                 <div class="field">
-                  <label class="label" for="select-color-genome">Color</label>
+                  <label class="field-label" for="select-color-genome">Color</label>
                   <select id="select-color-genome" class="field-input select select-bordered w-full">
                     <option value="white">White</option>
                     <option value="black">Black</option>
                   </select>
                 </div>
               </div>
-              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2 max-sm:flex-col max-sm:items-start max-sm:gap-1">
-                <div class="card-title" id="genome-title">Select an opening to view its genome</div>
-                <div class="card-subtitle" id="genome-total-games"></div>
+              <div class="openings-genome-title-row border-b border-[var(--border)] px-4 py-3">
+                <div class="openings-card-title" id="genome-title">Select an opening to view its genome</div>
+                <div class="openings-card-sub mt-1" id="genome-total-games"></div>
               </div>
               <div class="chart-container chart-container-short chart-container-genome">
-                <canvas id="opening-genome-chart" role="img" aria-label="Opening genome — win rate plotted by ply depth. Lower values indicate weak nodes in the chosen line. See the title and game count above for context."></canvas>
+                <canvas id="opening-genome-chart" role="img" aria-label="Opening genome — win rate plotted by ply depth. Lower values indicate weak nodes in the chosen line."></canvas>
               </div>
-              <div class="table-meta card-pad p-3" id="genome-insight">Select an opening to see a coaching insight.</div>
-              <div class="card-pad p-3" id="opening-genome-status" hidden></div>
+              <div class="openings-genome-insight" id="genome-insight">Select an opening to see a coaching insight.</div>
+              <div class="p-3" id="opening-genome-status" hidden></div>
             </div>
 
-            <div class="card panel-quiet mt-3 overflow-hidden">
-              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
-                <div class="card-title">Opening Win Rates</div>
+            <!-- Win rates table -->
+            <div class="card panel-quiet overflow-hidden">
+              <div class="openings-card-header openings-card-header-row">
+                <div>
+                  <div class="openings-card-kicker">Statistics</div>
+                  <div class="openings-card-title">Opening Win Rates</div>
+                </div>
               </div>
               <div class="table-shell overflow-x-auto">
-              <table class="table-dense">
-                <thead>
-                  <tr>
-                    <th>ECO</th>
-                    <th>Opening</th>
-                    <th>Color</th>
-                    <th>Games</th>
-                    <th>Wins</th>
-                    <th>Win %</th>
-                  </tr>
-                </thead>
-                <tbody id="openings-body"></tbody>
-              </table>
+                <table class="table-dense">
+                  <thead>
+                    <tr>
+                      <th>ECO</th>
+                      <th>Opening</th>
+                      <th>Color</th>
+                      <th>Games</th>
+                      <th>Wins</th>
+                      <th>Win %</th>
+                    </tr>
+                  </thead>
+                  <tbody id="openings-body">
+                    <tr><td colspan="6"><cc-skeleton variant="row"></cc-skeleton></td></tr>
+                    <tr><td colspan="6"><cc-skeleton variant="row"></cc-skeleton></td></tr>
+                    <tr><td colspan="6"><cc-skeleton variant="row"></cc-skeleton></td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           

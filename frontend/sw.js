@@ -11,7 +11,7 @@
 //
 // Bumping CACHE_VERSION invalidates the shell cache on the next sw boot.
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const SHELL_CACHE = `cc-shell-${CACHE_VERSION}`;
 const FONT_CACHE = `cc-fonts-${CACHE_VERSION}`;
 const API_CACHE = `cc-api-${CACHE_VERSION}`;
@@ -100,7 +100,13 @@ async function networkFirstShell(event, cacheName) {
   } catch (err) {
     const cached = await cache.match(event.request);
     if (cached) return cached;
-    throw err;
+    // No network, no cache — return a minimal offline response instead of
+    // throwing, which would surface as an unhandled rejection in the console.
+    return new Response('Offline — reload when connected.', {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: { 'Content-Type': 'text/plain' },
+    });
   }
 }
 

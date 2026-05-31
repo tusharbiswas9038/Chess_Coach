@@ -9,6 +9,8 @@ log = logging.getLogger("chess_coach.db.migrations")
 
 Migration = Tuple[str, Callable[[sqlite3.Connection], None]]
 
+SCHEMA_SQL = Path(__file__).resolve().parents[1] / "schema.sql"
+
 
 def _ensure_migrations_table(conn: sqlite3.Connection) -> None:
     conn.execute(
@@ -21,40 +23,60 @@ def _ensure_migrations_table(conn: sqlite3.Connection) -> None:
     )
 
 
+def _apply_base_schema_if_needed(conn: sqlite3.Connection) -> None:
+    """Apply schema.sql on a blank or partially-initialised DB."""
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    # Use 'sessions' as sentinel — it's the last table created in schema.sql.
+    # If it's missing, some tables weren't created yet.
+    if 'sessions' not in tables:
+        log.info("Applying base schema (schema.sql) — missing tables detected")
+        sql = SCHEMA_SQL.read_text()
+        # Make every CREATE TABLE idempotent so existing tables are skipped.
+        sql = sql.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
+        sql = sql.replace("CREATE INDEX ", "CREATE INDEX IF NOT EXISTS ")
+        sql = sql.replace("CREATE UNIQUE INDEX ", "CREATE UNIQUE INDEX IF NOT EXISTS ")
+        conn.executescript(sql)
+
+
 def _cleanup_orphan_srs_and_reconcile_indexes(conn: sqlite3.Connection) -> None:
-    # Remove orphan drills created while foreign_keys pragma was not consistently enabled.
-    conn.execute(
-        """
-        DELETE FROM srs_items
-        WHERE mistake_id NOT IN (SELECT id FROM mistakes)
-        """
-    )
+    # On a fresh DB the base tables don't exist yet — guard before touching them.
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+
+    if 'srs_items' in tables and 'mistakes' in tables:
+        conn.execute(
+            """
+            DELETE FROM srs_items
+            WHERE mistake_id NOT IN (SELECT id FROM mistakes)
+            """
+        )
 
     # Reconcile opening index with current query shape and schema.sql intention.
     conn.execute("DROP INDEX IF EXISTS idx_games_opening_eco_analyzed")
-    conn.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_games_opening_eco_color_analyzed
-        ON games(opening_eco, color, analyzed)
-        """
-    )
+    if 'games' in tables:
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_games_opening_eco_color_analyzed
+            ON games(opening_eco, color, analyzed)
+            """
+        )
 
     # Align with schema.sql; harmless if unused.
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_moves_ply ON moves(ply)")
+    if 'moves' in tables:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_moves_ply ON moves(ply)")
 
 
 def _optimize_indexes_for_hot_paths(conn: sqlite3.Connection) -> None:
-    # journal_entries.game_id already has uniqueness via table constraint / autoindex.
-    # Remove redundant non-unique index to reduce write overhead and schema noise.
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+
     conn.execute("DROP INDEX IF EXISTS idx_journal_entries_game_id")
 
-    # Speeds up common game-centric mistake review queries.
-    conn.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_mistakes_game_type_eval_loss
-        ON mistakes(game_id, type, eval_loss DESC)
-        """
-    )
+    if 'mistakes' in tables:
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_mistakes_game_type_eval_loss
+            ON mistakes(game_id, type, eval_loss DESC)
+            """
+        )
 
 
 def _create_player_model_snapshots(conn: sqlite3.Connection) -> None:
@@ -104,31 +126,35 @@ def _add_column_if_missing(
 
 
 def _add_analysis_v2_fields(conn: sqlite3.Connection) -> None:
-    for column, definition in (
-        ("analysis_depth_policy", "TEXT"),
-        ("candidate_alternatives", "TEXT"),
-        ("plan_text", "TEXT"),
-        ("practical_impact", "TEXT"),
-        ("time_pressure_flag", "INTEGER DEFAULT 0"),
-    ):
-        _add_column_if_missing(conn, "moves", column, definition)
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
 
-    for column, definition in (
-        ("mistake_subtype", "TEXT"),
-        ("confidence", "REAL"),
-        ("practical_impact", "TEXT"),
-        ("time_pressure_flag", "INTEGER DEFAULT 0"),
-        ("candidate_alternatives", "TEXT"),
-        ("plan_text", "TEXT"),
-    ):
-        _add_column_if_missing(conn, "mistakes", column, definition)
+    if 'moves' in tables:
+        for column, definition in (
+            ("analysis_depth_policy", "TEXT"),
+            ("candidate_alternatives", "TEXT"),
+            ("plan_text", "TEXT"),
+            ("practical_impact", "TEXT"),
+            ("time_pressure_flag", "INTEGER DEFAULT 0"),
+        ):
+            _add_column_if_missing(conn, "moves", column, definition)
 
-    conn.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_mistakes_subtype_phase_eval_loss
-        ON mistakes(mistake_subtype, phase, eval_loss DESC)
-        """
-    )
+    if 'mistakes' in tables:
+        for column, definition in (
+            ("mistake_subtype", "TEXT"),
+            ("confidence", "REAL"),
+            ("practical_impact", "TEXT"),
+            ("time_pressure_flag", "INTEGER DEFAULT 0"),
+            ("candidate_alternatives", "TEXT"),
+            ("plan_text", "TEXT"),
+        ):
+            _add_column_if_missing(conn, "mistakes", column, definition)
+
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_mistakes_subtype_phase_eval_loss
+            ON mistakes(mistake_subtype, phase, eval_loss DESC)
+            """
+        )
 
 
 def _create_drill_sessions(conn: sqlite3.Connection) -> None:
@@ -202,12 +228,14 @@ def _create_puzzle_ecosystem(conn: sqlite3.Connection) -> None:
         )
         """
     )
-    if "puzzle_id" not in _column_names(conn, "srs_items"):
-        conn.execute("ALTER TABLE srs_items ADD COLUMN puzzle_id INTEGER REFERENCES puzzles(id) ON DELETE SET NULL")
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if 'srs_items' in tables:
+        if "puzzle_id" not in _column_names(conn, "srs_items"):
+            conn.execute("ALTER TABLE srs_items ADD COLUMN puzzle_id INTEGER REFERENCES puzzles(id) ON DELETE SET NULL")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_srs_due_puzzle ON srs_items(due_date, puzzle_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_srs_last_result_due ON srs_items(last_result, due_date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_puzzles_motif_difficulty ON puzzles(motif, difficulty)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_puzzles_phase_motif ON puzzles(phase, motif)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_srs_due_puzzle ON srs_items(due_date, puzzle_id)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_srs_last_result_due ON srs_items(last_result, due_date)")
 
 
 def _create_opening_repertoire_tables(conn: sqlite3.Connection) -> None:
@@ -277,14 +305,18 @@ def _create_opening_repertoire_tables(conn: sqlite3.Connection) -> None:
 
 
 def _job_ledger_retry_columns(conn: sqlite3.Connection) -> None:
-    _add_column_if_missing(conn, "job_ledger", "retry_count", "INTEGER NOT NULL DEFAULT 0")
-    _add_column_if_missing(conn, "job_ledger", "max_retries", "INTEGER NOT NULL DEFAULT 0")
-    _add_column_if_missing(conn, "job_ledger", "next_retry_at", "TEXT")
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if 'job_ledger' in tables:
+        _add_column_if_missing(conn, "job_ledger", "retry_count", "INTEGER NOT NULL DEFAULT 0")
+        _add_column_if_missing(conn, "job_ledger", "max_retries", "INTEGER NOT NULL DEFAULT 0")
+        _add_column_if_missing(conn, "job_ledger", "next_retry_at", "TEXT")
 
 
 def _mistake_motifs_label_columns(conn: sqlite3.Connection) -> None:
-    _add_column_if_missing(conn, "mistake_motifs", "coach_label", "TEXT")
-    _add_column_if_missing(conn, "mistake_motifs", "labeled_at", "TEXT")
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if 'mistake_motifs' in tables:
+        _add_column_if_missing(conn, "mistake_motifs", "coach_label", "TEXT")
+        _add_column_if_missing(conn, "mistake_motifs", "labeled_at", "TEXT")
 
 
 def _create_whatif_attempts(conn: sqlite3.Connection) -> None:
@@ -358,7 +390,9 @@ def _create_repertoire_node_srs(conn: sqlite3.Connection) -> None:
 
 
 def _create_coach_memory_and_job_ledger(conn: sqlite3.Connection) -> None:
-    _add_column_if_missing(conn, "coach_sessions", "user_rating", "INTEGER")
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if 'coach_sessions' in tables:
+        _add_column_if_missing(conn, "coach_sessions", "user_rating", "INTEGER")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS job_ledger (
@@ -430,8 +464,10 @@ def _create_analytics_snapshot_tables(conn: sqlite3.Connection) -> None:
         )
         """
     )
-    _add_column_if_missing(conn, "player_model_snapshots", "behavioral_tags", "TEXT")
-    _add_column_if_missing(conn, "player_model_snapshots", "stability_score", "REAL")
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if 'player_model_snapshots' in tables:
+        _add_column_if_missing(conn, "player_model_snapshots", "behavioral_tags", "TEXT")
+        _add_column_if_missing(conn, "player_model_snapshots", "stability_score", "REAL")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_analytics_snapshots_computed_at ON analytics_snapshots(computed_at DESC)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_insight_slice_snapshot_dimension ON insight_slice_stats(snapshot_id, dimension, bucket)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_trend_deltas_snapshot_metric ON trend_deltas(snapshot_id, metric, window_days)")
@@ -464,6 +500,7 @@ def run_pending_migrations(db_path: Path = DB_PATH) -> List[str]:
 
     try:
         _ensure_migrations_table(conn)
+        _apply_base_schema_if_needed(conn)
         existing = {
             r["id"] for r in conn.execute("SELECT id FROM schema_migrations").fetchall()
         }

@@ -10,15 +10,11 @@
                   <cc-stat-pill tone="active" label="Drills" class="justify-center"></cc-stat-pill>
                   <cc-stat-pill tone="active" label="Coach" class="justify-center"></cc-stat-pill>
                 </div>
-                <label class="focus-toggle inline-flex cursor-pointer items-center gap-2 rounded-cc border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs font-semibold text-[var(--muted)]" title="Hide secondary cards (insights explorer + recent games)">
-                  <input id="dashboard-focus-toggle" type="checkbox" class="checkbox checkbox-xs" />
-                  <span>Focus mode</span>
-                </label>
               </div>
             </section>
 
             <section class="dashboard-focus mb-5 grid items-stretch gap-3 [grid-template-columns:minmax(0,_1.35fr)_minmax(320px,_0.9fr)] max-md:[grid-template-columns:1fr] max-sm:gap-2">
-              <div class="dashboard-focus-main workspace-hero pb-1 pt-3 max-md:pt-0 max-sm:pb-0">
+              <div class="dashboard-focus-main workspace-hero flex flex-col pb-1 pt-3 max-md:pt-0 max-sm:pb-0">
                 <p class="section-kicker">Today</p>
                 <h1 class="dashboard-title workspace-hero-title mt-1 max-w-[12ch] text-[var(--text)]">Train before you queue.</h1>
                 <p class="dashboard-summary workspace-hero-summary mt-2 max-w-[52ch] text-body text-[var(--muted)]">
@@ -36,6 +32,45 @@
                   <a class="action-card max-sm:w-full max-sm:justify-center max-sm:col-span-1 col-span-2" id="link-weekly-report" href="/reports">
                     Open Weekly Report
                   </a>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-[var(--border)]" aria-labelledby="session-flow-title">
+                  <p class="section-kicker">Training Session</p>
+                  <h2 id="session-flow-title" class="session-flow-title">Warmup → Review → Drill → Coach</h2>
+                  <div class="session-flow-steps mt-2 grid grid-cols-4 gap-2 max-md:grid-cols-2 max-sm:grid-cols-1" id="session-flow-steps">
+                    <button class="session-step" type="button" data-flow-step="warmup" data-target-view="drills">
+                      <span class="session-step-index">01</span>
+                      <span class="session-step-body">
+                        <strong>Warmup</strong>
+                        <span>5 tactical positions</span>
+                      </span>
+                      <span class="session-step-state" id="session-step-warmup">Ready</span>
+                    </button>
+                    <button class="session-step" type="button" data-flow-step="review" data-target-view="games">
+                      <span class="session-step-index">02</span>
+                      <span class="session-step-body">
+                        <strong>Review</strong>
+                        <span>Latest critical game</span>
+                      </span>
+                      <span class="session-step-state" id="session-step-review">Queued</span>
+                    </button>
+                    <button class="session-step" type="button" data-flow-step="drill" data-target-view="drills">
+                      <span class="session-step-index">03</span>
+                      <span class="session-step-body">
+                        <strong>Drill</strong>
+                        <span>Fix the recurring theme</span>
+                      </span>
+                      <span class="session-step-state" id="session-step-drill">Queued</span>
+                    </button>
+                    <button class="session-step" type="button" data-flow-step="coach" data-target-view="coach">
+                      <span class="session-step-index">04</span>
+                      <span class="session-step-body">
+                        <strong>Coach follow-up</strong>
+                        <span>Ask for one correction rule</span>
+                      </span>
+                      <span class="session-step-state" id="session-step-coach">Optional</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -96,55 +131,14 @@
               </div>
             </section>
 
-            <section class="session-flow-widget panel dashboard-secondary mb-5 grid items-stretch gap-3 p-5 [grid-template-columns:minmax(220px,_0.6fr)_minmax(0,_1.4fr)] max-md:[grid-template-columns:1fr] max-sm:p-3" aria-labelledby="session-flow-title">
-              <div class="session-flow-copy">
-                <p class="section-kicker">Training Session</p>
-                <h2 id="session-flow-title" class="session-flow-title">Warmup → Review → Drill → Coach</h2>
-                <p class="session-flow-summary">
-                  A short loop that turns today’s data into one focused training block.
-                </p>
-              </div>
-              <div class="session-flow-steps" id="session-flow-steps">
-                <button class="session-step" type="button" data-flow-step="warmup" data-target-view="drills">
-                  <span class="session-step-index">01</span>
-                  <span class="session-step-body">
-                    <strong>Warmup</strong>
-                    <span>5 tactical positions</span>
-                  </span>
-                  <span class="session-step-state" id="session-step-warmup">Ready</span>
-                </button>
-                <button class="session-step" type="button" data-flow-step="review" data-target-view="games">
-                  <span class="session-step-index">02</span>
-                  <span class="session-step-body">
-                    <strong>Review</strong>
-                    <span>Latest critical game</span>
-                  </span>
-                  <span class="session-step-state" id="session-step-review">Queued</span>
-                </button>
-                <button class="session-step" type="button" data-flow-step="drill" data-target-view="drills">
-                  <span class="session-step-index">03</span>
-                  <span class="session-step-body">
-                    <strong>Drill</strong>
-                    <span>Fix the recurring theme</span>
-                  </span>
-                  <span class="session-step-state" id="session-step-drill">Queued</span>
-                </button>
-                <button class="session-step" type="button" data-flow-step="coach" data-target-view="coach">
-                  <span class="session-step-index">04</span>
-                  <span class="session-step-body">
-                    <strong>Coach follow-up</strong>
-                    <span>Ask for one correction rule</span>
-                  </span>
-                  <span class="session-step-state" id="session-step-coach">Optional</span>
-                </button>
-              </div>
-            </section>
-
             <div class="kpi-grid mb-5 grid gap-2.5 [grid-template-columns:repeat(4,minmax(0,1fr))] max-lg:[grid-template-columns:repeat(2,minmax(0,1fr))] max-sm:[grid-template-columns:1fr]" id="kpi-grid">
-              <!-- filled by JS -->
+              <cc-skeleton variant="kpi"></cc-skeleton>
+              <cc-skeleton variant="kpi"></cc-skeleton>
+              <cc-skeleton variant="kpi"></cc-skeleton>
+              <cc-skeleton variant="kpi"></cc-skeleton>
             </div>
 
-            <div class="charts-row dashboard-secondary mb-5 grid gap-2.5 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
+            <div class="charts-row mb-5 grid gap-2.5 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
               <div class="chart-card analytics-panel">
                 <div class="chart-head">
                   <div class="chart-title">Weekly Win Rate %</div>
@@ -184,10 +178,14 @@
                 </div>
                 <div class="text-xs text-[var(--muted)]" id="dashboard-motifs-meta">Loading…</div>
               </div>
-              <ul id="dashboard-motifs-list" class="grid gap-2 p-4 max-sm:p-3" aria-live="polite"></ul>
+              <ul id="dashboard-motifs-list" class="grid gap-2 p-4 max-sm:p-3" aria-live="polite">
+                <cc-skeleton variant="motif"></cc-skeleton>
+                <cc-skeleton variant="motif"></cc-skeleton>
+                <cc-skeleton variant="motif"></cc-skeleton>
+              </ul>
             </section>
 
-            <section class="card panel-primary mb-5 overflow-hidden dashboard-secondary" id="dashboard-insights-card">
+            <section class="card panel-primary mb-5 overflow-hidden" id="dashboard-insights-card">
               <div class="card-header flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3 max-sm:flex-col">
                 <div>
                   <div class="section-kicker">Insights Explorer</div>
@@ -208,16 +206,23 @@
                     <div class="text-xs font-bold uppercase tracking-kicker text-[var(--muted)]">Filtered slices</div>
                     <div class="text-xs text-[var(--muted)]">sorted by sample size</div>
                   </div>
-                  <div id="insight-slices" class="grid gap-2"></div>
+                  <div id="insight-slices" class="grid gap-2">
+                    <cc-skeleton variant="row"></cc-skeleton>
+                    <cc-skeleton variant="row"></cc-skeleton>
+                    <cc-skeleton variant="row"></cc-skeleton>
+                  </div>
                 </div>
                 <aside>
                   <div class="mb-2 text-xs font-bold uppercase tracking-kicker text-[var(--muted)]">Trend deltas</div>
-                  <div id="trend-deltas" class="grid gap-2"></div>
+                  <div id="trend-deltas" class="grid gap-2">
+                    <cc-skeleton variant="row"></cc-skeleton>
+                    <cc-skeleton variant="row"></cc-skeleton>
+                  </div>
                 </aside>
               </div>
             </section>
 
-            <div class="card panel-quiet mt-3 overflow-hidden dashboard-secondary" id="dashboard-recent-games-card">
+            <div class="card panel-quiet mt-3 overflow-hidden" id="dashboard-recent-games-card">
               <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
                 <div class="card-title">Recent Games</div>
                 <button class="btn btn-ghost" id="btn-view-all-games" type="button">
@@ -237,33 +242,73 @@
                     <th>Action</th>
                   </tr>
                 </thead>
-                <tbody id="recent-games-body"></tbody>
+                <tbody id="recent-games-body">
+                  <tr><td colspan="7"><cc-skeleton variant="row"></cc-skeleton></td></tr>
+                  <tr><td colspan="7"><cc-skeleton variant="row"></cc-skeleton></td></tr>
+                  <tr><td colspan="7"><cc-skeleton variant="row"></cc-skeleton></td></tr>
+                </tbody>
               </table>
               </div>
             </div>
 
             <!-- Hanging piece rate bar -->
-            <div class="card card-pad panel-quiet mt-2 overflow-hidden p-4">
-              <div class="hanging-header">
-                <div class="hanging-copy">
-                  <div class="hanging-title">Hanging Piece Rate</div>
-                  <div class="hanging-subtitle">
-                    Your biggest recurring leak right now. Target: below 40%
+            <div class="hanging-card card panel-quiet mt-2 overflow-hidden">
+              <div class="hanging-card-inner">
+                <!-- Left: stat + context -->
+                <div class="hanging-stat-col">
+                  <div class="hanging-eyebrow">Biggest Leak</div>
+                  <div class="hanging-stat-value" id="hanging-pct-big">—</div>
+                  <div class="hanging-stat-label">Hanging Piece Rate</div>
+                  <p class="hanging-stat-desc">
+                    You leave a piece en prise — attackable with no recapture — in this share of analyzed games.
+                    Fixing this is the single highest-leverage improvement at your rating range.
+                  </p>
+                  <div class="hanging-target-badge">
+                    <span class="hanging-target-dot"></span>
+                    Target: below 40%
                   </div>
                 </div>
-                <div class="kpi-value kpi-bad" id="hanging-pct-big">—</div>
-              </div>
-              <div class="progress-bar">
-                <progress
-                  class="progress-meter progress-meter-bad"
-                  id="hanging-bar"
-                  max="100"
-                  value="0"
-                ></progress>
-              </div>
-              <div class="hanging-scale">
-                <span>0% — Perfect</span>
-                <span>100% — Every game</span>
+
+                <!-- Right: bar + scale + tips -->
+                <div class="hanging-visual-col">
+                  <div class="hanging-bar-wrap">
+                    <div class="hanging-bar-track">
+                      <div class="hanging-bar-fill" id="hanging-bar-fill"></div>
+                      <div class="hanging-bar-target-line"></div>
+                    </div>
+                    <div class="hanging-bar-scale">
+                      <span>0%</span>
+                      <span class="hanging-bar-scale-target">40% target</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+                  <!-- hidden native progress for JS compat -->
+                  <progress class="sr-only" id="hanging-bar" max="100" value="0"></progress>
+
+                  <div class="hanging-tips">
+                    <div class="hanging-tip">
+                      <div class="hanging-tip-icon">♟</div>
+                      <div>
+                        <div class="hanging-tip-title">Before every move</div>
+                        <div class="hanging-tip-body">Scan all your pieces for undefended squares. One extra second prevents most hanging blunders.</div>
+                      </div>
+                    </div>
+                    <div class="hanging-tip">
+                      <div class="hanging-tip-icon">⚡</div>
+                      <div>
+                        <div class="hanging-tip-title">Time pressure</div>
+                        <div class="hanging-tip-body">Most hanging pieces happen under 30 seconds on the clock. Slow down in the middlegame.</div>
+                      </div>
+                    </div>
+                    <div class="hanging-tip">
+                      <div class="hanging-tip-icon">◎</div>
+                      <div>
+                        <div class="hanging-tip-title">Drill it</div>
+                        <div class="hanging-tip-body">Your SRS queue surfaces your own hanging-piece positions. Clear it daily to build the habit.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           

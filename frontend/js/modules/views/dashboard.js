@@ -546,6 +546,8 @@ export function createDashboardView({
 
     dom.byId('hanging-pct-big').textContent = hRate + '%';
     dom.byId('hanging-bar').value = Math.min(Number(hRate), 100);
+    const fillEl = dom.byId('hanging-bar-fill');
+    if (fillEl) fillEl.style.width = Math.min(Number(hRate), 100) + '%';
 
     const tbody = dom.byId('recent-games-body');
     if (!statsData.recent_games.length) {
@@ -604,49 +606,8 @@ export function createDashboardView({
     }
   }
 
-  const FOCUS_PREF_KEY = 'cc.dashboard.focus';
-
-  function readFocusPref() {
-    // Default ON for new users so the first impression is calm. Users who
-    // explicitly toggle it off have their choice persisted; everyone else
-    // gets the curated four-section above-the-fold.
-    try {
-      const raw = window.localStorage.getItem(FOCUS_PREF_KEY);
-      if (raw === null) return true;
-      return raw === '1';
-    } catch (_) {
-      return true;
-    }
-  }
-
-  function writeFocusPref(enabled) {
-    try {
-      window.localStorage.setItem(FOCUS_PREF_KEY, enabled ? '1' : '0');
-    } catch (_) {
-      // ignore
-    }
-  }
-
-  function applyFocusMode(enabled) {
-    document.body.classList.toggle('dashboard-focused', !!enabled);
-  }
-
-  function setupFocusToggle() {
-    const initial = readFocusPref();
-    applyFocusMode(initial);
-    const checkbox = dom.byId('dashboard-focus-toggle');
-    if (!checkbox) return;
-    checkbox.checked = initial;
-    checkbox.addEventListener('change', () => {
-      const next = !!checkbox.checked;
-      applyFocusMode(next);
-      writeFocusPref(next);
-    });
-  }
-
   function bindEvents() {
     btnSyncGames = dom.byId('btn-sync');
-    setupFocusToggle();
     dom.byId('btn-review-latest').addEventListener('click', reviewLatestGame);
     dom.byId('btn-next-step-action')?.addEventListener('click', () => {
       openTarget(nextStepTargets.primary);

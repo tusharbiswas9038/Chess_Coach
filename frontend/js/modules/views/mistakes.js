@@ -351,10 +351,7 @@ export function createMistakesView({ api, destroyChart, getStatsData, toast, cha
           (m) => `
     <tr>
       <td>
-        <div class="flex items-center gap-2">
-          <div class="mini-board-thumb w-8 shrink-0" aria-hidden="true">${'<span></span>'.repeat(16)}</div>
-          <span>${fmt(m.game_date)}</span>
-        </div>
+        <span>${fmt(m.game_date)}</span>
       </td>
       <td>
         <div class="flex flex-col items-start gap-1">

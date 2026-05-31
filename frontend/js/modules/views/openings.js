@@ -481,10 +481,7 @@ export function createOpeningsView({ api, apiContract, apiDelete, apiPost, apiPu
         return `
       <tr>
         <td>
-          <div class="flex items-center gap-2">
-            <div class="mini-board-thumb w-8 shrink-0" aria-hidden="true">${'<span></span>'.repeat(16)}</div>
-            <span class="cell-code-strong">${esc(o.eco)}</span>
-          </div>
+          <span class="cell-code-strong">${esc(o.eco)}</span>
         </td>
         <td>${truncate(o.name, 40)}</td>
         <td>${colorBadge(o.color)}</td>

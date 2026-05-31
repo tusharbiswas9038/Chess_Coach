@@ -3,36 +3,35 @@
                 kicker="Training Track"
                 title="Daily Drills"
                 subtitle="Positions from your own mistakes — spaced repetition"
+                variant="toolbar"
               ></cc-section-header>
               <div class="view-hero-actions">
-                <button class="flip-btn inline-flex items-center" type="button" aria-label="Flip drill board orientation">⟳ Flip Board</button>
-                <button class="btn btn-ghost btn-sm" id="btn-reload-drills" type="button">
-                  Reload Queue
+                <button class="flip-btn inline-flex items-center gap-1" type="button" aria-label="Flip drill board orientation">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+                  Flip Board
                 </button>
-                <button class="btn btn-ghost btn-sm" id="btn-generate-puzzles" type="button">
-                  Generate Puzzles
-                </button>
+                <button class="btn btn-ghost btn-sm" id="btn-reload-drills" type="button">Reload Queue</button>
+                <button class="btn btn-ghost btn-sm" id="btn-generate-puzzles" type="button">Generate Puzzles</button>
               </div>
             </section>
 
             <div class="drill-layout grid items-start gap-3 [grid-template-columns:minmax(280px,560px)_minmax(0,1fr)] max-md:[grid-template-columns:1fr] max-sm:gap-[14px]">
               <!-- BOARD -->
-              <div class="board-wrap panel-primary mx-auto w-full max-w-[600px] p-5 max-sm:p-3">
-                <div class="board-header mb-2 flex items-center justify-between gap-1 max-sm:flex-col max-sm:items-start">
-                  <div class="board-title" id="drill-turn-label">
-                    Find the best move
-                  </div>
-                  <div id="drill-counter" class="meta-label"></div>
+              <div class="drill-board-card panel-primary mx-auto w-full max-w-[600px]">
+                <div class="drill-board-header">
+                  <div class="drill-board-kicker">Your move</div>
+                  <div class="drill-board-title" id="drill-turn-label">Find the best move</div>
+                  <div id="drill-counter" class="drill-board-counter"></div>
                 </div>
-                <div id="drill-board"></div>
+                <div class="drill-board-body">
+                  <div id="drill-board"></div>
+                </div>
                 <div id="drill-feedback" class="drill-feedback" role="status" aria-live="polite"></div>
 
                 <!-- Quality buttons — shown after answer -->
-                <div id="quality-section" class="mt-2" hidden>
-                  <div class="mb-1 text-sm text-[var(--muted)]">
-                    How hard was this? (affects next review date)
-                  </div>
-                  <div class="mt-2 grid grid-cols-4 gap-1 max-sm:grid-cols-2">
+                <div id="quality-section" class="drill-quality-section" hidden>
+                  <div class="drill-quality-label">How hard was this?</div>
+                  <div class="drill-quality-grid">
                     <button class="quality-btn" data-q="0" type="button">
                       Again<br /><span class="quality-sub">Blackout</span>
                     </button>
@@ -52,129 +51,170 @@
                 <!-- Empty state -->
                 <div id="drill-empty" class="drill-empty" hidden>
                   <div class="drill-empty-emoji">🎉</div>
-                  <div class="drill-empty-title">
-                    All drills done for today!
+                  <div class="drill-empty-title">All drills done for today!</div>
+                  <div class="drill-empty-subtitle">Come back tomorrow for your next batch.</div>
+                </div>
+
+                <!-- Session Stats — below board in left column -->
+                <div class="drill-side-card panel-quiet mt-3">
+                  <div class="drill-side-header">
+                    <div class="drill-side-kicker">Progress</div>
+                    <div class="drill-side-title">Session Stats</div>
                   </div>
-                  <div class="drill-empty-subtitle">
-                    Come back tomorrow for your next batch.
+                  <div class="drill-side-body">
+                    <div class="drill-stats-grid">
+                      <div class="drill-stat-item">
+                        <span class="drill-stat-label">Session queue</span>
+                        <span id="ds-due" class="drill-stat-value">—</span>
+                      </div>
+                      <div class="drill-stat-item">
+                        <span class="drill-stat-label">All due</span>
+                        <span id="ds-total-due" class="drill-stat-value">—</span>
+                      </div>
+                      <div class="drill-stat-item">
+                        <span class="drill-stat-label">Completed</span>
+                        <span id="ds-done" class="drill-stat-value drill-stat-value-success">0</span>
+                      </div>
+                      <div class="drill-stat-item">
+                        <span class="drill-stat-label">Correct</span>
+                        <span id="ds-correct" class="drill-stat-value drill-stat-value-success">0</span>
+                      </div>
+                      <div class="drill-stat-item">
+                        <span class="drill-stat-label">Wrong</span>
+                        <span id="ds-wrong" class="drill-stat-value drill-stat-value-error">0</span>
+                      </div>
+                    </div>
+                    <div class="mt-2">
+                      <div class="progress-bar progress-bar-tall">
+                        <progress class="progress-meter" id="session-progress-bar" max="100" value="0"></progress>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <!-- SIDEBAR -->
-              <div class="drill-sidebar flex flex-col gap-2">
-                <div class="drill-info-card panel-quiet p-3">
-                  <div class="drill-card-title mb-2 text-sm font-semibold">Queue Mode</div>
-                  <label class="field mb-2">
-                    <span class="field-label">Mode</span>
-                    <select id="drill-queue-mode" class="field-input select select-bordered w-full">
-                      <option value="adaptive">Adaptive weakness-first</option>
-                      <option value="retry">Retry failed/hard</option>
-                      <option value="motif">Specific motif</option>
-                    </select>
-                  </label>
-                  <label class="field mb-0">
-                    <span class="field-label">Motif filter</span>
-                    <select id="drill-motif-filter" class="field-input select select-bordered w-full">
-                      <option value="">All motifs</option>
-                    </select>
-                  </label>
+              <div class="drill-sidebar flex flex-col gap-3">
+
+                <!-- Queue Mode -->
+                <div class="drill-side-card panel-quiet">
+                  <div class="drill-side-header">
+                    <div class="drill-side-kicker">Configuration</div>
+                    <div class="drill-side-title">Queue Mode</div>
+                  </div>
+                  <div class="drill-side-body">
+                    <label class="field mb-2">
+                      <span class="field-label">Mode</span>
+                      <select id="drill-queue-mode" class="field-input select select-bordered w-full">
+                        <option value="adaptive">Adaptive weakness-first</option>
+                        <option value="retry">Retry failed/hard</option>
+                        <option value="motif">Specific motif</option>
+                      </select>
+                    </label>
+                    <label class="field mb-0">
+                      <span class="field-label">Motif filter</span>
+                      <select id="drill-motif-filter" class="field-input select select-bordered w-full">
+                        <option value="">All motifs</option>
+                      </select>
+                    </label>
+                  </div>
                 </div>
 
-                <div class="drill-info-card analytics-panel p-3">
-                  <div class="drill-card-title mb-2 text-sm font-semibold">Puzzle Bank</div>
-                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-sm">
-                    <span class="drill-stat-label text-[var(--muted)]">Generated puzzles</span>
-                    <span id="drill-puzzle-total" class="drill-stat-value font-bold">—</span>
+                <!-- Puzzle Bank -->
+                <div class="drill-side-card analytics-panel">
+                  <div class="drill-side-header">
+                    <div class="drill-side-kicker">Bank</div>
+                    <div class="drill-side-title">Puzzle Bank</div>
                   </div>
-                  <div class="meta-label mt-2" id="drill-puzzle-breakdown">Generate puzzles to unlock motif queues.</div>
-                  <div class="mt-2 flex flex-wrap gap-1" id="drill-motif-chips"></div>
-                  <div class="meta-label mt-2" id="drill-puzzle-status" role="status" aria-live="polite"></div>
-                </div>
-
-                <div class="drill-info-card panel-quiet p-3">
-                  <div class="drill-card-title mb-2 text-sm font-semibold">Session Stats</div>
-                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-sm">
-                    <span class="drill-stat-label text-[var(--muted)]">Session queue</span>
-                    <span id="ds-due" class="drill-stat-value font-bold">—</span>
-                  </div>
-                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-sm">
-                    <span class="drill-stat-label text-[var(--muted)]">All due</span>
-                    <span id="ds-total-due" class="drill-stat-value font-bold">—</span>
-                  </div>
-                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-sm">
-                    <span class="drill-stat-label text-[var(--muted)]">Completed</span>
-                    <span id="ds-done" class="drill-stat-value drill-stat-value-success font-bold">0</span>
-                  </div>
-                  <div class="drill-stat-row flex items-center justify-between border-b border-[var(--border)] py-2 text-sm">
-                    <span class="drill-stat-label text-[var(--muted)]">Correct</span>
-                    <span id="ds-correct" class="drill-stat-value drill-stat-value-success font-bold">0</span>
-                  </div>
-                  <div class="drill-stat-row flex items-center justify-between py-2 text-sm">
-                    <span class="drill-stat-label text-[var(--muted)]">Wrong</span>
-                    <span id="ds-wrong" class="drill-stat-value drill-stat-value-error font-bold">0</span>
-                  </div>
-                  <div class="mt-1">
-                    <div class="progress-bar progress-bar-tall">
-                      <progress
-                        class="progress-meter"
-                        id="session-progress-bar"
-                        max="100"
-                        value="0"
-                      ></progress>
+                  <div class="drill-side-body">
+                    <div class="drill-stat-item mb-2">
+                      <span class="drill-stat-label">Generated puzzles</span>
+                      <span id="drill-puzzle-total" class="drill-stat-value">—</span>
                     </div>
+                    <div class="meta-label" id="drill-puzzle-breakdown">Generate puzzles to unlock motif queues.</div>
+                    <div class="mt-2 flex flex-wrap gap-1" id="drill-motif-chips"></div>
+                    <div class="meta-label mt-2" id="drill-puzzle-status" role="status" aria-live="polite"></div>
                   </div>
                 </div>
 
-                <div class="drill-info-card panel-quiet p-3">
-                  <div class="drill-card-title mb-2 text-sm font-semibold">Training Flow</div>
-                  <div class="stepper-rail">
-                    <div class="coach-step">
-                      <span class="coach-step-index">1</span>
-                      <div>
-                        <div class="text-sm font-bold text-[var(--text)]">Solve</div>
-                        <div class="text-xs text-[var(--muted)]">Find the first move</div>
+                <!-- Training Flow -->
+                <div class="drill-side-card panel-quiet">
+                  <div class="drill-side-header">
+                    <div class="drill-side-kicker">How it works</div>
+                    <div class="drill-side-title">Training Flow</div>
+                  </div>
+                  <div class="drill-side-body">
+                    <div class="stepper-rail">
+                      <div class="coach-step">
+                        <span class="coach-step-index">1</span>
+                        <div>
+                          <div class="text-sm font-bold text-[var(--text)]">Solve</div>
+                          <div class="text-xs text-[var(--muted)]">Find the first move</div>
+                        </div>
                       </div>
-                    </div>
-                    <div class="coach-step">
-                      <span class="coach-step-index">2</span>
-                      <div>
-                        <div class="text-sm font-bold text-[var(--text)]">Grade</div>
-                        <div class="text-xs text-[var(--muted)]">Choose difficulty</div>
+                      <div class="coach-step">
+                        <span class="coach-step-index">2</span>
+                        <div>
+                          <div class="text-sm font-bold text-[var(--text)]">Grade</div>
+                          <div class="text-xs text-[var(--muted)]">Choose difficulty</div>
+                        </div>
                       </div>
-                    </div>
-                    <div class="coach-step">
-                      <span class="coach-step-index">3</span>
-                      <div>
-                        <div class="text-sm font-bold text-[var(--text)]">Repeat</div>
-                        <div class="text-xs text-[var(--muted)]">Build retention</div>
+                      <div class="coach-step">
+                        <span class="coach-step-index">3</span>
+                        <div>
+                          <div class="text-sm font-bold text-[var(--text)]">Repeat</div>
+                          <div class="text-xs text-[var(--muted)]">Build retention</div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div class="drill-info-card panel-quiet p-3">
-                  <div class="drill-card-title mb-2 text-sm font-semibold">Queue</div>
-                  <div class="drill-queue-list flex max-h-[300px] flex-col gap-[6px] overflow-y-auto" id="drill-queue-list"></div>
+                <!-- Queue -->
+                <div class="drill-side-card panel-quiet">
+                  <div class="drill-side-header">
+                    <div class="drill-side-kicker">Up next</div>
+                    <div class="drill-side-title">Queue</div>
+                  </div>
+                  <div class="drill-side-body">
+                    <div class="drill-queue-list flex max-h-[300px] flex-col gap-[6px] overflow-y-auto" id="drill-queue-list"></div>
+                  </div>
                 </div>
 
-                <div class="drill-info-card panel-quiet p-3">
-                  <div class="drill-card-title mb-1">Session Focus</div>
-                  <div class="meta-label" id="drill-session-focus">Solve first move quickly, then verify one tactical threat before you commit.</div>
+                <!-- Session Focus -->
+                <div class="drill-side-card panel-quiet">
+                  <div class="drill-side-header">
+                    <div class="drill-side-kicker">Tip</div>
+                    <div class="drill-side-title">Session Focus</div>
+                  </div>
+                  <div class="drill-side-body">
+                    <div class="meta-label" id="drill-session-focus">Solve first move quickly, then verify one tactical threat before you commit.</div>
+                  </div>
                 </div>
 
-                <div class="drill-info-card analytics-panel p-3" id="drill-session-summary" hidden>
-                  <div class="drill-card-title mb-1">Session Summary</div>
-                  <div class="meta-label" id="drill-session-summary-copy">—</div>
+                <!-- Session Summary (hidden until done) -->
+                <div class="drill-side-card analytics-panel" id="drill-session-summary" hidden>
+                  <div class="drill-side-header">
+                    <div class="drill-side-kicker">Done</div>
+                    <div class="drill-side-title">Session Summary</div>
+                  </div>
+                  <div class="drill-side-body">
+                    <div class="meta-label" id="drill-session-summary-copy">—</div>
+                  </div>
                 </div>
 
-                <div class="drill-info-card analytics-panel p-3" id="drill-hint-card" hidden>
-                  <div class="drill-card-title mb-1">Position Info</div>
-                  <div id="drill-theme-label" class="meta-label">—</div>
-                  <button class="btn btn-ghost btn-block mt-1" id="btn-show-hint" type="button">
-                    Show Best Move
-                  </button>
+                <!-- Hint card (hidden until active) -->
+                <div class="drill-side-card analytics-panel" id="drill-hint-card" hidden>
+                  <div class="drill-side-header">
+                    <div class="drill-side-kicker">Hint</div>
+                    <div class="drill-side-title">Position Info</div>
+                  </div>
+                  <div class="drill-side-body">
+                    <div id="drill-theme-label" class="meta-label">—</div>
+                    <button class="btn btn-ghost btn-block mt-2" id="btn-show-hint" type="button">Show Best Move</button>
+                  </div>
                 </div>
+
               </div>
             </div>
           

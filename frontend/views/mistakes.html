@@ -6,35 +6,46 @@
               ></cc-section-header>
             </section>
 
-            <div class="games-preset-row mt-2 flex flex-wrap gap-1 max-sm:grid max-sm:grid-cols-2" id="mistakes-phase-tabs">
-              <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm active" type="button" data-phase="">All Phases</button>
-              <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-phase="opening">Opening</button>
-              <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-phase="middlegame">Middlegame</button>
-              <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-phase="endgame">Endgame</button>
-            </div>
-            <div class="filter-toolbar mt-2 flex flex-wrap items-center justify-between gap-2 rounded-cc-lg border border-[var(--border)] bg-[var(--surface)] p-2 max-sm:grid max-sm:grid-cols-1" id="mistakes-v2-controls">
-              <div class="games-preset-row flex flex-wrap gap-1" id="mistakes-subtype-tabs">
-                <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm active" type="button" data-subtype="">All Classes</button>
-                <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-subtype="tactical_blunder">Tactical</button>
-                <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-subtype="missed_tactic">Missed tactic</button>
-                <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-subtype="conversion_miss">Conversion</button>
-                <button class="preset-btn btn btn-ghost rounded-full tap-40 px-3 text-sm" type="button" data-subtype="opening_inaccuracy">Opening</button>
+            <!-- Phase + subtype filter toolbar -->
+            <div class="mistakes-toolbar" id="mistakes-v2-controls">
+              <div class="mistakes-toolbar-row">
+                <div class="mistakes-toolbar-label">Phase</div>
+                <div class="mistakes-tab-group" id="mistakes-phase-tabs">
+                  <button class="mistakes-tab active" type="button" data-phase="">All</button>
+                  <button class="mistakes-tab" type="button" data-phase="opening">Opening</button>
+                  <button class="mistakes-tab" type="button" data-phase="middlegame">Middlegame</button>
+                  <button class="mistakes-tab" type="button" data-phase="endgame">Endgame</button>
+                </div>
               </div>
-              <label class="field-label mb-0 flex items-center gap-2 text-xs text-[var(--muted)]">
-                Sort
-                <select id="mistakes-sort" class="field-input select select-bordered tap-40 w-auto min-w-[160px] text-xs">
+              <div class="mistakes-toolbar-divider"></div>
+              <div class="mistakes-toolbar-row">
+                <div class="mistakes-toolbar-label">Class</div>
+                <div class="mistakes-tab-group" id="mistakes-subtype-tabs">
+                  <button class="mistakes-tab active" type="button" data-subtype="">All</button>
+                  <button class="mistakes-tab" type="button" data-subtype="tactical_blunder">Tactical</button>
+                  <button class="mistakes-tab" type="button" data-subtype="missed_tactic">Missed tactic</button>
+                  <button class="mistakes-tab" type="button" data-subtype="conversion_miss">Conversion</button>
+                  <button class="mistakes-tab" type="button" data-subtype="opening_inaccuracy">Opening</button>
+                </div>
+              </div>
+              <div class="mistakes-toolbar-sort">
+                <label class="mistakes-sort-label" for="mistakes-sort">Sort</label>
+                <select id="mistakes-sort" class="field-input select select-bordered mistakes-sort-select">
                   <option value="date_desc">Newest first</option>
                   <option value="loss_desc">Largest eval loss</option>
                   <option value="confidence_desc">Highest confidence</option>
                 </select>
-              </label>
+              </div>
             </div>
-            <div class="kpi-grid kpi-grid-triple mb-5 grid gap-2 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
+
+            <!-- KPI row -->
+            <div class="kpi-grid kpi-grid-triple mb-5 mt-4 grid gap-2 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr]">
               <cc-kpi-card id="kpi-blunders" tone="bad" label="Total Blunders" value="—" sub="eval swing > 300cp"></cc-kpi-card>
               <cc-kpi-card id="kpi-hanging" tone="warn" label="Hanging Pieces" value="—" sub="left piece en prise"></cc-kpi-card>
               <cc-kpi-card id="kpi-mistakes" tone="blue" label="Mistakes" value="—" sub="eval swing 100–200cp"></cc-kpi-card>
             </div>
 
+            <!-- Charts row -->
             <div class="charts-row charts-row-triple mb-5 grid gap-2.5 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[grid-template-columns:1fr] max-sm:gap-2">
               <div class="chart-card analytics-panel" id="mistakes-card-phase">
                 <div class="chart-head">
@@ -56,51 +67,64 @@
               </div>
             </div>
 
-            <div class="card card-pad panel-primary mt-2 overflow-hidden p-3" id="mistakes-card-heatmap">
-              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2 max-sm:flex-col max-sm:items-start max-sm:gap-1">
-                <div class="card-title">Blunder Heatmap</div>
-                <div class="table-meta">Squares where blunders happened most</div>
+            <!-- Heatmap + Motifs side by side -->
+            <div class="mistakes-lower-grid mb-4">
+              <div class="card panel-primary overflow-hidden" id="mistakes-card-heatmap">
+                <div class="mistakes-card-header">
+                  <div class="mistakes-card-kicker">Board Analysis</div>
+                  <div class="mistakes-card-title">Blunder Heatmap</div>
+                  <div class="mistakes-card-sub">Squares where blunders happened most</div>
+                </div>
+                <div class="heatmap-board" id="heatmap-board" aria-label="Blunder heatmap"></div>
+                <div class="heatmap-legend" aria-hidden="true">
+                  <span class="heatmap-legend-label">Low</span>
+                  <span class="heatmap-legend-swatch heatmap-level-1"></span>
+                  <span class="heatmap-legend-swatch heatmap-level-2"></span>
+                  <span class="heatmap-legend-swatch heatmap-level-3"></span>
+                  <span class="heatmap-legend-swatch heatmap-level-4"></span>
+                  <span class="heatmap-legend-swatch heatmap-level-5"></span>
+                  <span class="heatmap-legend-label">High</span>
+                </div>
               </div>
-              <div class="heatmap-board" id="heatmap-board" aria-label="Blunder heatmap"></div>
-              <div class="heatmap-legend" aria-hidden="true">
-                <span class="heatmap-legend-label">Low</span>
-                <span class="heatmap-legend-swatch heatmap-level-1"></span>
-                <span class="heatmap-legend-swatch heatmap-level-2"></span>
-                <span class="heatmap-legend-swatch heatmap-level-3"></span>
-                <span class="heatmap-legend-swatch heatmap-level-4"></span>
-                <span class="heatmap-legend-swatch heatmap-level-5"></span>
-                <span class="heatmap-legend-label">High</span>
+
+              <div class="card panel-quiet overflow-hidden" id="mistakes-card-motifs">
+                <div class="mistakes-card-header">
+                  <div class="mistakes-card-kicker">Patterns</div>
+                  <div class="mistakes-card-title">Top Recurring Error Motifs</div>
+                  <div class="mistakes-card-sub">Last 7 days · ranked by frequency</div>
+                </div>
+                <div id="mistakes-motifs-list" class="coach-context-list p-3"></div>
               </div>
             </div>
 
-            <div class="card card-pad panel-quiet mt-3 overflow-hidden p-3" id="mistakes-card-motifs">
-              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
-                <div class="card-title">Top 3 Recurring Error Motifs (7 days)</div>
-              </div>
-              <div id="mistakes-motifs-list" class="coach-context-list"></div>
-            </div>
-
-            <div class="card panel-quiet mt-3 overflow-hidden" id="mistakes-card-critical">
-              <div class="card-header flex items-center justify-between border-b border-[var(--border)] px-3 py-2 max-sm:flex-col max-sm:items-start max-sm:gap-1">
-                <div class="card-title">
-                  Recent Critical Mistakes (1 per game)
+            <!-- Critical mistakes table -->
+            <div class="card panel-quiet overflow-hidden" id="mistakes-card-critical">
+              <div class="mistakes-card-header mistakes-card-header-row">
+                <div>
+                  <div class="mistakes-card-kicker">Priority Queue</div>
+                  <div class="mistakes-card-title">Recent Critical Mistakes</div>
+                  <div class="mistakes-card-sub">One per game · highest eval loss first</div>
                 </div>
                 <div class="table-meta" id="mistakes-critical-meta">Latest priority positions</div>
               </div>
               <div class="table-shell overflow-x-auto">
-              <table class="table-dense">
-                <thead>
-                  <tr>
-                    <th>Game Date</th>
-                    <th>Type</th>
-                    <th>Phase</th>
-                    <th>Move Played</th>
-                    <th>Should Have Played</th>
-                    <th>Eval Lost (cp)</th>
-                  </tr>
-                </thead>
-                <tbody id="critical-mistakes-body"></tbody>
-              </table>
+                <table class="table-dense">
+                  <thead>
+                    <tr>
+                      <th>Game Date</th>
+                      <th>Type</th>
+                      <th>Phase</th>
+                      <th>Move Played</th>
+                      <th>Should Have Played</th>
+                      <th>Eval Lost (cp)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="critical-mistakes-body">
+                    <tr><td colspan="6"><cc-skeleton variant="row"></cc-skeleton></td></tr>
+                    <tr><td colspan="6"><cc-skeleton variant="row"></cc-skeleton></td></tr>
+                    <tr><td colspan="6"><cc-skeleton variant="row"></cc-skeleton></td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           

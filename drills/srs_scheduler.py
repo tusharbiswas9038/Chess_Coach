@@ -158,7 +158,7 @@ def _due_item_ids(
     if mode == "motif" and motif:
         where.append("COALESCE(p.motif, m.mistake_subtype, m.type) = ?")
         params.append(motif)
-    priority_case = "0"
+    priority_case = "(0)"
     if priority_motifs:
         placeholders = ",".join("?" for _ in priority_motifs)
         priority_case = f"CASE WHEN COALESCE(p.motif, m.mistake_subtype, m.type) IN ({placeholders}) THEN 0 ELSE 1 END"
