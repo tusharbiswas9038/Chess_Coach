@@ -26,6 +26,7 @@ Tail end of H18. The button surface had drifted: per-view inconsistencies (Sync/
 - **Topbar buttons standardized.** All views now show Sync + Analyze in the topbar; the per-view allowlist in `navigation.js:updateTopbarActionsForView` was hiding them on mistakes/drills/coach. Mobile Actions menu inline `style.display = 'none'` was also unconditionally set at startup, beating the CSS toggle and breaking the click handler — removed.
 - **Dashboard yellow-flash on refresh** — `dashboard.js` was adding `btn-warning` to the Sync button when work was pending, which painted yellow on first paint and then re-painted ghost on hydration. Removed the class addition; kept the tooltip.
 - **`view-hero` shell standardized.** All 8 views wrap their hero in `<section class="view-hero">` with `<cc-section-header>`. Coach view's hero was previously nested inside the wizard-shell 2-col grid and read as empty space; lifted out.
+- **Auth-first SPA bootstrap.** `app.js` now renders the login gate before binding navigation/actions or loading protected views. A shell startup error can no longer leave production users on a blank page before `/api/auth/session` completes.
 - **Docs refreshed:** STYLING_CONTRACT (Button & Hover System), COMPONENT_CONTRACTS (toolbar variant + no-inline-style rule), CHANGELOG.
 
 ---

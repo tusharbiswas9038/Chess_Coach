@@ -67,8 +67,8 @@ function buildMarkup({ username, totalGames }) {
           <button id="onboarding-skip" class="btn btn-ghost max-sm:w-full max-sm:justify-center" type="button">
             Skip for now
           </button>
-          <button id="onboarding-start" class="btn btn-primary max-sm:w-full max-sm:justify-center" type="button" ${empty ? ‘’ : ‘data-mode="dismiss"’}>
-            ${empty ? ‘Start first sync’ : ‘Got it’}
+          <button id="onboarding-start" class="btn btn-primary max-sm:w-full max-sm:justify-center" type="button" ${empty ? '' : 'data-mode="dismiss"'}>
+            ${empty ? 'Start first sync' : 'Got it'}
           </button>
         </div>
       </div>

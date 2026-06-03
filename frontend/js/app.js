@@ -29,16 +29,13 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-if (typeof Chart === 'undefined') {
-  console.warn('Chart.js not loaded yet — charts will be unavailable.');
-}
-initChartDefaults();
 // ── STATE ──
 let statsData = null;
 let charts = {};
 
 let navigationView;
-let routedAfterAuth = false;
+let appStarted = false;
+let onlineFlushBound = false;
 const boundViews = new Set();
 const authGate = createAuthGate({ api, apiPost, toast });
 const views = {
@@ -177,50 +174,21 @@ function ensureViewBound(viewName) {
   boundViews.add(viewName);
 }
 
-navigationView = createNavigationView({
-  onBeforeEnter: async (viewName) => {
-    await loadSectionTemplate(viewName);
-    if (viewName === 'game-detail') await ensureView('review');
-    else await ensureView(viewName);
-    ensureViewBound(viewName);
-  },
-  onEnterCoach: () => views.coach?.init(),
-  onEnterDrills: () => views.drills?.ensureLoaded(),
-  onEnterGames: () => views.games?.ensureLoaded(),
-  onEnterMistakes: () => views.mistakes?.load(),
-  onEnterOpenings: () => views.openings?.load(),
-  onEnterReports: () => views.reports?.load(),
-  onOpenGameDetail: (gameId) => loadGameDetail(gameId),
-});
-getActionsView().bindEvents();
-navigationView.bindEvents();
-navigationView.restoreSidebarPreference();
-setupInstallPrompt();
-
-// When the browser comes back online, opportunistically flush any drill
-// results that were queued while offline. We don't toast on zero — only
-// when something actually moved — so a routine reconnection stays quiet.
-window.addEventListener('online', () => {
-  flushDrillResults(apiPost).then((r) => {
-    if (r.flushed > 0) {
-      toast(`Synced ${r.flushed} offline drill${r.flushed === 1 ? '' : 's'}.`);
-    }
-  }).catch(() => {
-    // Quiet failure — flush is best-effort
-  });
-});
 authGate.init().then((session) => {
   updateAuthUi(session);
   if (!session?.auth_required || session?.authenticated) {
-    routedAfterAuth = true;
-    navigationView.syncFromRoute();
+    startApp();
   }
+}).catch((error) => {
+  console.error('Auth initialization failed:', error);
+  authGate.requireLogin();
 });
 
 window.addEventListener('app:auth-changed', (event) => {
   updateAuthUi(event.detail);
   if (event.detail?.authenticated || !event.detail?.auth_required) {
-    reloadAfterAuth();
+    if (!appStarted) startApp();
+    else reloadAfterAuth();
   }
 });
 
@@ -236,6 +204,7 @@ document.addEventListener('app:data-invalidated', (event) => {
 });
 
 function showView(name) {
+  if (!navigationView) return;
   navigationView.showView(name);
 }
 
@@ -249,9 +218,8 @@ function updateAuthUi(session = authGate.getSession()) {
 async function reloadAfterAuth() {
   clearAllCaches();
   statsData = null;
-  if (!routedAfterAuth) {
-    routedAfterAuth = true;
-    navigationView.syncFromRoute();
+  if (!appStarted || !navigationView) {
+    startApp();
     return;
   }
 
@@ -302,3 +270,51 @@ function destroyChart(id) {
   }
 }
 // ── INIT ──
+function startApp() {
+  if (appStarted) return;
+  appStarted = true;
+
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js not loaded yet — charts will be unavailable.');
+  }
+  initChartDefaults();
+
+  navigationView = createNavigationView({
+    onBeforeEnter: async (viewName) => {
+      await loadSectionTemplate(viewName);
+      if (viewName === 'game-detail') await ensureView('review');
+      else await ensureView(viewName);
+      ensureViewBound(viewName);
+    },
+    onEnterCoach: () => views.coach?.init(),
+    onEnterDrills: () => views.drills?.ensureLoaded(),
+    onEnterGames: () => views.games?.ensureLoaded(),
+    onEnterMistakes: () => views.mistakes?.load(),
+    onEnterOpenings: () => views.openings?.load(),
+    onEnterReports: () => views.reports?.load(),
+    onOpenGameDetail: (gameId) => loadGameDetail(gameId),
+  });
+  getActionsView().bindEvents();
+  navigationView.bindEvents();
+  navigationView.restoreSidebarPreference();
+  setupInstallPrompt();
+  bindOnlineFlush();
+  navigationView.syncFromRoute();
+}
+
+// When the browser comes back online, opportunistically flush any drill
+// results that were queued while offline. We don't toast on zero — only
+// when something actually moved — so a routine reconnection stays quiet.
+function bindOnlineFlush() {
+  if (onlineFlushBound) return;
+  onlineFlushBound = true;
+  window.addEventListener('online', () => {
+    flushDrillResults(apiPost).then((r) => {
+      if (r.flushed > 0) {
+        toast(`Synced ${r.flushed} offline drill${r.flushed === 1 ? '' : 's'}.`);
+      }
+    }).catch(() => {
+      // Quiet failure — flush is best-effort
+    });
+  });
+}
